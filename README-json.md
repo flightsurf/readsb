@@ -191,7 +191,6 @@ The keys are:
   ```
   &jv2
   ```
-  * Change json syntax to be compatible with adsbexchange v2 API output
   * now: same as normal BUT in milliseconds
   * total: number of aircraft in the aircraft array
   * ptime: time in milliseconds it took to parse the request and create the json output
