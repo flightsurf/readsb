@@ -1960,8 +1960,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 if (strcasecmp(token[0], "disableAcasJson") == 0) {
                     Modes.enableAcasJson = 0;
                 }
-                if (strcasecmp(token[0], "enableConnsJson") == 0) {
-                    Modes.enableConnsJson = 1;
+                if (strcasecmp(token[0], "enableClientsJson") == 0) {
+                    Modes.enableClientsJson = 1;
                 }
                 if (strcasecmp(token[0], "tar1090NoGlobe") == 0) {
                     Modes.tar1090_no_globe = 1;
@@ -2575,12 +2575,14 @@ static void miscStuff(int64_t now) {
     static int64_t next_clients_json;
     if (Modes.json_dir && now > next_clients_json) {
         next_clients_json = now + 10 * SECONDS;
-        if (Modes.enableConnsJson) {
-        }
-        if (Modes.netIngest)
+
+        if (Modes.netIngest || Modes.enableClientsJson) {
             free(writeJsonToFile(Modes.json_dir, "clients.json", generateClientsJson()).buffer);
-        if (Modes.netReceiverIdJson)
+        }
+
+        if (Modes.netReceiverIdJson) {
             free(writeJsonToFile(Modes.json_dir, "receivers.json", generateReceiversJson()).buffer);
+        }
 
         return;
     }
