@@ -890,7 +890,7 @@ struct char_buffer generatePromFile(int64_t now) {
             p = safe_snprintf(p, end, "readsb_demod_preambles %"PRIu32"\n", st->demod_preambles);
         }
     }
-    if (Modes.json_globe_index) {
+    if (Modes.keep_traces) {
         p = safe_snprintf(p, end, "readsb_trace_current_memory %"PRIu64"\n", Modes.trace_current_size);
         p = safe_snprintf(p, end, "readsb_trace_chunk_memory %"PRIu64"\n", Modes.trace_chunk_size);
         p = safe_snprintf(p, end, "readsb_trace_cache_memory %"PRIu64"\n", Modes.trace_cache_size);
@@ -936,7 +936,7 @@ void statsCountAircraft(int64_t now) {
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
             total_aircraft_count++;
 
-            if (Modes.json_globe_index) {
+            if (Modes.keep_traces) {
                 trace_current_size += stateBytes(a->trace_current_max);
                 trace_chunk_size += a->trace_chunk_overall_bytes;
                 struct traceCache *tCache = &a->traceCache;

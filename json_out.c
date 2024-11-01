@@ -1726,8 +1726,8 @@ static void checkTraceCache(struct aircraft *a, traceBuffer tb, int64_t now) {
 
 struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int start, int last, threadpool_buffer_t *buffer, int64_t referenceTs) {
     struct char_buffer cb = { 0 };
-    if (!Modes.json_globe_index) {
-        return cb;
+    if (!Modes.writeTraces) {
+        fprintf(stderr, "generateTraceJson called when Modes.writeTraces not set, this is a bug, please report with configuration!\n");
     }
     int64_t now = mstime();
 
@@ -1883,10 +1883,12 @@ struct char_buffer generateReceiverJson() {
         p = safe_snprintf(p, end, ", \"dbServer\": true");
     }
 
-    if (Modes.json_globe_index && !Modes.tar1090_no_globe) {
-
+    if (Modes.writeTraces) {
+        p = safe_snprintf(p, end, ", \"haveTraces\": true");
         p = safe_snprintf(p, end, ", \"json_trace_interval\": %.1f", ((double) Modes.json_trace_interval) / (1 * SECONDS));
+    }
 
+    if (Modes.json_globe_index && !Modes.tar1090_no_globe) {
         p = safe_snprintf(p, end, ", \"globeIndexGrid\": %d", GLOBE_INDEX_GRID);
 
         p = safe_snprintf(p, end, ", \"globeIndexSpecialTiles\": [ ");

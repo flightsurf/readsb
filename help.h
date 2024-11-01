@@ -95,7 +95,7 @@ static struct argp_option optionsReadsb[] = {
     {"enable-biastee", OptBiasTee, 0, OPTION_HIDDEN, "Enable bias tee on supporting interfaces (default: disabled)", 1},
     {"write-json", OptJsonDir, "<dir>", 0, "Periodically write json output to <dir>", 1},
     {"write-prom", OptPromFile, "<filepath>", 0, "Periodically write prometheus output to <filepath>", 1},
-    {"write-globe-history", OptGlobeHistoryDir, "<dir>", 0, "Extended Globe History", 1},
+    {"write-globe-history", OptGlobeHistoryDir, "<dir>", 0, "Write traces to this directory, 1 gz compressed json per day and airframe", 1},
     {"write-state", OptStateDir, "<dir>", 0, "Write state to disk to have traces after a restart", 1},
     {"write-state-every", OptStateInterval, "<seconds>", 0, "Continuously write state to disk every X seconds (default: 3600)", 1},
     {"write-state-only-on-exit", OptStateOnlyOnExit, 0, 0, "Don't continously update state.", 1},

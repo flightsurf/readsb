@@ -1138,7 +1138,7 @@ static void *upkeepEntryPoint(void *arg) {
 
         priorityTasksRun();
 
-        if (Modes.json_globe_index) {
+        if (Modes.writeTraces) {
             // writing a trace takes some time, to increase timing precision the priority tasks, allot a little less time than available
             // this isn't critical though
             int64_t time_alloted = ms_until_priority();
@@ -2212,8 +2212,9 @@ static void configAfterParse() {
     Modes.sdr_buf_samples = Modes.sdr_buf_size / 2;
     Modes.trackExpireMax = Modes.trackExpireJaero + TRACK_EXPIRE_LONG + 1 * MINUTES;
 
-    if (Modes.json_globe_index) {
+    if (Modes.json_globe_index || Modes.globe_history_dir) {
         Modes.keep_traces = 24 * HOURS + 60 * MINUTES; // include 60 minutes overlap
+        Modes.writeTraces = 1;
     } else if (Modes.heatmap || Modes.trace_focus != BADDR) {
         Modes.keep_traces = 35 * MINUTES; // heatmap is written every 30 minutes
     }
@@ -2753,7 +2754,7 @@ int main(int argc, char **argv) {
         mkdir_error(pathbuf, 0755, stderr);
     }
 
-    if (Modes.json_dir && Modes.json_globe_index) {
+    if (Modes.json_dir && Modes.writeTraces) {
         char pathbuf[PATH_MAX];
         snprintf(pathbuf, PATH_MAX, "%s/traces", Modes.json_dir);
         mkdir_error(pathbuf, 0755, stderr);
