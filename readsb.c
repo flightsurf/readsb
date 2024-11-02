@@ -1520,6 +1520,48 @@ static int parseLongs(char *p, long long *results, int result_size) {
     return count;
 }
 
+static void parseGainOpt(char *arg) {
+    int maxTokens = 128;
+    char* token[maxTokens];
+    if (!arg) {
+        fprintf(stderr, "parseGainOpt called wiht argument null\n");
+        return;
+    }
+    if (strcasestr(arg, "auto") == arg) {
+        if (Modes.sdr_type != SDR_RTLSDR) {
+            fprintf(stderr, "autogain not supported for non rtl-sdr devices\n");
+        }
+        if (strcasestr(arg, "auto-verbose") == arg) {
+            fprintf(stderr, "autogain enabled, verbose mode\n");
+            Modes.gainQuiet = 0;
+        } else {
+            fprintf(stderr, "autogain enabled, silent mode, suppressing gain changing messages\n");
+            Modes.gainQuiet = 1;
+        }
+        Modes.autoGain = 1;
+        char *argdup = strdup(arg);
+        tokenize(&argdup, ",", token, maxTokens);
+        if (token[1]) {
+            Modes.gain = (int) (atof(token[1])*10); // Gain is in tens of DBs
+        } else {
+            Modes.gain = 439;
+        }
+        if (token[2]) {
+            Modes.noiseLowThreshold = atoi(token[2]);
+        }
+        if (token[3]) {
+            Modes.noiseHighThreshold = atoi(token[3]);
+        }
+        if (token[4]) {
+            Modes.loudThreshold = atoi(token[4]);
+        }
+    } else {
+        Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
+        Modes.autoGain = 0;
+        Modes.gainQuiet = 0;
+    }
+}
+
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     //fprintf(stderr, "parse_opt(%d, %s, argp_state*)\n", key, arg);
     int maxTokens = 128;
@@ -1529,27 +1571,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             Modes.dev_name = strdup(arg);
             break;
         case OptGain:
-            if (strcasestr(arg, "auto") == arg) {
-                Modes.autoGain = 1;
-                char *argdup = strdup(arg);
-                tokenize(&argdup, ",", token, maxTokens);
-                if (token[1]) {
-                    Modes.gain = (int) (atof(token[1])*10); // Gain is in tens of DBs
-                } else {
-                    Modes.gain = 439;
-                }
-                if (token[2]) {
-                    Modes.noiseLowThreshold = atoi(token[2]);
-                }
-                if (token[3]) {
-                    Modes.noiseHighThreshold = atoi(token[3]);
-                }
-                if (token[4]) {
-                    Modes.loudThreshold = atoi(token[4]);
-                }
-            } else {
-                Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
-            }
+            sfree(Modes.gainArg);
+            Modes.gainArg = strdup(arg);
             break;
         case OptFreq:
             Modes.freq = (int) strtoll(arg, NULL, 10);
@@ -2315,6 +2338,13 @@ static void configAfterParse() {
     Modes.sdr_buf_samples = Modes.sdr_buf_size / 2;
     Modes.trackExpireMax = Modes.trackExpireJaero + TRACK_EXPIRE_LONG + 1 * MINUTES;
 
+    if (Modes.sdr_type == SDR_RTLSDR && !Modes.gainArg) {
+        parseGainOpt("auto");
+    } else if (Modes.gainArg) {
+        parseGainOpt(Modes.gainArg);
+        sfree(Modes.gainArg);
+    }
+
     if (Modes.json_globe_index || Modes.globe_history_dir) {
         Modes.keep_traces = 24 * HOURS + 60 * MINUTES; // include 60 minutes overlap
         Modes.writeTraces = 1;
@@ -2609,8 +2639,8 @@ static void checkSetGain() {
 
     tmp[len] = '\0';
 
-    double newGain = atof(tmp);
-    Modes.gain = (int) (newGain * 10); // Gain is in tens of DBs
+
+    parseGainOpt(tmp);
 
     sdrSetGain("");
 

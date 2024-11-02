@@ -137,7 +137,9 @@ void rtlsdrSetGain(char *reason) {
         Modes.gain = MODES_RTL_AGC;
 
         RTLSDR.tunerAgcEnabled = 1;
-        fprintf(stderr, "%srtlsdr: enabling tuner AGC\n", reason);
+        if (!Modes.gainQuiet) {
+            fprintf(stderr, "%srtlsdr: enabling tuner AGC\n", reason);
+        }
         if (rtlsdr_set_tuner_gain_mode(RTLSDR.dev, 0)) {
             fprintf(stderr, "rtlsdr: enabling tuner AGC failed\n");
             return;
@@ -159,7 +161,9 @@ void rtlsdrSetGain(char *reason) {
             fprintf(stderr, "rtlsdr: setting tuner gain failed\n");
             return;
         } else {
-            fprintf(stderr, "%srtlsdr: tuner gain set to %4.1f dB\n", reason, newGain / 10.0);
+            if (!Modes.gainQuiet) {
+                fprintf(stderr, "%srtlsdr: tuner gain set to %4.1f dB\n", reason, newGain / 10.0);
+            }
             Modes.gain = newGain;
         }
     }
