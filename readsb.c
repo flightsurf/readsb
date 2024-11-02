@@ -763,7 +763,7 @@ static void gainStatistics(struct mag_buf *buf) {
     static uint64_t noiseHighSamples;
     static uint64_t totalSamples;
     static int slowRise;
-    static int lastGain;
+    static int64_t nextRaiseAgc;
 
     loudEvents += buf->loudEvents;
     noiseLowSamples += buf->noiseLowSamples;
@@ -771,6 +771,7 @@ static void gainStatistics(struct mag_buf *buf) {
     totalSamples += buf->length;
 
     double interval = 0.5;
+    double riseTime = 15;
 
     if (totalSamples < interval * Modes.sample_rate) {
         return;
@@ -784,43 +785,45 @@ static void gainStatistics(struct mag_buf *buf) {
     }
 
     // 29 gain values for typical rtl-sdr
-    // allow startup to sweep entire range quickly, half it for double steps
-    int starting = getUptime() < (29 / 2.0 * interval) * SECONDS;
+    // allow startup to sweep entire range quickly, almost half it for double steps
+    int starting = getUptime() < (29 / 1.5 * interval) * SECONDS;
 
-    char *action = "";
     int noiseLow = noiseLowPercent > 5; // too many samples < noiseLowThreshold
-    int noiseHigh = noiseHighPercent < 0.2; // too few samples < noiseHighThreshold
+    int noiseHigh = noiseHighPercent < 1; // too few samples < noiseHighThreshold
     int loud = loudEvents > 1;
     if (loud || noiseHigh) {
-        action = "decreased";
         Modes.lowerGain = 1;
     } else if (noiseLow) {
-        if (starting || slowRise > 15 / interval) {
+        if (starting || slowRise > riseTime / interval) {
             slowRise = 0;
             Modes.increaseGain = 1;
-            action = "increased";
         } else {
             slowRise++;
         }
     }
 
+    if (Modes.increaseGain && Modes.gain == 496 && buf->sysTimestamp < nextRaiseAgc) {
+        goto reset;
+    }
     if (Modes.increaseGain || Modes.lowerGain) {
         if (starting) {
             Modes.lowerGain *= 2;
             Modes.increaseGain *= 2;
         }
-        sdrSetGain();
-        if (Modes.gain != lastGain) {
-            if (loud) {
-                fprintf(stderr, "%9s gain. loudEvents: %4lld\n", action, (long long) loudEvents);
-            } else if (noiseHigh) {
-                fprintf(stderr, "%9s gain. noise high.\n", action);
-            } else if (noiseLow) {
-                fprintf(stderr, "%9s gain. noise low.\n", action);
-            }
-            //fprintf(stderr, "%9s gain.  noiseLow: %5.2f %%  noiseHigh: %5.2f %%  loudEvents: %4lld\n", action, noiseLowPercent, noiseHighPercent, (long long) loudEvents);
-            lastGain = Modes.gain;
+        char *reason = "";
+        if (loud) {
+            reason = "decreasing gain, strong signal found: ";
+        } else if (noiseHigh) {
+            reason = "decreasing gain, noise too high:      ";
+        } else if (noiseLow) {
+            reason = "increasing gain, noise too low:       ";
         }
+        sdrSetGain(reason);
+        if (Modes.gain == MODES_RTL_AGC) {
+            // switching to AGC is only done every 5 minutes to avoid oscillations due to the large step
+            nextRaiseAgc = buf->sysTimestamp + 5 * MINUTES;
+        }
+        //fprintf(stderr, "%9s gain.  noiseLow: %5.2f %%  noiseHigh: %5.2f %%  loudEvents: %4lld\n", action, noiseLowPercent, noiseHighPercent, (long long) loudEvents);
     }
 
 reset:
@@ -2609,7 +2612,7 @@ static void checkSetGain() {
     double newGain = atof(tmp);
     Modes.gain = (int) (newGain * 10); // Gain is in tens of DBs
 
-    sdrSetGain();
+    sdrSetGain("");
 
     //fprintf(stderr, "Modes.gain (tens of dB): %d\n", Modes.gain);
 }

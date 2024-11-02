@@ -113,6 +113,7 @@
 #define MODES_MAG_BUFFERS       12                         // Number of magnitude buffers (should be smaller than RTL_BUFFERS for flowcontrol to work)
 #define MODES_AUTO_GAIN         -100                       // Use automatic gain
 #define MODES_MAX_GAIN          999999                     // Use max available gain
+#define MODES_RTL_AGC           590                        // Use rtl tuner agc
 #define MODEAC_MSG_BYTES        2
 
 #define MODES_PREAMBLE_US       8   // microseconds = bits
