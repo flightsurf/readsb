@@ -138,7 +138,7 @@ void rtlsdrSetGain(char *reason) {
 
         RTLSDR.tunerAgcEnabled = 1;
         if (!Modes.gainQuiet) {
-            fprintf(stderr, "%srtlsdr: enabling tuner AGC\n", reason);
+            fprintf(stderr, "%srtlsdr: tuner gain set to 59.0 dB (tuner AGC)\n", reason);
         }
         if (rtlsdr_set_tuner_gain_mode(RTLSDR.dev, 0)) {
             fprintf(stderr, "rtlsdr: enabling tuner AGC failed\n");
