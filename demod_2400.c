@@ -290,12 +290,12 @@ void demodulate2400(struct mag_buf *mag) {
     uint16_t *statsProgress = m;
 
     const uint32_t statsWindow = MODES_SHORT_MSG_SAMPLES / 2; // half a short message
-    uint32_t loudSamples = 0;
-    uint32_t quietSamples = 0;
-    uint32_t quiet2Samples = 0;
-    uint32_t loudThreshold = 55000 * statsWindow; // max 65536
-    uint32_t quietThreshold = 800 * statsWindow;
-    uint32_t quiet2Threshold = 2 * quietThreshold;
+    uint32_t loudEvents = 0;
+    uint32_t noiseLowSamples = 0;
+    uint32_t noiseHighSamples = 0;
+    const uint32_t loudThreshold = Modes.loudThreshold * Modes.loudThreshold * statsWindow;
+    const uint32_t noiseLowThreshold = Modes.noiseLowThreshold * Modes.noiseLowThreshold * statsWindow;
+    const uint32_t noiseHighThreshold = Modes.noiseHighThreshold * Modes.noiseHighThreshold * statsWindow;
 
     for (; pa < stop; pa++) {
         int32_t pa_mag, base_noise, ref_level;
@@ -323,9 +323,9 @@ void demodulate2400(struct mag_buf *mag) {
             for (uint32_t i = 0; i < statsWindow; i++) {
                 magSum += pa[i];
             }
-            loudSamples += statsWindow * (magSum > loudThreshold);
-            quietSamples += statsWindow * (magSum < quietThreshold);
-            quiet2Samples += statsWindow * (magSum < quiet2Threshold);
+            loudEvents += (magSum > loudThreshold);
+            noiseLowSamples += statsWindow * (magSum < noiseLowThreshold);
+            noiseHighSamples += statsWindow * (magSum < noiseHighThreshold);
 
             statsProgress = pa + statsWindow;
         }
@@ -493,9 +493,9 @@ after_pre:
         netUseMessage(mm);
     }
 
-    mag->loudSamples = loudSamples;
-    mag->quietSamples = quietSamples;
-    mag->quiet2Samples = quiet2Samples;
+    mag->loudEvents = loudEvents;
+    mag->noiseLowSamples = noiseLowSamples;
+    mag->noiseHighSamples = noiseHighSamples;
 
     /* update noise power */
     {

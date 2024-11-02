@@ -116,6 +116,12 @@ static void configSetDefaults(void) {
 
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain = MODES_MAX_GAIN;
+
+    // 8 bit autogain defaults, will be squared and compared against magnitude data
+    Modes.loudThreshold = 245;
+    Modes.noiseLowThreshold = 25;
+    Modes.noiseHighThreshold = 35;
+
     Modes.freq = MODES_DEFAULT_FREQ;
     Modes.check_crc = 1;
     Modes.net_heartbeat_interval = MODES_NET_HEARTBEAT_INTERVAL;
@@ -752,61 +758,76 @@ static void *globeBinEntryPoint(void *arg) {
 }
 
 static void gainStatistics(struct mag_buf *buf) {
-    static uint64_t loudSamples;
-    static uint64_t quietSamples;
-    static uint64_t quiet2Samples;
+    static uint64_t loudEvents;
+    static uint64_t noiseLowSamples;
+    static uint64_t noiseHighSamples;
     static uint64_t totalSamples;
     static int slowRise;
     static int lastGain;
 
-    loudSamples += buf->loudSamples;
-    quietSamples += buf->quietSamples;
-    quiet2Samples += buf->quiet2Samples;
+    loudEvents += buf->loudEvents;
+    noiseLowSamples += buf->noiseLowSamples;
+    noiseHighSamples += buf->noiseHighSamples;
     totalSamples += buf->length;
 
-    if (totalSamples < 2 * Modes.sample_rate) {
+    double interval = 0.5;
+
+    if (totalSamples < interval * Modes.sample_rate) {
         return;
     }
 
-    double loudPercent = loudSamples / (double) totalSamples * 100.0;
-    double quietPercent = quietSamples / (double) totalSamples * 100.0;
-    double quiet2Percent = quiet2Samples / (double) totalSamples * 100.0;
-
-    // reset
-    loudSamples = 0;
-    quietSamples = 0;
-    quiet2Samples = 0;
-    totalSamples = 0;
+    double noiseLowPercent = noiseLowSamples / (double) totalSamples * 100.0;
+    double noiseHighPercent = noiseHighSamples / (double) totalSamples * 100.0;
 
     if (!Modes.autoGain) {
-        // don't adjust anything
-        return;
+        goto reset;
     }
 
-    if (loudPercent > 0.05 || quiet2Percent < 0.05) {
+    // 29 gain values for typical rtl-sdr
+    // allow startup to sweep entire range quickly, half it for double steps
+    int starting = getUptime() < (29 / 2.0 * interval) * SECONDS;
+
+    char *action = "";
+    int noiseLow = noiseLowPercent > 5; // too many samples < noiseLowThreshold
+    int noiseHigh = noiseHighPercent < 0.2; // too few samples < noiseHighThreshold
+    int loud = loudEvents > 1;
+    if (loud || noiseHigh) {
+        action = "decreased";
         Modes.lowerGain = 1;
-    } else if (
-            quietPercent > 10.0
-            ) {
-        if (getUptime() < 1 * MINUTES || slowRise > 10) {
+    } else if (noiseLow) {
+        if (starting || slowRise > 15 / interval) {
             slowRise = 0;
             Modes.increaseGain = 1;
+            action = "increased";
         } else {
             slowRise++;
         }
     }
+
     if (Modes.increaseGain || Modes.lowerGain) {
-        if (getUptime() < 1 * MINUTES) {
+        if (starting) {
             Modes.lowerGain *= 2;
             Modes.increaseGain *= 2;
         }
-        if (Modes.gain != lastGain) {
-            lastGain = Modes.gain;
-            fprintf(stderr, "loud: %8.4f %% quiet: %8.4f %% quiet2 %8.4f %%\n", loudPercent, quietPercent, quiet2Percent);
-        }
         sdrSetGain();
+        if (Modes.gain != lastGain) {
+            if (loud) {
+                fprintf(stderr, "%9s gain. loudEvents: %4lld\n", action, (long long) loudEvents);
+            } else if (noiseHigh) {
+                fprintf(stderr, "%9s gain. noise high.\n", action);
+            } else if (noiseLow) {
+                fprintf(stderr, "%9s gain. noise low.\n", action);
+            }
+            //fprintf(stderr, "%9s gain.  noiseLow: %5.2f %%  noiseHigh: %5.2f %%  loudEvents: %4lld\n", action, noiseLowPercent, noiseHighPercent, (long long) loudEvents);
+            lastGain = Modes.gain;
+        }
     }
 
+reset:
+    loudEvents = 0;
+    noiseLowSamples = 0;
+    noiseHighSamples = 0;
+    totalSamples = 0;
 }
 
 
@@ -1505,9 +1526,24 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             Modes.dev_name = strdup(arg);
             break;
         case OptGain:
-            if (strcmp(arg, "auto") == 0) {
+            if (strcasestr(arg, "auto") == arg) {
                 Modes.autoGain = 1;
-                Modes.gain = 439;
+                char *argdup = strdup(arg);
+                tokenize(&argdup, ",", token, maxTokens);
+                if (token[1]) {
+                    Modes.gain = (int) (atof(token[1])*10); // Gain is in tens of DBs
+                } else {
+                    Modes.gain = 439;
+                }
+                if (token[2]) {
+                    Modes.noiseLowThreshold = atoi(token[2]);
+                }
+                if (token[3]) {
+                    Modes.noiseHighThreshold = atoi(token[3]);
+                }
+                if (token[4]) {
+                    Modes.loudThreshold = atoi(token[4]);
+                }
             } else {
                 Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
             }

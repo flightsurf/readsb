@@ -108,7 +108,8 @@ void rtlsdrSetGain() {
         int closest = getClosestGainIndex(Modes.gain);
         if (Modes.increaseGain) {
             closest += Modes.increaseGain;
-        } else if (Modes.lowerGain) {
+        }
+        if (Modes.lowerGain) {
             closest -= Modes.lowerGain;
         }
         if (closest >= RTLSDR.numgains) {
