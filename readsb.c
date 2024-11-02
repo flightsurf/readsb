@@ -116,6 +116,8 @@ static void configSetDefaults(void) {
 
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain = MODES_MAX_GAIN;
+    Modes.autoGain = 1;
+    Modes.gainQuiet = 1;
 
     // 8 bit autogain defaults, will be squared and compared against magnitude data
     Modes.loudThreshold = 245;
@@ -786,7 +788,7 @@ static void gainStatistics(struct mag_buf *buf) {
 
     // 29 gain values for typical rtl-sdr
     // allow startup to sweep entire range quickly, almost half it for double steps
-    int starting = getUptime() < (29 / 1.5 * interval) * SECONDS;
+    int starting = mono_milli_seconds() - Modes.gainStartupTime < (29 / 1.5 * interval) * SECONDS;
 
     int noiseLow = noiseLowPercent > 5; // too many samples < noiseLowThreshold
     int noiseHigh = noiseHighPercent < 1; // too few samples < noiseHighThreshold
@@ -1521,6 +1523,7 @@ static int parseLongs(char *p, long long *results, int result_size) {
 }
 
 static void parseGainOpt(char *arg) {
+    Modes.gainStartupTime = mono_milli_seconds();
     int maxTokens = 128;
     char* token[maxTokens];
     if (!arg) {

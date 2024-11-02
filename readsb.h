@@ -539,6 +539,7 @@ struct _Modes
     int8_t autoGain;
     int8_t gainQuiet;
     char *gainArg;
+    int64_t gainStartupTime;
     uint32_t loudThreshold;
     uint32_t noiseLowThreshold;
     uint32_t noiseHighThreshold;
