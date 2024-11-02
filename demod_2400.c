@@ -287,6 +287,16 @@ void demodulate2400(struct mag_buf *mag) {
     uint16_t *pa = m;
     uint16_t *stop = m + mlen;
 
+    uint16_t *statsProgress = m;
+
+    const uint32_t statsWindow = MODES_SHORT_MSG_SAMPLES / 2; // half a short message
+    uint32_t loudSamples = 0;
+    uint32_t quietSamples = 0;
+    uint32_t quiet2Samples = 0;
+    uint32_t loudThreshold = 55000 * statsWindow; // max 65536
+    uint32_t quietThreshold = 800 * statsWindow;
+    uint32_t quiet2Threshold = 2 * quietThreshold;
+
     for (; pa < stop; pa++) {
         int32_t pa_mag, base_noise, ref_level;
         int msglen;
@@ -307,6 +317,18 @@ void demodulate2400(struct mag_buf *mag) {
         // some silly unrolling that cuts CPU cycles
         // due to plenty room in the message buffer for decoding
         // we can with pa go beyond stop without a buffer overrun ...
+
+        if (Modes.autoGain && pa >= statsProgress) {
+            uint32_t magSum = 0;
+            for (uint32_t i = 0; i < statsWindow; i++) {
+                magSum += pa[i];
+            }
+            loudSamples += statsWindow * (magSum > loudThreshold);
+            quietSamples += statsWindow * (magSum < quietThreshold);
+            quiet2Samples += statsWindow * (magSum < quiet2Threshold);
+
+            statsProgress = pa + statsWindow;
+        }
 
         if (pa[1] > pa[7] && pa[12] > pa[14] && pa[12] > pa[15]) { goto after_pre; }
         pa++; if (pa[1] > pa[7] && pa[12] > pa[14] && pa[12] > pa[15]) { goto after_pre; }
@@ -470,6 +492,10 @@ after_pre:
         // Pass data to the next layer
         netUseMessage(mm);
     }
+
+    mag->loudSamples = loudSamples;
+    mag->quietSamples = quietSamples;
+    mag->quiet2Samples = quiet2Samples;
 
     /* update noise power */
     {

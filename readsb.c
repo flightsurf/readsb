@@ -751,6 +751,65 @@ static void *globeBinEntryPoint(void *arg) {
     return NULL;
 }
 
+static void gainStatistics(struct mag_buf *buf) {
+    static uint64_t loudSamples;
+    static uint64_t quietSamples;
+    static uint64_t quiet2Samples;
+    static uint64_t totalSamples;
+    static int slowRise;
+    static int lastGain;
+
+    loudSamples += buf->loudSamples;
+    quietSamples += buf->quietSamples;
+    quiet2Samples += buf->quiet2Samples;
+    totalSamples += buf->length;
+
+    if (totalSamples < 2 * Modes.sample_rate) {
+        return;
+    }
+
+    double loudPercent = loudSamples / (double) totalSamples * 100.0;
+    double quietPercent = quietSamples / (double) totalSamples * 100.0;
+    double quiet2Percent = quiet2Samples / (double) totalSamples * 100.0;
+
+    // reset
+    loudSamples = 0;
+    quietSamples = 0;
+    quiet2Samples = 0;
+    totalSamples = 0;
+
+    if (!Modes.autoGain) {
+        // don't adjust anything
+        return;
+    }
+
+    if (loudPercent > 0.05 || quiet2Percent < 0.05) {
+        Modes.lowerGain = 1;
+    } else if (
+            quietPercent > 10.0
+            ) {
+        if (getUptime() < 1 * MINUTES || slowRise > 10) {
+            slowRise = 0;
+            Modes.increaseGain = 1;
+        } else {
+            slowRise++;
+        }
+    }
+    if (Modes.increaseGain || Modes.lowerGain) {
+        if (getUptime() < 1 * MINUTES) {
+            Modes.lowerGain *= 2;
+            Modes.increaseGain *= 2;
+        }
+        if (Modes.gain != lastGain) {
+            lastGain = Modes.gain;
+            fprintf(stderr, "loud: %8.4f %% quiet: %8.4f %% quiet2 %8.4f %%\n", loudPercent, quietPercent, quiet2Percent);
+        }
+        sdrSetGain();
+    }
+
+}
+
+
 static void timingStatistics(struct mag_buf *buf) {
     static int64_t last_ts;
 
@@ -873,6 +932,10 @@ static void *decodeEntryPoint(void *arg) {
                     demodulate2400AC(buf);
                 }
 
+                gainStatistics(buf);
+                timingStatistics(buf);
+
+                Modes.stats_current.samples_lost += Modes.sdr_buf_samples - buf->length;
                 Modes.stats_current.samples_processed += buf->length;
                 Modes.stats_current.samples_dropped += buf->dropped;
                 end_cpu_timing(&start_time, &Modes.stats_current.demod_cpu);
@@ -882,10 +945,6 @@ static void *decodeEntryPoint(void *arg) {
                 Modes.first_filled_buffer = (Modes.first_filled_buffer + 1) % MODES_MAG_BUFFERS;
                 pthread_cond_signal(&Threads.reader.cond);
                 unlockReader();
-
-                Modes.stats_current.samples_lost += Modes.sdr_buf_samples - buf->length;
-
-                timingStatistics(buf);
 
                 watchdogCounter = 100; // roughly 10 seconds
             } else {
@@ -1446,7 +1505,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             Modes.dev_name = strdup(arg);
             break;
         case OptGain:
-            Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
+            if (strcmp(arg, "auto") == 0) {
+                Modes.autoGain = 1;
+                Modes.gain = 439;
+            } else {
+                Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
+            }
             break;
         case OptFreq:
             Modes.freq = (int) strtoll(arg, NULL, 10);

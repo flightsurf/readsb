@@ -456,6 +456,10 @@ struct mag_buf
     unsigned length; // Number of valid samples _after_ overlap. Total buffer length is buf->length + Modes.trailing_samples.
     int64_t sysTimestamp; // Estimated system time at start of block
     int64_t sysMicroseconds; // sysTimestamp in microseconds
+    uint32_t loudSamples;
+    uint32_t quietSamples;
+    uint32_t quiet2Samples;
+    uint32_t padding2;
     uint16_t *data; // Magnitude data. Starts with Modes.trailing_samples worth of overlap from the previous block
 #if defined(__arm__)
     /*padding 4 bytes*/
@@ -529,6 +533,9 @@ struct _Modes
     pthread_mutex_t sdrControlMutex;
     int8_t sdrInitialized;
     int8_t sdrOpenFailed;
+    int8_t increaseGain;
+    int8_t lowerGain;
+    int8_t autoGain;
     int gain;
     int dc_filter; // should we apply a DC filter?
     int enable_agc;

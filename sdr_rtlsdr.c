@@ -91,7 +91,47 @@ void rtlsdrInitConfig() {
     RTLSDR.tunerAgcEnabled = 0;
 }
 
+static int getClosestGainIndex(int target) {
+    target = (target == MODES_MAX_GAIN ? 9999 : target);
+    int closest = 0;
+
+    for (int i = 0; i < RTLSDR.numgains; ++i) {
+        if (abs(RTLSDR.gains[i] - target) < abs(RTLSDR.gains[closest] - target)) {
+            closest = i;
+        }
+    }
+    return closest;
+}
+
 void rtlsdrSetGain() {
+    if (Modes.increaseGain || Modes.lowerGain) {
+        int closest = getClosestGainIndex(Modes.gain);
+        if (Modes.increaseGain) {
+            closest += Modes.increaseGain;
+        } else if (Modes.lowerGain) {
+            closest -= Modes.lowerGain;
+        }
+        if (closest >= RTLSDR.numgains) {
+            closest = RTLSDR.numgains - 1;
+        }
+        if (closest < 0) {
+            closest = 0;
+        }
+        Modes.increaseGain = 0;
+        Modes.lowerGain = 0;
+
+        if (Modes.gain == RTLSDR.gains[closest]) {
+            // same gain, nothing to do
+            return;
+        }
+
+        // change gain
+        Modes.gain = RTLSDR.gains[closest];
+    }
+
+    if (Modes.gain < 0) {
+        Modes.gain = 0;
+    }
     if (Modes.gain == MODES_AUTO_GAIN || Modes.gain >= 520) {
         Modes.gain = 590;
 
@@ -104,13 +144,7 @@ void rtlsdrSetGain() {
         }
     } else {
 
-        int target = (Modes.gain == MODES_MAX_GAIN ? 9999 : Modes.gain);
-        int closest = -1;
-
-        for (int i = 0; i < RTLSDR.numgains; ++i) {
-            if (closest == -1 || abs(RTLSDR.gains[i] - target) < abs(RTLSDR.gains[closest] - target))
-                closest = i;
-        }
+        int closest = getClosestGainIndex(Modes.gain);
         int newGain = RTLSDR.gains[closest];
 
         if (RTLSDR.tunerAgcEnabled) {
