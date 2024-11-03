@@ -120,7 +120,7 @@ static void configSetDefaults(void) {
     Modes.gainQuiet = 1;
 
     // 8 bit autogain defaults, will be squared and compared against magnitude data
-    Modes.loudThreshold = 245;
+    Modes.loudThreshold = 243;
     Modes.noiseLowThreshold = 25;
     Modes.noiseHighThreshold = 31;
 
