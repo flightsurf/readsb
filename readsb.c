@@ -788,15 +788,18 @@ static void gainStatistics(struct mag_buf *buf) {
 
     // 29 gain values for typical rtl-sdr
     // allow startup to sweep entire range quickly, almost half it for double steps
-    int starting = mono_milli_seconds() - Modes.gainStartupTime < (29 / 1.5 * interval) * SECONDS;
 
     int noiseLow = noiseLowPercent > 5; // too many samples < noiseLowThreshold
     int noiseHigh = noiseHighPercent < 1; // too few samples < noiseHighThreshold
     int loud = loudEvents > 1;
+    int veryLoud = loudEvents > 5;
     if (loud || noiseHigh) {
         Modes.lowerGain = 1;
+        if (veryLoud && !Modes.gainStartup) {
+            Modes.lowerGain = 2;
+        }
     } else if (noiseLow) {
-        if (starting || slowRise > riseTime / interval) {
+        if (Modes.gainStartup || slowRise > riseTime / interval) {
             slowRise = 0;
             Modes.increaseGain = 1;
         } else {
@@ -804,21 +807,24 @@ static void gainStatistics(struct mag_buf *buf) {
         }
     }
 
+
     if (Modes.increaseGain && Modes.gain == 496 && buf->sysTimestamp < nextRaiseAgc) {
         goto reset;
     }
     if (Modes.increaseGain || Modes.lowerGain) {
-        if (starting) {
-            Modes.lowerGain *= 2;
-            Modes.increaseGain *= 2;
+        if (Modes.gainStartup) {
+            Modes.lowerGain *= Modes.gainStartup;
+            Modes.increaseGain *= Modes.gainStartup;
         }
         char *reason = "";
-        if (loud) {
-            reason = "decreasing gain, strong signal found: ";
+        if (veryLoud) {
+            reason = "decreasing gain, many strong signals found: ";
+        } else if (loud) {
+            reason = "decreasing gain, strong signal found:       ";
         } else if (noiseHigh) {
-            reason = "decreasing gain, noise too high:      ";
+            reason = "decreasing gain, noise too high:            ";
         } else if (noiseLow) {
-            reason = "increasing gain, noise too low:       ";
+            reason = "increasing gain, noise too low:             ";
         }
         sdrSetGain(reason);
         if (Modes.gain == MODES_RTL_AGC) {
@@ -829,6 +835,7 @@ static void gainStatistics(struct mag_buf *buf) {
     }
 
 reset:
+    Modes.gainStartup /= 2;
     loudEvents = 0;
     noiseLowSamples = 0;
     noiseHighSamples = 0;
@@ -1523,7 +1530,7 @@ static int parseLongs(char *p, long long *results, int result_size) {
 }
 
 static void parseGainOpt(char *arg) {
-    Modes.gainStartupTime = mono_milli_seconds();
+    Modes.gainStartup = 8;
     int maxTokens = 128;
     char* token[maxTokens];
     if (!arg) {
@@ -1547,7 +1554,7 @@ static void parseGainOpt(char *arg) {
         if (token[1]) {
             Modes.gain = (int) (atof(token[1])*10); // Gain is in tens of DBs
         } else {
-            Modes.gain = 439;
+            Modes.gain = 300;
         }
         if (token[2]) {
             Modes.noiseLowThreshold = atoi(token[2]);
