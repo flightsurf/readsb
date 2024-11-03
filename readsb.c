@@ -116,13 +116,6 @@ static void configSetDefaults(void) {
 
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain = MODES_MAX_GAIN;
-    Modes.autoGain = 1;
-    Modes.gainQuiet = 1;
-
-    // 8 bit autogain defaults, will be squared and compared against magnitude data
-    Modes.loudThreshold = 243;
-    Modes.noiseLowThreshold = 25;
-    Modes.noiseHighThreshold = 31;
 
     Modes.freq = MODES_DEFAULT_FREQ;
     Modes.check_crc = 1;
@@ -1549,21 +1542,29 @@ static void parseGainOpt(char *arg) {
             Modes.gainQuiet = 1;
         }
         Modes.autoGain = 1;
+        Modes.gain = 300;
+
         char *argdup = strdup(arg);
         tokenize(&argdup, ",", token, maxTokens);
         if (token[1]) {
-            Modes.gain = (int) (atof(token[1])*10); // Gain is in tens of DBs
+            Modes.minGain = (int) (atof(token[1])*10); // Gain is in tens of DBs
         } else {
-            Modes.gain = 300;
+            Modes.minGain = 0;
         }
         if (token[2]) {
             Modes.noiseLowThreshold = atoi(token[2]);
+        } else {
+            Modes.noiseLowThreshold = 25;
         }
         if (token[3]) {
             Modes.noiseHighThreshold = atoi(token[3]);
+        } else {
+            Modes.noiseHighThreshold = 31;
         }
         if (token[4]) {
             Modes.loudThreshold = atoi(token[4]);
+        } else {
+            Modes.loudThreshold = 243;
         }
         fprintf(stderr, "startingGain: %4.1f noiseLowThreshold: %3d noiseHighThreshold: %3d loudThreshold: %3d\n",
                 Modes.gain / 10.0, Modes.noiseLowThreshold, Modes.noiseHighThreshold, Modes.loudThreshold);
@@ -1571,6 +1572,7 @@ static void parseGainOpt(char *arg) {
         Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
         Modes.autoGain = 0;
         Modes.gainQuiet = 0;
+        Modes.minGain = 0;
     }
 }
 

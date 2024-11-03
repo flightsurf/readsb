@@ -98,11 +98,11 @@ On the command line it's activated using `--gain=auto` an is silent by default.
 `--gain=auto-verbose` can be used to enable log messages for gain changes.
 To tweak the internals, more parameters can be passed:
 ```
---gain=auto-verbose,<startingGain>,<noiseLowThreshold>,<noiseHighThreshold>,<loudThreshold>
+--gain=auto-verbose,<lowestGain>,<noiseLowThreshold>,<noiseHighThreshold>,<loudThreshold>
 ```
 The defaults are:
 ```
---gain=auto-verbose,43.9,25,31,243
+--gain=auto-verbose,0,25,31,243
 ```
 The thresholds are numbers 0 to 256, tweaking them requires some understanding of how it works.
 One option would be to change the noise thresholds up or down and then observe the log.

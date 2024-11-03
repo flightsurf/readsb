@@ -543,6 +543,7 @@ struct _Modes
     uint32_t loudThreshold;
     uint32_t noiseLowThreshold;
     uint32_t noiseHighThreshold;
+    int minGain;
     int gain;
     int dc_filter; // should we apply a DC filter?
     int enable_agc;
