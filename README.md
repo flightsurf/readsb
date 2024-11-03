@@ -102,7 +102,7 @@ To tweak the internals, more parameters can be passed:
 ```
 The defaults are:
 ```
---gain=auto-verbose,43.9,25,35,245
+--gain=auto-verbose,43.9,24,28,245
 ```
 The thresholds are numbers 0 to 256, tweaking them requires some understanding of how it works.
 One option would be to change the noise thresholds up or down and then observe the log.

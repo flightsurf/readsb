@@ -121,8 +121,8 @@ static void configSetDefaults(void) {
 
     // 8 bit autogain defaults, will be squared and compared against magnitude data
     Modes.loudThreshold = 245;
-    Modes.noiseLowThreshold = 25;
-    Modes.noiseHighThreshold = 35;
+    Modes.noiseLowThreshold = 24;
+    Modes.noiseHighThreshold = 28;
 
     Modes.freq = MODES_DEFAULT_FREQ;
     Modes.check_crc = 1;
