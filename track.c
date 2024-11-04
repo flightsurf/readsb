@@ -2620,6 +2620,10 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         }
     }
 
+    if (0 && a->addr == Modes.cpr_focus && mm->cpr_valid) {
+        displayModesMessage(mm);
+    }
+
     if (cpr_new) {
         a->last_cpr_type = mm->cpr_type;
     }

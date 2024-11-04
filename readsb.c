@@ -157,7 +157,6 @@ static void configSetDefaults(void) {
     Modes.net_output_flush_interval_beast_reduce = -1; // default to net_output_flush_interval after config parse if not configured
     Modes.netReceiverId = 0;
     Modes.netIngest = 0;
-    Modes.uuidFile = strdup("/usr/local/share/adsbexchange/adsbx-uuid");
     Modes.json_trace_interval = 20 * 1000;
     Modes.state_write_interval = 1 * HOURS;
     Modes.heatmap_current_interval = -15;

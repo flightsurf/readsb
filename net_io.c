@@ -371,23 +371,19 @@ static struct client *createSocketClient(struct net_service *service, int fd) {
 
 static int sendUUID(struct client *c, int64_t now) {
     struct net_connector *con = c->con;
-    // sending UUID if hostname matches adsbexchange or for beast_reduce_plus output
+    // sending UUID for beast_reduce_plus output
     char uuid[150];
     uuid[0] = '\0';
     if ((c->sendq && c->sendq_len + 256 < c->sendq_max) && con
-            && (con->enable_uuid_ping || (strstr(con->address, "feed") && strstr(con->address, ".adsbexchange.com")) || Modes.debug_ping || Modes.debug_send_uuid)) {
+            && (con->enable_uuid_ping || Modes.debug_ping || Modes.debug_send_uuid)) {
 
         int res = -1;
 
         if (con->uuid) {
             strncpy(uuid, con->uuid, 135);
             res = strlen(uuid);
-        } else {
+        } else if (Modes.uuidFile) {
             int fd = open(Modes.uuidFile, O_RDONLY);
-            // try legacy / adsbexchange image path as hardcoded fallback
-            if (fd == -1) {
-                fd = open("/boot/adsbx-uuid", O_RDONLY);
-            }
             if (fd != -1) {
                 res = read(fd, uuid, 128);
                 close(fd);
@@ -408,9 +404,8 @@ static int sendUUID(struct client *c, int64_t now) {
             strncpy(c->sendq + c->sendq_len, uuid, res);
             c->sendq_len += 36;
         } else {
+            fprintf(stderr, "ERROR: Not a valid UUID: '%s' (to generate a valid uuid use this command: cat /proc/sys/kernel/random/uuid)\n", uuid);
             uuid[0] = '\0';
-            fprintf(stderr, "ERROR: Not a valid UUID: %s\n", Modes.uuidFile);
-            fprintf(stderr, "Use this command to fix: sudo uuidgen > %s\n", Modes.uuidFile);
         }
 
         // enable ping stuff
