@@ -121,6 +121,10 @@ void rtlsdrSetGain(char *reason) {
         Modes.increaseGain = 0;
         Modes.lowerGain = 0;
 
+        if (RTLSDR.gains[closest] < Modes.minGain) {
+            // new gain less than minimum, nothing to do
+            return;
+        }
         if (Modes.gain == RTLSDR.gains[closest]) {
             // same gain, nothing to do
             return;

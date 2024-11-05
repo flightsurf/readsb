@@ -1550,6 +1550,9 @@ static void parseGainOpt(char *arg) {
         } else {
             Modes.minGain = 0;
         }
+        if (Modes.gain < Modes.minGain) {
+            Modes.gain = Modes.minGain;
+        }
         if (token[2]) {
             Modes.noiseLowThreshold = atoi(token[2]);
         } else {
@@ -1565,7 +1568,7 @@ static void parseGainOpt(char *arg) {
         } else {
             Modes.loudThreshold = 243;
         }
-        fprintf(stderr, "startingGain: %4.1f noiseLowThreshold: %3d noiseHighThreshold: %3d loudThreshold: %3d\n",
+        fprintf(stderr, "lowestGain: %4.1f noiseLowThreshold: %3d noiseHighThreshold: %3d loudThreshold: %3d\n",
                 Modes.gain / 10.0, Modes.noiseLowThreshold, Modes.noiseHighThreshold, Modes.loudThreshold);
     } else {
         Modes.gain = (int) (atof(arg)*10); // Gain is in tens of DBs
