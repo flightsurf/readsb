@@ -2634,6 +2634,13 @@ static void checkReplaceState() {
     checkReplaceStateDir(Modes.json_dir);
 }
 
+static void writeOutlineJson() {
+    if (!Modes.json_dir) {
+        return;
+    }
+    free(writeJsonToFile(Modes.json_dir, "outline.json", generateOutlineJson()).buffer);
+}
+
 static void checkSetGain() {
     if (!Modes.json_dir) {
         return;
@@ -2655,6 +2662,12 @@ static void checkSetGain() {
 
     tmp[len] = '\0';
 
+    if (strcasestr(tmp, "resetRangeOutline")) {
+        fprintf(stderr, "resetting range outline\n");
+        memset(Modes.rangeDirs, 0, sizeof(Modes.rangeDirs));
+        writeOutlineJson();
+        return;
+    }
 
     parseGainOpt(tmp);
 
@@ -2670,7 +2683,7 @@ static void miscStuff(int64_t now) {
     if (Modes.outline_json) {
         static int64_t nextOutlineWrite;
         if (now > nextOutlineWrite) {
-            free(writeJsonToFile(Modes.json_dir, "outline.json", generateOutlineJson()).buffer);
+            writeOutlineJson();
             nextOutlineWrite = now + 15 * SECONDS;
         }
 
