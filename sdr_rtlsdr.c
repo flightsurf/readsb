@@ -104,6 +104,10 @@ static int getClosestGainIndex(int target) {
 }
 
 void rtlsdrSetGain(char *reason) {
+    if (Modes.gain == MODES_AUTO_GAIN || Modes.gain >= 520) {
+        Modes.gain = MODES_RTL_AGC;
+    }
+
     if (Modes.increaseGain || Modes.lowerGain) {
         int closest = getClosestGainIndex(Modes.gain);
         if (Modes.increaseGain) {
@@ -137,8 +141,7 @@ void rtlsdrSetGain(char *reason) {
     if (Modes.gain < 0) {
         Modes.gain = 0;
     }
-    if (Modes.gain == MODES_AUTO_GAIN || Modes.gain >= 520) {
-        Modes.gain = MODES_RTL_AGC;
+    if (Modes.gain == MODES_RTL_AGC) {
 
         RTLSDR.tunerAgcEnabled = 1;
         if (!Modes.gainQuiet) {
