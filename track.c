@@ -2841,7 +2841,7 @@ static void removeStaleRange(void *arg, threadpool_threadbuffers_t * buffer_grou
     // timeout for non-ICAO aircraft with position
     int64_t nonIcaoPosTimeout = now - 30 * MINUTES;
 
-    if (Modes.json_globe_index) {
+    if (Modes.writeTraces) {
         posTimeout = now - 26 * HOURS;
         nonIcaoPosTimeout = now - 26 * HOURS;
     }
