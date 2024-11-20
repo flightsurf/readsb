@@ -1532,6 +1532,7 @@ static void parseGainOpt(char *arg) {
     if (strcasestr(arg, "auto") == arg) {
         if (Modes.sdr_type != SDR_RTLSDR) {
             fprintf(stderr, "autogain not supported for non rtl-sdr devices\n");
+            return;
         }
         if (strcasestr(arg, "auto-verbose") == arg) {
             fprintf(stderr, "autogain enabled, verbose mode\n");
