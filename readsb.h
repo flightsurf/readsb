@@ -709,6 +709,7 @@ struct _Modes
     int8_t netReceiverIdPrint;
     int8_t netReceiverIdJson;
     int8_t netIngest;
+    int8_t readProxy;
     int8_t enableClientsJson;
     int8_t forward_mlat; // forward beast mlat messages to beast output ports
     int8_t forward_mlat_sbs; // forward mlat messages to sbs output ports

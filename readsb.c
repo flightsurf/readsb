@@ -2041,6 +2041,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 if (strcasecmp(token[0], "legacy_history") == 0) {
                     Modes.legacy_history = 1;
                 }
+                if (strcasecmp(token[0], "readProxy") == 0) {
+                    Modes.readProxy = 1;
+                }
                 if (strcasecmp(token[0], "beast_forward_noforward") == 0) {
                     Modes.beast_forward_noforward = 1;
                 }

@@ -5074,7 +5074,7 @@ static int processClient(struct client *c, int64_t now, struct messageBuffer *mb
 
     if (now - c->connectedSince < 5 * SECONDS) {
         // check for PROXY v1 header if connection is new / low bytes received
-        if (Modes.netIngest && c->som == c->buf) {
+        if ((Modes.netIngest || Modes.readProxy) && c->som == c->buf) {
             if (c->eod - c->som >= 6 && c->som[0] == 'P' && c->som[1] == 'R') {
                 int res = readProxy(c);
                 if (res != 0) {
