@@ -119,7 +119,7 @@ static struct argp_option optionsReadsb[] = {
     {0,0,0,0, "Network options:", 2},
     {"net-connector", OptNetConnector, "<ip,port,protocol>", 0, "Establish connection, can be specified multiple times (e.g. 127.0.0.1,23004,beast_out) Protocols: beast_out, beast_in, raw_out, raw_in, sbs_in, sbs_in_jaero, sbs_out, sbs_out_jaero, vrs_out, json_out, gpsd_in, uat_in, uat_replay_out, planefinder_in, asterix_in, asterix_out (one failover ip/address,port can be specified: primary-address,primary-port,protocol,failover-address,failover-port) (any position in the comma separated list can also be either silent_fail or uuid=<uuid>)", 2},
     {"net", OptNet, 0, 0, "Enable networking", 2},
-    {"net-only", OptNetOnly, 0, 0, "Enable just networking, no RTL device or file used", 2},
+    {"net-only", OptNetOnly, 0, 0, "Legacy Option, Enable networking, use --net instead", 2},
     {"net-bind-address", OptNetBindAddr, "<ip>", 0, "IP address to bind to (default: Any; Use 127.0.0.1 for private)", 2},
     {"net-bo-port", OptNetBoPorts, "<ports>", 0, "TCP Beast output listen ports (default: 0)", 2},
     {"net-bi-port", OptNetBiPorts, "<ports>", 0, "TCP Beast input listen ports  (default: 0)", 2},

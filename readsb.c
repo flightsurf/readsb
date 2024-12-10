@@ -1617,15 +1617,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case OptNet:
             Modes.net = 1;
             break;
+        case OptNetOnly:
+            Modes.net = 1;
+            break;
         case OptModeAc:
             Modes.mode_ac = 1;
             break;
         case OptModeAcAuto:
             Modes.mode_ac_auto = 1;
-            break;
-        case OptNetOnly:
-            Modes.net = 1;
-            Modes.net_only = 1;
             break;
         case OptQuiet:
             Modes.quiet = 1;
