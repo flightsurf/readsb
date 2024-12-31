@@ -3009,10 +3009,15 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
 
     mm->sbsMsgType = atoi(t[2]);
 
-    if (!t[5] || strlen(t[5]) != 6) // icao must be 6 characters
+    if (!t[5] || strlen(t[5]) < 6 || strlen(t[5]) > 7) // icao must be 6 characters
         goto basestation_invalid;
 
     char *icao = t[5];
+    int non_icao = 0;
+    if (icao[0] == '~') {
+        icao++;
+        non_icao = 1;
+    }
     unsigned char *chars = (unsigned char *) &(mm->addr);
     for (int j = 0; j < 6; j += 2) {
         int high = hexDigitVal(icao[j]);
@@ -3022,6 +3027,10 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
             goto basestation_invalid;
 
         chars[2 - j / 2] = (high << 4) | low;
+    }
+
+    if (non_icao) {
+        mm->addr |= MODES_NON_ICAO_ADDRESS;
     }
 
     //fprintf(stderr, "%x type %s: ", mm->addr, t[2]);
@@ -3182,10 +3191,6 @@ static void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a, stru
     struct tm stTime_receive, stTime_now;
     int msgType;
 
-    // For now, suppress non-ICAO addresses
-    if (mm->addr & MODES_NON_ICAO_ADDRESS)
-        return;
-
     p = prepareWrite(writer, 200);
     if (!p)
         return;
@@ -3241,7 +3246,7 @@ static void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a, stru
     }
 
     // Fields 1 to 6 : SBS message type and ICAO address of the aircraft and some other stuff
-    p += sprintf(p, "MSG,%d,1,1,%06X,1,", msgType, mm->addr);
+    p += sprintf(p, "MSG,%d,1,1,%s%06X,1,", msgType, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
 
     // Find current system time
     clock_gettime(CLOCK_REALTIME, &now);
