@@ -2991,6 +2991,9 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
     mm->signalLevel = 0;
     mm->sbs_in = 1;
 
+    // SBS fields:
+    // MSG,3,1,1,icaoHex,1,messageDate,messageTime,currentDate,currentTime,callsign_8char,altitude_ft,groundspeed_kts,track,lat,lon,vert_rate_fpm,squawk,squawkChangeAlert,squawkEmergencyFlag,squawkIdentFlag,groundFlag_0airborne_-1ground\r\n
+
     // sample message from mlat-client basestation output
     //MSG,3,1,1,4AC8B3,1,2019/12/10,19:10:46.320,2019/12/10,19:10:47.789,,36017,,,51.1001,10.1915,,,,,,
     //
@@ -3199,6 +3202,8 @@ static void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a, stru
     // SBS BS style output checked against the following reference
     // http://www.homepages.mcb.net/bones/SBS/Article/Barebones42_Socket_Data.htm - seems comprehensive
     //
+    // SBS fields:
+    // MSG,3,1,1,icaoHex,1,messageDate,messageTime,currentDate,currentTime,callsign_8char,altitude_ft,groundspeed_kts,track,lat,lon,vert_rate_fpm,squawk,squawkChangeAlert,squawkEmergencyFlag,squawkIdentFlag,groundFlag_0airborne_-1ground\r\n
 
     if (mm->sbs_in) {
         msgType = mm->sbsMsgType;
