@@ -4,7 +4,7 @@ SHELL ["/bin/bash", "-x", "-o", "pipefail", "-c"]
 RUN --mount=type=bind,source=.,target=/app/git \
     cd /app/git && \
     READSB_BUILD_DIR=$(mktemp -d) && \
-    cp -r /app/git/* $READSB_BUILD_DIR && \
+    cp -aT /app/git $READSB_BUILD_DIR && \
     cd $READSB_BUILD_DIR && \
     [[ $(uname -m) == x86_64 ]] && MARCH=" -march=nehalem" || MARCH="" && \
     make -j$(nproc) RTLSDR=yes OPTIMIZE="-O2 $MARCH" && \
