@@ -1087,7 +1087,9 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
             a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
             a->receiverIds[a->receiverIdsNext] = simpleHash(mm->receiverId);
             int64_t advance = imin(RECEIVERIDBUFFER * 500, elapsed_pos);
+            int iterations = 0;
             while (advance > 750) {
+                iterations++;
                 // ADS-B positions nominally come in every 500 ms receiver id
                 // buffer has 12 positions, if the positions don't come in
                 // often enough we zero them so it's only roughly the receiver
@@ -1095,6 +1097,9 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
                 advance -= 500;
                 a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
                 a->receiverIds[a->receiverIdsNext] = 0;
+            }
+            if (iterations > 20) {
+                fprintf(stderr, "%06x\n", a->addr);
             }
             if (0 && a->addr == Modes.cpr_focus) {
                 fprintf(stderr, "%u\n", simpleHash(mm->receiverId));
