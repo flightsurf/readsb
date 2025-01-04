@@ -1058,6 +1058,8 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
         }
     }
 
+    int64_t elapsed_pos = now - a->seen_pos;
+
     // Update aircraft state
     a->prev_lat = a->lat;
     a->prev_lon = a->lon;
@@ -1072,22 +1074,32 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
 
     a->pos_surface = trackDataValid(&a->airground_valid) && a->airground == AG_GROUND;
 
-    // due to accept_data / beast_reduce forwarding we can't put receivers
+    // due to the position deduplication logic we won't put receivers
     // into the receiver list which aren't the first ones to send us the position
     if (!Modes.netReceiverId) {
         a->receiverCount = 1;
     } else {
-        a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
-        a->receiverIds[a->receiverIdsNext] = simpleHash(mm->receiverId);
-        if (0 && a->addr == Modes.cpr_focus) {
-            fprintf(stderr, "%u\n", simpleHash(mm->receiverId));
-        }
-
         if (mm->source == SOURCE_MLAT && mm->receiverCountMlat) {
             a->receiverCount = mm->receiverCountMlat;
         } else if (a->position_valid.source < SOURCE_TISB) {
             a->receiverCount = 1;
         } else {
+            a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
+            a->receiverIds[a->receiverIdsNext] = simpleHash(mm->receiverId);
+            int64_t advance = imin(RECEIVERIDBUFFER * 500, elapsed_pos);
+            while (advance > 750) {
+                // ADS-B positions nominally come in every 500 ms receiver id
+                // buffer has 12 positions, if the positions don't come in
+                // often enough we zero them so it's only roughly the receiver
+                // ids for the last 6 seconds
+                advance -= 500;
+                a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
+                a->receiverIds[a->receiverIdsNext] = 0;
+            }
+            if (0 && a->addr == Modes.cpr_focus) {
+                fprintf(stderr, "%u\n", simpleHash(mm->receiverId));
+            }
+
             uint16_t *set1 = a->receiverIds;
             uint16_t set2[RECEIVERIDBUFFER] = { 0 };
             int div = 0;
@@ -3557,10 +3569,13 @@ static const char *source_string(datasource_t source) {
 void updateValidities(struct aircraft *a, int64_t now) {
 
     int64_t elapsed_seen_global = now - a->seenPosGlobal;
+    int64_t elapsed_pos = now - a->seen_pos;
 
-    if (Modes.json_globe_index && elapsed_seen_global < 45 * MINUTES) {
-        a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
-        a->receiverIds[a->receiverIdsNext] = 0;
+    if (elapsed_pos > 5 * SECONDS && a->receiverCount > 0) {
+        a->receiverCount = 0;
+        for (int i = 0; i < RECEIVERIDBUFFER; i++) {
+            a->receiverIds[i] = 0;
+        }
     }
 
     if (a->globe_index >= 0 && now > a->seen_pos + Modes.trackExpireMax) {
