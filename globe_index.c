@@ -2453,6 +2453,7 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
 
     // record ground air state changes precisely
     if (on_ground != last->on_ground) {
+        traceUsePosBuffered(a); // save the previous position as well if it's not already saved
         goto save_state;
     }
 
