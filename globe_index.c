@@ -2581,7 +2581,7 @@ save_state:
     // always try using the buffered position instead of the current one
     // this should provide a better picture of changing track / speed / altitude
 
-    if (elapsed > max_elapsed || 2 * elapsed_buffered > elapsed || elapsed_buffered > 2700) {
+    if (1 || elapsed > max_elapsed || 2 * elapsed_buffered > elapsed || elapsed_buffered > 2700) {
         if (traceUsePosBuffered(a)) {
             if (traceDebug) fprintf(stderr, " buffer\n");
             // in some cases we want to add the current point as well
