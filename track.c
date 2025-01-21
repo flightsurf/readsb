@@ -1943,6 +1943,9 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
 
     // only count the aircraft as "seen" for reliable messages with CRC
     if (mm->address_reliable) {
+        if (now - a->seen > 300 * SECONDS) {
+            Modes.stats_current.unique_aircraft++;
+        }
         a->seen = now;
     }
 

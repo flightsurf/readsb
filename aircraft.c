@@ -160,7 +160,6 @@ struct aircraft *aircraftCreate(uint32_t addr) {
 
     // initialize data validity ages
     //adjustExpire(a, 58);
-    Modes.stats_current.unique_aircraft++;
 
     updateTypeReg(a);
 
