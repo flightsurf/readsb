@@ -1950,7 +1950,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
     }
 
     // don't use messages with unreliable CRC too long after receiving a reliable address from an aircraft
-    if (now - a->seen > 45 * SECONDS) {
+    if (now - a->seen > 30 * SECONDS) {
         res = NULL;
         goto exit;
     }
