@@ -69,6 +69,7 @@ static struct {
     uint8_t *bounce_buffer;
     int ppm_error;
     bool digital_agc;
+    bool use_rtl_agc;
     int numgains;
     int *gains;
     int curGain;
@@ -82,6 +83,7 @@ static struct {
 void rtlsdrInitConfig() {
     RTLSDR.dev = NULL;
     RTLSDR.digital_agc = false;
+    RTLSDR.use_rtl_agc = false;
     RTLSDR.ppm_error = 0;
     RTLSDR.converter = NULL;
     RTLSDR.converter_state = NULL;
@@ -104,7 +106,7 @@ static int getClosestGainIndex(int target) {
 }
 
 void rtlsdrSetGain(char *reason) {
-    if (Modes.gain == MODES_AUTO_GAIN || Modes.gain >= 520) {
+    if (RTLSDR.use_rtl_agc && (Modes.gain == MODES_AUTO_GAIN || Modes.gain >= 520)) {
         Modes.gain = MODES_RTL_AGC;
     }
 
@@ -141,7 +143,8 @@ void rtlsdrSetGain(char *reason) {
     if (Modes.gain < 0) {
         Modes.gain = 0;
     }
-    if (Modes.gain == MODES_RTL_AGC) {
+
+    if (RTLSDR.use_rtl_agc && Modes.gain == MODES_RTL_AGC) {
 
         RTLSDR.tunerAgcEnabled = 1;
         if (!Modes.gainQuiet) {
@@ -286,8 +289,12 @@ bool rtlsdrOpen(void) {
         fprintf(stderr, "FATAL: rtlsdr: error getting tuner gains\n");
         return false;
     }
-    // one extra step for tuner agc / max
-    RTLSDR.numgains++;
+    //fprintf(stderr, "numgains: %d\n", RTLSDR.numgains);
+    // one extra step for tuner agc / max (but only for rtl tuners)
+    if (RTLSDR.numgains == 29) {
+        RTLSDR.use_rtl_agc = true;
+        RTLSDR.numgains++;
+    }
 
     RTLSDR.gains = cmalloc(RTLSDR.numgains * sizeof (int));
     if (rtlsdr_get_tuner_gains(RTLSDR.dev, RTLSDR.gains) != RTLSDR.numgains - 1) {
@@ -296,8 +303,10 @@ bool rtlsdrOpen(void) {
         return false;
     }
 
-    // set agc at 590 (MODES_RTL_AGC)
-    RTLSDR.gains[RTLSDR.numgains - 1] = MODES_RTL_AGC;
+    if (RTLSDR.use_rtl_agc) {
+        // set agc at 590 (MODES_RTL_AGC)
+        RTLSDR.gains[RTLSDR.numgains - 1] = MODES_RTL_AGC;
+    }
 
     rtlsdrSetGain("");
 
