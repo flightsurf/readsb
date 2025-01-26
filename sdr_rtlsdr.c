@@ -289,23 +289,23 @@ bool rtlsdrOpen(void) {
         fprintf(stderr, "FATAL: rtlsdr: error getting tuner gains\n");
         return false;
     }
-    //fprintf(stderr, "numgains: %d\n", RTLSDR.numgains);
-    // one extra step for tuner agc / max (but only for rtl tuners)
-    if (RTLSDR.numgains == 29) {
-        RTLSDR.use_rtl_agc = true;
-        RTLSDR.numgains++;
-    }
 
-    RTLSDR.gains = cmalloc(RTLSDR.numgains * sizeof (int));
-    if (rtlsdr_get_tuner_gains(RTLSDR.dev, RTLSDR.gains) != RTLSDR.numgains - 1) {
+    // allocate numgains + 1 for the AGC being added as a pseudo gain level (hacky)
+    RTLSDR.gains = cmalloc((RTLSDR.numgains + 1) * sizeof (int));
+    if (rtlsdr_get_tuner_gains(RTLSDR.dev, RTLSDR.gains) != RTLSDR.numgains) {
         fprintf(stderr, "FATAL: rtlsdr: error getting tuner gains\n");
         free(RTLSDR.gains);
         return false;
     }
 
-    if (RTLSDR.use_rtl_agc) {
+    //fprintf(stderr, "numgains: %d\n", RTLSDR.numgains);
+    // one extra step for tuner agc / max (but only for rtl tuners)
+    if (RTLSDR.numgains == 29) {
+        // this is hacky and relies on the fact that we allocate 1 extra element
+        RTLSDR.use_rtl_agc = true;
         // set agc at 590 (MODES_RTL_AGC)
-        RTLSDR.gains[RTLSDR.numgains - 1] = MODES_RTL_AGC;
+        RTLSDR.gains[RTLSDR.numgains] = MODES_RTL_AGC;
+        RTLSDR.numgains++;
     }
 
     rtlsdrSetGain("");
