@@ -166,6 +166,9 @@ static void configSetDefaults(void) {
     Modes.acasFD2 = -1; // set to -1 so it's clear we don't have that fd
     Modes.sbsOverrideSquawk = -1;
 
+    Modes.mlatForceInterval = 30 * SECONDS;
+    Modes.mlatForceDistance = 25 * 1e3; // 25 km
+
     Modes.fUserAlt = -2e6;
 
     Modes.enable_zstd = 1;
@@ -2082,6 +2085,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 }
                 if (strcasecmp(token[0], "messageRateMult") == 0 && token[1]) {
                     Modes.messageRateMult = atof(token[1]);
+                }
+                if (strcasecmp(token[0], "mlatForceInterval") == 0 && token[1]) {
+                    Modes.mlatForceInterval = atof(token[1]) * SECONDS;
+                }
+                if (strcasecmp(token[0], "mlatForceDistance") == 0 && token[1]) {
+                    Modes.mlatForceDistance = atof(token[1]) * 1e3;
                 }
                 if (strcasecmp(token[0], "forwardMinMessages") == 0 && token[1]) {
                     Modes.net_forward_min_messages = atoi(token[1]);

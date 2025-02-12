@@ -2524,6 +2524,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
                 ) {
             // don't use less accurate MLAT positions unless some time has elapsed
             // only works with SBS input MLAT data coming from some versions of mlat-server
+            fprintf(stderr, "%06x: kasdhflkdshf\n", a->addr);
         } else {
             if (mm->source == SOURCE_MLAT && accept_data(&a->mlat_pos_valid, mm->source, mm, a, REDUCE_OFTEN)) {
                 if (0 && greatcircle(a->mlat_lat, a->mlat_lon, mm->decoded_lat, mm->decoded_lon, 1) > 5000) {
@@ -2539,13 +2540,33 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
                 }
             }
             int usePosition = 0;
-            if (mm->source == SOURCE_MLAT && now - a->seenPosReliable > TRACK_STALE) {
+            //fprintf(stderr, "%06x: mlat pos diff: %6.0f\n", a->addr, greatcircle(a->latReliable, a->lonReliable, mm->decoded_lat, mm->decoded_lon, 1));
+            //
+            if (mm->source == SOURCE_MLAT
+                    && now - a->lastMlatForce > Modes.mlatForceInterval
+                    && a->pos_reliable_valid.source > SOURCE_MLAT
+                    && greatcircle(a->latReliable, a->lonReliable, mm->decoded_lat, mm->decoded_lon, 1) > Modes.mlatForceDistance
+               ) {
+                a->lastMlatForce = now;
                 usePosition = 1;
 
-                // pretend it's been very long since we updated the position to guarantee accept_data to update position_valid
-                a->position_valid.updated = 0;
                 // force accept_data
-                accept_data(&a->position_valid, mm->source, mm, a, REDUCE_OFTEN);
+                a->position_valid.source = SOURCE_INVALID;
+                a->pos_reliable_valid.source = SOURCE_INVALID;
+                int res = accept_data(&a->position_valid, mm->source, mm, a, REDUCE_OFTEN);
+                incrementReliable(a, mm, now, 3); // force reliable
+                if (0) {
+                    fprintTime(stderr, now);
+                    fprintf(stderr, " %06x: mlat force %d\n", a->addr, res);
+                }
+
+            } else if (
+                    mm->source == SOURCE_MLAT
+                    && now - a->seenPosReliable > TRACK_STALE
+                    && accept_data(&a->position_valid, mm->source, mm, a, REDUCE_OFTEN)
+                    ) {
+                // no speed check for MLAT data if position older than TRACK_STALE
+                usePosition = 1;
             } else if (!speed_check(a, mm->source, mm->decoded_lat, mm->decoded_lon, mm, CPR_NONE)) {
                 mm->pos_bad = 1;
                 // speed check failed, do nothing
@@ -3735,11 +3756,14 @@ static void incrementReliable(struct aircraft *a, struct modesMessage *mm, int64
     if (mm->pos_receiver_range_exceeded) {
         increment = 0.25f;
     }
+    if (odd == 3) {
+        increment = Modes.json_reliable;
+    }
 
     if (odd)
         a->pos_reliable_odd = fminf(a->pos_reliable_odd + increment, Modes.position_persistence);
 
-    if (!odd || odd == 2)
+    if (!odd || odd == 2 || odd == 3)
         a->pos_reliable_even = fminf(a->pos_reliable_even + increment, Modes.position_persistence);
 
     if (a->pos_reliable_odd < increment) {

@@ -883,6 +883,10 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
 
     aircraftZeroTail(a);
 
+    if (a->lastMlatForce > now) {
+        a->lastMlatForce = now; // reset this
+    }
+
     // just in case we have bogus values saved, make sure they time out
     if (a->seen_pos > now + 1 * MINUTES)
         a->seen_pos = now - 26 * HOURS;

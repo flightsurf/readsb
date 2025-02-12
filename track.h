@@ -526,7 +526,7 @@ struct aircraft
   data_validity acas_ra_valid;
   float gs_reliable;
   float track_reliable;
-  uint64_t canary1;
+  int64_t lastMlatForce;
   int64_t squawkTentativeChanged;
   double magneticDeclination;
   int64_t updatedDeclination;

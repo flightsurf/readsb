@@ -779,6 +779,8 @@ struct _Modes
     int64_t range_outline_duration;
     int64_t writeTracesActualDuration; // how long the trace writing cycle took
     int64_t auto_exit;
+    double mlatForceDistance;
+    int64_t mlatForceInterval;
     char *db_file;
     char *net_output_raw_ports; // List of raw output TCP ports
     char *net_input_raw_ports; // List of raw input TCP ports
