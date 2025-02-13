@@ -2524,7 +2524,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
                 ) {
             // don't use less accurate MLAT positions unless some time has elapsed
             // only works with SBS input MLAT data coming from some versions of mlat-server
-            fprintf(stderr, "%06x: kasdhflkdshf\n", a->addr);
+            //fprintf(stderr, "%06x: kasdhflkdshf\n", a->addr);
         } else {
             if (mm->source == SOURCE_MLAT && accept_data(&a->mlat_pos_valid, mm->source, mm, a, REDUCE_OFTEN)) {
                 if (0 && greatcircle(a->mlat_lat, a->mlat_lon, mm->decoded_lat, mm->decoded_lon, 1) > 5000) {
