@@ -2674,6 +2674,30 @@ static void checkSetGain() {
 
     tmp[len] = '\0';
 
+    if (strcasestr(tmp, "setLatLon")) {
+        int maxTokens = 128;
+        char* token[maxTokens];
+        char* chopThis = tmp;
+        tokenize(&chopThis, ",", token, maxTokens);
+        if (!token[1] || !token[2]) {
+            fprintf(stderr, "setLatLon: invalid format\n");
+            return;
+        }
+        double lat = strtod(token[1], NULL);
+        double lon = strtod(token[2], NULL);
+        if (!isfinite(lat) || lat < -89.9 || lat > 89.9 || !isfinite(lon) || lon < -180 || lon > 180) {
+            fprintf(stderr, "setLatLon: ignoring invalid lat: %f lon: %f\n", lat, lon);
+            return;
+        }
+        fprintf(stderr, "setLatLon: lat: %f lon: %f\n", lat, lon);
+        Modes.fUserLat = lat;
+        Modes.fUserLon = lon;
+        Modes.userLocationValid = 1;
+        if (Modes.json_dir) {
+            free(writeJsonToFile(Modes.json_dir, "receiver.json", generateReceiverJson()).buffer); // location changed
+        }
+        return;
+    }
     if (strcasestr(tmp, "resetRangeOutline")) {
         fprintf(stderr, "resetting range outline\n");
         memset(Modes.rangeDirs, 0, sizeof(Modes.rangeDirs));
