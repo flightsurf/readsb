@@ -2991,6 +2991,9 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
     mm->signalLevel = 0;
     mm->sbs_in = 1;
 
+    char *endptr = NULL;
+    int badValue = 0; // set this to 1 if a field couldn't be parsed
+
     // SBS fields:
     // MSG,3,1,1,icaoHex,1,messageDate,messageTime,currentDate,currentTime,callsign_8char,altitude_ft,groundspeed_kts,track,lat,lon,vert_rate_fpm,squawk,squawkChangeAlert,squawkEmergencyFlag,squawkIdentFlag,groundFlag_0airborne_-1ground\r\n
 
@@ -3058,54 +3061,81 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
     }
     // field 12, altitude
     if (t[12] && strlen(t[12]) > 0) {
-        mm->baro_alt = atoi(t[12]);
-        if (mm->baro_alt > -5000 && mm->baro_alt < 100000) {
+        double tmp = strtod(t[12], &endptr);
+        if (endptr != t[12] && isfinite(tmp)) {
+            mm->baro_alt = tmp;
             mm->baro_alt_valid = 1;
             mm->baro_alt_unit = UNIT_FEET;
+        } else {
+            badValue = 1;
         }
         //fprintf(stderr, "alt: %d, ", mm->baro_alt);
     }
     // field 13, groundspeed
     if (t[13] && strlen(t[13]) > 0) {
-        mm->gs.v0 = strtod(t[13], NULL);
-        if (mm->gs.v0 > 0)
+        double tmp = strtod(t[13], &endptr);
+        if (endptr != t[13] && isfinite(tmp)) {
             mm->gs_valid = 1;
+            mm->gs.v0 = tmp;
+        } else {
+            badValue = 1;
+        }
         //fprintf(stderr, "gs: %.1f, ", mm->gs.selected);
     }
     //field 14, heading
     if (t[14] && strlen(t[14]) > 0) {
-        mm->heading_valid = 1;
-        mm->heading = strtod(t[14], NULL);
-        mm->heading_type = HEADING_GROUND_TRACK;
+        mm->heading = strtod(t[14], &endptr);
+        if (endptr != t[14] && isfinite(mm->heading)) {
+            mm->heading_valid = 1;
+            mm->heading_type = HEADING_GROUND_TRACK;
+        } else {
+            badValue = 1;
+        }
         //fprintf(stderr, "track: %.1f, ", mm->heading);
     }
     // field 15 and 16, position
     if (t[15] && strlen(t[15]) && t[16] && strlen(t[16])) {
-        mm->decoded_lat = strtod(t[15], NULL);
-        mm->decoded_lon = strtod(t[16], NULL);
-        if (mm->decoded_lat != 0 && mm->decoded_lon != 0)
+        mm->decoded_lat = strtod(t[15], &endptr);
+        char *endptr2 = NULL;
+        mm->decoded_lon = strtod(t[16], &endptr2);
+        if (
+                endptr != t[15] && endptr2 != t[16]
+                && isfinite(mm->decoded_lat) && isfinite(mm->decoded_lon)
+                && mm->decoded_lat <= 90 && mm->decoded_lat >= -90
+                && mm->decoded_lon >= -180 && mm->decoded_lon <= 180
+           ) {
             mm->sbs_pos_valid = 1;
+        } else {
+            badValue = 1;
+        }
         //fprintf(stderr, "pos: (%.2f, %.2f)\n", mm->decoded_lat, mm->decoded_lon);
     }
     // field 17 vertical rate, assume baro
     if (t[17] && strlen(t[17]) > 0) {
-        mm->baro_rate = atoi(t[17]);
-        mm->baro_rate_valid = 1;
+        double tmp = strtod(t[17], &endptr);
+        if (endptr != t[17] && isfinite(tmp)) {
+            mm->baro_rate = tmp;
+            mm->baro_rate_valid = 1;
+        } else {
+            badValue = 1;
+        }
         //fprintf(stderr, "vRate: %d, ", mm->baro_rate);
     }
     // field 18 squawk
     if (t[18] && strlen(t[18]) > 0) {
-        long int tmp = strtol(t[18], NULL, 10);
-        if (tmp > 0) {
+        long int tmp = strtol(t[18], &endptr, 10);
+        if (endptr != t[18]) {
             mm->squawkDec = tmp;
             mm->squawkHex = squawkDec2Hex(mm->squawkDec);
             mm->squawk_valid = 1;
             //fprintf(stderr, "squawk: %04x %s, ", mm->squawkHex, t[18]);
+        } else {
+            badValue = 1;
         }
     }
     // field 19 (originally squawk change) used to indicate by some versions of mlat-server the number of receivers which contributed to the postiions
     if (t[19] && strlen(t[19]) > 0) {
-        long int tmp = strtol(t[19], NULL, 10);
+        long int tmp = strtol(t[19], &endptr, 10);
         if (tmp > 0 && mm->source == SOURCE_MLAT) {
             mm->receiverCountMlat = tmp;
         } else if (!strcmp(t[19], "0")) {
@@ -3119,7 +3149,7 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
 
     // field 20 (originally emergency status) used to indicate by some versions of mlat-server the estimated error in km
     if (t[20] && strlen(t[20]) > 0) {
-        long tmp = strtol(t[20], NULL, 10);
+        long tmp = strtol(t[20], &endptr, 10);
         if (tmp > 0 && mm->source == SOURCE_MLAT) {
             mm->mlatEPU = tmp;
             if (tmp > UINT16_MAX)
@@ -3170,6 +3200,13 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
 
     Modes.stats_current.remote_received_basestation_valid++;
 
+    if (Modes.debug_garbage && badValue) {
+        for (size_t i = 0; i < line_len; i++) {
+            line[i] = (line[i] == '\0' ? ',' : line[i]);
+        }
+        fprintf(stderr, "SBS badValue: %.*s%s\n", (int) imin(200, line_len), line, line_len > 200 ? " [ ... ] " : "");
+    }
+
     return 0;
 
 basestation_invalid:
@@ -3178,7 +3215,7 @@ basestation_invalid:
         for (size_t i = 0; i < line_len; i++) {
             line[i] = (line[i] == '\0' ? ',' : line[i]);
         }
-        fprintf(stderr, "SBS invalid: %.*s (anything over 200 characters cut)\n", (int) imin(200, line_len), line);
+        fprintf(stderr, "SBS invalid: %.*s%s\n", (int) imin(200, line_len), line, line_len > 200 ? " [ ... ] " : "");
     }
     Modes.stats_current.remote_received_basestation_invalid++;
     return 0;
