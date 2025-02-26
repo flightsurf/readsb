@@ -3215,9 +3215,6 @@ int handleHeatmap(int64_t now) {
                 if (state->timestamp < next)
                     continue;
 
-                if (!state->baro_alt_valid && !state->geom_alt_valid)
-                    continue;
-
                 while (state->timestamp > next + Modes.heatmap_interval) {
                     next += Modes.heatmap_interval;
                     slice++;
@@ -3237,7 +3234,7 @@ int handleHeatmap(int64_t now) {
                 else if (state->geom_alt_valid)
                     buffer[len].alt = nearbyint(state->geom_alt / (_alt_factor * 25.0f));
                 else
-                    buffer[len].alt = 0;
+                    buffer[len].alt = -124; // unknown altitude
 
                 if (state->gs_valid)
                     buffer[len].gs = nearbyint(state->gs / _gs_factor * 10.0f);
