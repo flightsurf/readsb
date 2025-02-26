@@ -187,6 +187,7 @@ static void configSetDefaults(void) {
     Modes.leg_focus = BADDR;
     Modes.trace_focus = BADDR;
     Modes.show_only = BADDR;
+    Modes.process_only = BADDR;
 
     Modes.outline_json = 1; // enable by default
     Modes.range_outline_duration = 24 * HOURS;
@@ -1637,6 +1638,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             Modes.interactive = 0;
             if (Modes.viewadsb)
                 Modes.quiet = 0;
+            break;
+        case OptProcessOnly:
+            Modes.process_only = (uint32_t) strtol(arg, NULL, 16);
+            fprintf(stderr, "process-only: %06x\n", Modes.process_only);
             break;
         case OptShowOnly:
             Modes.show_only = (uint32_t) strtol(arg, NULL, 16);

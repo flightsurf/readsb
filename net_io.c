@@ -5963,18 +5963,28 @@ static void outputMessage(struct modesMessage *mm) {
 
 }
 
+static inline int skipMessage(struct modesMessage *mm) {
+    if (Modes.debug_yeet && mm->addr % 0x100 != 0xd) {
+        return 1;
+    }
+    if (Modes.process_only != BADDR && mm->addr != Modes.process_only) {
+        return 1;
+    }
+    return 0;
+}
+
 static void drainMessageBuffer(struct messageBuffer *buf) {
     if (Modes.decodeThreads < 2) {
         for (int k = 0; k < buf->len; k++) {
             struct modesMessage *mm = &buf->msg[k];
-            if (Modes.debug_yeet && mm->addr % 0x100 != 0xd) {
+            if (skipMessage(mm)) {
                 continue;
             }
             trackUpdateFromMessage(mm);
         }
         for (int k = 0; k < buf->len; k++) {
             struct modesMessage *mm = &buf->msg[k];
-            if (Modes.debug_yeet && mm->addr % 0x100 != 0xd) {
+            if (skipMessage(mm)) {
                 continue;
             }
             outputMessage(mm);
@@ -5991,7 +6001,7 @@ static void drainMessageBuffer(struct messageBuffer *buf) {
         pthread_mutex_lock(&Modes.trackLock);
         for (int k = 0; k < buf->len; k++) {
             struct modesMessage *mm = &buf->msg[k];
-            if (Modes.debug_yeet && mm->addr % 0x100 != 0xd) {
+            if (skipMessage(mm)) {
                 continue;
             }
             trackUpdateFromMessage(mm);
@@ -6001,7 +6011,7 @@ static void drainMessageBuffer(struct messageBuffer *buf) {
         pthread_mutex_lock(&Modes.outputLock);
         for (int k = 0; k < buf->len; k++) {
             struct modesMessage *mm = &buf->msg[k];
-            if (Modes.debug_yeet && mm->addr % 0x100 != 0xd) {
+            if (skipMessage(mm)) {
                 continue;
             }
             outputMessage(mm);

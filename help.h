@@ -65,6 +65,7 @@ static struct argp_option optionsReadsb[] = {
     {"no-fix-df", OptNoFixDf, 0, 0, "Disable CRC single-bit error correction on the DF type to produce more DF17 messages (disabling reduces CPU usage)", 1},
     {"metric", OptMetric, 0, 0, "Use metric units", 1},
     {"show-only", OptShowOnly, "<addr>", 0, "Show only messages by given ICAO on stdout", 1},
+    {"process-only", OptProcessOnly, "<addr>", 0, "Process only messages by given ICAO", 1},
     {"filter-DF", OptFilterDF, "<type>", 0, "When displaying decoded ModeS messages on stdout only show this DF type", 1},
     {"aggressive", OptAggressive, 0, OPTION_HIDDEN, "Enable two-bit CRC error correction", 1},
     {"device-type", OptDeviceType, "<type>", 0, "Select SDR type (this needs to be placed on the command line before any SDR type specific options)", 1},

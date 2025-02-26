@@ -746,6 +746,7 @@ struct _Modes
     uint32_t trace_focus;
     uint32_t leg_focus;
     uint32_t show_only; // Only show messages from this ICAO
+    uint32_t process_only; // Only process messages from this ICAO
     uint64_t receiver_focus;
 
     uint32_t preambleThreshold;
@@ -1202,6 +1203,7 @@ enum {
     OptTraceFocus,
     OptQuiet,
     OptShowOnly,
+    OptProcessOnly,
     OptFilterDF,
     OptJsonDir,
     OptJsonGzip,
