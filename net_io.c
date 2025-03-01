@@ -274,8 +274,31 @@ static void setBuffers(int fd, int sndsize, int rcvsize) {
     }
 }
 
+uint64_t uuidToReceiverId(const char *uuid_str) {
+    uint64_t uuid_val = 0;
+
+    // Parse the first part of UUID (before any dash)
+    for (int i = 0; uuid_str[i] && i < 16; i++) {
+        char ch = uuid_str[i];
+        if (ch == '-') continue; // Skip dashes
+
+        uint8_t val = 0;
+        if (ch >= '0' && ch <= '9')
+            val = ch - '0';
+        else if (ch >= 'a' && ch <= 'f')
+            val = ch - 'a' + 10;
+        else if (ch >= 'A' && ch <= 'F')
+            val = ch - 'A' + 10;
+        else
+            continue; // Skip invalid chars
+
+        uuid_val = (uuid_val << 4) | val;
+    }
+    return uuid_val;
+}
+
 // Create a client attached to the given service using the provided socket FD ... not a socket in some exceptions
-static struct client *createSocketClient(struct net_service *service, int fd) {
+static struct client *createSocketClient(struct net_service *service, int fd, char *uuid) {
     struct client *c;
     int64_t now = mstime();
 
@@ -302,11 +325,19 @@ static struct client *createSocketClient(struct net_service *service, int fd) {
     c->host[0] = '\0';
     c->port[0] = '\0';
 
-    c->receiverId = random();
-    c->receiverId <<= 22;
-    c->receiverId ^= random();
-    c->receiverId <<= 22;
-    c->receiverId ^= random();
+    if (uuid != NULL) {
+        // Assuming UUID is stored as a string in `uuid`, convert it to uint64_t
+        c->receiverId = uuidToReceiverId(uuid);
+        c->receiverIdLocked = 1;
+        fprintf(stderr, "Using supplied uuid %s, c->receiverId: %016"PRIx64"\n", uuid, c->receiverId);
+    } else {
+        c->receiverId = random();
+        c->receiverId <<= 22;
+        c->receiverId ^= random();
+        c->receiverId <<= 22;
+        c->receiverId ^= random();
+        fprintf(stderr, "Using random uuid, c->receiverId: %016"PRIx64"\n", c->receiverId);
+    }
 
     c->receiverId2 = 0;
     c->receiverIdLocked = 0;
@@ -469,7 +500,7 @@ static void checkServiceConnected(struct net_connector *con, int64_t now) {
     // If we're able to create this "client", save the sockaddr info and print a msg
     struct client *c;
 
-    c = createSocketClient(con->service, con->fd);
+    c = createSocketClient(con->service, con->fd, con->uuid);
     if (!c) {
         con->connecting = 0;
         fprintf(stderr, "createSocketClient failed on fd %d to %s%s port %s\n",
@@ -1142,7 +1173,7 @@ static void modesAcceptClients(struct client *c, int64_t now) {
             }
         }
 
-        c = createSocketClient(s, fd);
+        c = createSocketClient(s, fd, NULL);
         if (s->unixSocket && c) {
             strcpy(c->host, s->unixSocket);
             fprintf(stderr, "%s: new c at %s\n", c->service->descr, s->unixSocket);
@@ -3853,6 +3884,7 @@ static int decodeBinMessage(struct client *c, char *p, int remote, int64_t now, 
 
     ch = *p++; /// Get the message type
 
+
     mm->receiverId = c->receiverId;
     if (unlikely(Modes.incrementId)) {
         mm->receiverId += now / (10 * MINUTES);
@@ -5518,7 +5550,8 @@ void modesNetPeriodicWork(void) {
                 fprintTimePrecise(stderr, mstime());
                 fprintf(stderr, " serial: creating socket client ... \n");
             }
-            Modes.serial_client = createSocketClient(Modes.beast_in_service, Modes.beast_fd);
+
+            Modes.serial_client = createSocketClient(Modes.beast_in_service, Modes.beast_fd, NULL);
             if (Modes.debug_serial) {
                 fprintTimePrecise(stderr, mstime());
                 fprintf(stderr, " serial: creating socket client ... done\n");
