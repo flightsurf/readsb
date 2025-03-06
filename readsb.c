@@ -828,7 +828,9 @@ static void gainStatistics(struct mag_buf *buf) {
             // switching to AGC is only done every 5 minutes to avoid oscillations due to the large step
             nextRaiseAgc = buf->sysTimestamp + 5 * MINUTES;
         }
-        //fprintf(stderr, "%9s gain.  noiseLow: %5.2f %%  noiseHigh: %5.2f %%  loudEvents: %4lld\n", action, noiseLowPercent, noiseHighPercent, (long long) loudEvents);
+        if (0) {
+            fprintf(stderr, "%s noiseLow: %5.2f %%  noiseHigh: %5.2f %%  loudEvents: %4lld\n", reason, noiseLowPercent, noiseHighPercent, (long long) loudEvents);
+        }
     }
 
 reset:
