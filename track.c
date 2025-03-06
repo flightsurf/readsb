@@ -1973,7 +1973,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
     } else {
         //fprintf(stderr, "signal zero: %06x; %s\n", a->addr, source_string(mm->source));
         // if we haven't received a message with signal level for a bit, set it to zero
-        if (now - a->lastSignalTimestamp > 15 * SECONDS) {
+        if (now - a->lastSignalTimestamp > 15 * SECONDS && a->signalNext > 0) {
             a->signalNext = 0;
             //fprintf(stderr, "no_sig_thresh: %06x; %d; %d\n", a->addr, (int) a->no_signal_count, (int) a->signalNext);
         }

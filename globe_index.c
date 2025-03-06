@@ -893,6 +893,10 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
     if (a->seen > now + 1 * MINUTES)
         a->seen = now - 26 * HOURS;
 
+    if (a->lastSignalTimestamp > now) {
+        a->lastSignalTimestamp = 0;
+    }
+
     if (a->globe_index > GLOBE_MAX_INDEX)
         a->globe_index = -5;
 

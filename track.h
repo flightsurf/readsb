@@ -752,13 +752,32 @@ static inline int bogus_lat_lon(double lat, double lon) {
         return 1;
     return 0;
 }
+
+static inline float signalRaw(struct aircraft *a) {
+    float sum;
+    if (a->signalNext >= 8) {
+        sum = a->signalLevel[0] + a->signalLevel[1] + a->signalLevel[2] + a->signalLevel[3] +
+            a->signalLevel[4] + a->signalLevel[5] + a->signalLevel[6] + a->signalLevel[7];
+    } else if (a->signalNext >= 4) {
+        sum = 0;
+        for (uint32_t i = 0; i < a->signalNext; i++) {
+            sum += a->signalLevel[i];
+        }
+    } else {
+        sum = 0;
+    }
+    return sum / 8.0f;
+}
+
+static inline float getSignal(struct aircraft *a) {
+    return 10.0f * log10f(signalRaw(a) + 1.125e-5f);
+}
+
 static inline int get8bitSignal(struct aircraft *a) {
-    double signal = (a->signalLevel[0] + a->signalLevel[1] + a->signalLevel[2] + a->signalLevel[3] +
-            a->signalLevel[4] + a->signalLevel[5] + a->signalLevel[6] + a->signalLevel[7]) / 8.0;
-    signal = sqrt(signal) * 255.0;
-    if (signal > 255) signal = 255;
-    if (signal < 1 && signal > 0) signal = 1;
-    return (int) nearbyint(signal);
+    float signal = sqrtf(signalRaw(a)) * 255.0f;
+    if (signal > 255.0f) signal = 255.0f;
+    if (signal < 1.0f && signal > 0.0f) signal = 1.0f;
+    return (int) nearbyintf(signal);
 }
 
 static inline const char *nonIcaoSpace(struct aircraft *a) {

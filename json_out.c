@@ -50,23 +50,6 @@ static const char *jsonEscapeString(const char *str, char *buf, int len) {
     return buf;
 }
 
-static inline double getSignal(struct aircraft *a) {
-    double sum;
-    if (likely(a->signalNext >= 8)) {
-        sum = a->signalLevel[0] + a->signalLevel[1] + a->signalLevel[2] + a->signalLevel[3] +
-            a->signalLevel[4] + a->signalLevel[5] + a->signalLevel[6] + a->signalLevel[7];
-    } else if (a->signalNext >= 4) {
-        sum = 0;
-        for (uint32_t i = 0; i < a->signalNext; i++) {
-            sum += a->signalLevel[i];
-        }
-    } else {
-        sum = 0;
-    }
-
-    return 10 * log10(sum / 8 + 1.125e-5);
-}
-
 static char *append_flags(char *p, char *end, struct aircraft *a, datasource_t source) {
     p = safe_snprintf(p, end, "[");
 
