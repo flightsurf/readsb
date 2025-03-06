@@ -1126,7 +1126,7 @@ void dump_beast_check(int64_t now) {
     }
 
     // start new file
-    zstdFwStartFile(fw, pathbuf, 4);
+    zstdFwStartFile(fw, pathbuf, Modes.dump_compressionLevel);
 
     //fprintf(stderr, "dump_beast started file: %s\n", pathbuf);
 }

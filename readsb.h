@@ -821,6 +821,7 @@ struct _Modes
     int32_t dump_interval;
     int32_t dump_beast_index;
     uint64_t dump_lastReceiverId;
+    int8_t dump_compressionLevel;
     int8_t writeTraces;
     int8_t dump_reduce; // only dump beast that would be sent out according to reduce_interval
     int8_t state_only_on_exit;

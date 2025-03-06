@@ -233,6 +233,7 @@ static void configSetDefaults(void) {
 
     // in seconds, default to 1 hour
     Modes.dump_interval = 60 * 60;
+    Modes.dump_compressionLevel = 4;
 
 
     Modes.ping_reduce = PING_REDUCE;
@@ -1757,6 +1758,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 sfree(Modes.dump_beast_dir);
                 Modes.dump_beast_dir = strdup(token[0]);
                 if (token[1]) { Modes.dump_interval = atoi(token[1]); }
+                if (token[2]) { Modes.dump_compressionLevel = atoi(token[2]); }
                 // enable networking as this is required
                 Modes.net = 1;
 
