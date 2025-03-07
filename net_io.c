@@ -5015,12 +5015,6 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
         if (eom > c->eod) // Incomplete message in buffer, retry later
             break;
 
-        if (Modes.receiver_focus && c->receiverId != Modes.receiver_focus && noEscape[0] != 'P') {
-            // advance to next message
-            c->som = eom;
-            continue;
-        }
-
         if (!c->service) {
             fprintf(stderr, "c->service null hahGh1Sh\n");
             return -1;
@@ -5968,6 +5962,9 @@ static inline int skipMessage(struct modesMessage *mm) {
         return 1;
     }
     if (Modes.process_only != BADDR && mm->addr != Modes.process_only) {
+        return 1;
+    }
+    if (Modes.receiver_focus && mm->receiverId != Modes.receiver_focus) {
         return 1;
     }
     return 0;
