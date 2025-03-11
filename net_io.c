@@ -247,7 +247,9 @@ static int sendFiveHeartbeats(struct client *c, int64_t now) {
 
 static void setProxyString(struct client *c) {
     snprintf(c->proxy_string, sizeof(c->proxy_string), "%s port %s", c->host, c->port);
-    c->receiverId = fasthash64(c->proxy_string, strlen(c->proxy_string), 0x2127599bf4325c37ULL);
+    if (!c->receiverIdLocked) {
+        c->receiverId = fasthash64(c->proxy_string, strlen(c->proxy_string), 0x2127599bf4325c37ULL);
+    }
 }
 
 static int getSNDBUF(struct net_service *service) {
@@ -272,29 +274,6 @@ static void setBuffers(int fd, int sndsize, int rcvsize) {
     if (rcvsize > 0 && setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void*)&rcvsize, sizeof(rcvsize)) == -1) {
         fprintf(stderr, "setsockopt SO_RCVBUF: %s", strerror(errno));
     }
-}
-
-uint64_t uuidToReceiverId(const char *uuid_str) {
-    uint64_t uuid_val = 0;
-
-    // Parse the first part of UUID (before any dash)
-    for (int i = 0; uuid_str[i] && i < 16; i++) {
-        char ch = uuid_str[i];
-        if (ch == '-') continue; // Skip dashes
-
-        uint8_t val = 0;
-        if (ch >= '0' && ch <= '9')
-            val = ch - '0';
-        else if (ch >= 'a' && ch <= 'f')
-            val = ch - 'a' + 10;
-        else if (ch >= 'A' && ch <= 'F')
-            val = ch - 'A' + 10;
-        else
-            continue; // Skip invalid chars
-
-        uuid_val = (uuid_val << 4) | val;
-    }
-    return uuid_val;
 }
 
 // Create a client attached to the given service using the provided socket FD ... not a socket in some exceptions
@@ -325,22 +304,22 @@ static struct client *createSocketClient(struct net_service *service, int fd, ch
     c->host[0] = '\0';
     c->port[0] = '\0';
 
+    c->receiverIdLocked = 0;
+    c->receiverId2 = 0;
+
     if (uuid != NULL) {
-        // Assuming UUID is stored as a string in `uuid`, convert it to uint64_t
-        c->receiverId = uuidToReceiverId(uuid);
-        c->receiverIdLocked = 1;
-        fprintf(stderr, "Using supplied uuid %s, c->receiverId: %016"PRIx64"\n", uuid, c->receiverId);
+        read_uuid(c, uuid, uuid + strlen(uuid));
+        if (c->receiverIdLocked) {
+            //fprintf(stderr, "Using supplied uuid %s, c->receiverId: %016"PRIx64"\n", uuid, c->receiverId);
+        }
     } else {
         c->receiverId = random();
         c->receiverId <<= 22;
         c->receiverId ^= random();
         c->receiverId <<= 22;
         c->receiverId ^= random();
-        fprintf(stderr, "Using random uuid, c->receiverId: %016"PRIx64"\n", c->receiverId);
+        //fprintf(stderr, "preliminary random uuid might be overwritten, c->receiverId: %016"PRIx64"\n", c->receiverId);
     }
-
-    c->receiverId2 = 0;
-    c->receiverIdLocked = 0;
 
     c->recent_rtt = -1;
 
@@ -4914,7 +4893,7 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             if (eom + 2 > c->eod)// Incomplete message in buffer, retry later
                 break;
 
-            if (!Modes.netIngest) {
+            if (!Modes.netIngest && !c->receiverIdLocked) {
                 c->receiverId = receiverId;
             }
 
