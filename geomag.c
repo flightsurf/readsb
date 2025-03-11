@@ -58,6 +58,8 @@
 #include <string.h>
 #include <math.h>
 
+#define _UNUSED(V) ((void) V)
+
 #define NaN log(-1.0)
 
 static char **wmm_lines;
@@ -486,7 +488,7 @@ static char geomag_introduction(double epochlowlim)
     char help;
     static char ans;
     int res = 0;
-    res++;
+    _UNUSED(res);
 
     printf("\n\n Welcome to the World Magnetic Model (WMM) %4.0lf C-Program\n\n", epochlowlim);
     printf("            --- Version 3.0, January 2010 ---\n\n");
@@ -578,7 +580,7 @@ void geomag_interactive() {
     double epochrange = 5.0;
     double dmin, imin, ddeg, ideg;
     int res = 0;
-    res++;
+    _UNUSED(res);
 
     char ans = geomag_introduction(epochlowlim);
     if ((ans == 'y') || (ans == 'Y'))

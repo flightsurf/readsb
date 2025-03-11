@@ -56,7 +56,7 @@ typedef struct {
     const char *name;
     sdr_type_t sdr_type;
     pthread_t manageThread;
-    void (*setGain)();
+    void (*setGain)(char *reason);
 } sdr_handler;
 
 static void noInitConfig() {
