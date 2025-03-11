@@ -33,6 +33,8 @@ Or check here for more build instructions and other useful stuff:
 - https://github.com/wiedehopf/adsb-wiki/wiki/Building-readsb-from-source
 - https://github.com/wiedehopf/adsb-wiki/wiki/Raspbian-Lite:-ADS-B-receiver
 
+For OS X check build and general info, check further down
+
 ### aircraft.json format:
 
 [json file Readme](README-json.md)
@@ -228,6 +230,61 @@ lat, lon -> lat, lon
 oh if you want that display:
 --debug=S
 you'll have to update, just disabled the MLAT speed check from displayign stuff ... because usually it's not interesting
+
+
+## Apple / Mac OS X
+
+Thank you to https://github.com/ind006/readsb_macos/ for all the shims needed to make this work.
+
+readsb should be (largely) compatible with macOS, on both Intel and ARM architectures.
+You may need to modify the Makefile to point at where on your mac you have the standard libs and includes installed.
+This in turn depends on whether you're using macports or homebrew for those libs and includes. The Makefile has paths
+pre-set for homebrew.
+
+Build using:
+```
+make -j4 RTLSDR=yes
+```
+
+You can run it from the command line (try `screen -S readsb` and run it in there, press ctrl-A to detach the terminal)
+Example command line:
+```sh
+./readsb --quiet --net --device-type rtlsdr --gain auto
+# optionally add coordinates:
+--lat -33.874 --lon 151.206
+# add --interactive for testing, it will show a list of planes in the terminal
+# optional listen ports:
+--net-ri-port 30001 --net-ro-port 30002 --net-sbs-port 30003 --net-bi-port 30004,30104 --net-bo-port 30005
+# optional sending of data to an aggregator:
+--net-connector feed.flyrealtraffic.com,30004,beast_reduce_plus_out,7817bd08-f226-11ef-ba9e-072eee452592
+# optional output of json and other regularly updated files:
+--write-json-every 0.5 --write-json=/var/run/readsb
+```
+
+For a graphical interface, the tar1090 webinterface is recommended: https://github.com/wiedehopf/tar1090
+The install script won't work so i'd recommend the following basic webserver configuration:
+- serve the html directory as /tar1090
+- serve the write-json directory as /tar1090/data
+
+For nginx this would look something like this:
+```
+location /tar1090/data/ {
+    alias /var/run/readsb/
+    add_header Cache-Control "no-cache";
+}
+location /tar1090 {
+    alias /usr/local/share/tar1090/html/;
+    add_header Cache-Control "no-cache";
+}
+```
+
+An easy way to add some traces when selecting a plane:
+Add `--write-globe-history=/var/globe_history` to the readsb command line.
+You can also serve this folder as /tar1090/globe_history but that's only required for the history going back further
+than 24h.
+
+The classical tar1090 uses traces created via a shell scripts and served at /tar1090/chunks but running that shell
+script is probably a hassle, so just use the above.
 
 
 ## readsb --help
