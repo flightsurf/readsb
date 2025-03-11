@@ -18,16 +18,6 @@
 # define le16toh(x) OSSwapLittleToHostInt16(x)
 # define le32toh(x) OSSwapLittleToHostInt32(x)
 
-#include "apple/clock_compat.h"
-#include "apple/compat.h"
-#include "apple/cpu_compat.h"
-#include "apple/epoll_shim.h"
-#include "apple/net_compat.h"
-#include "apple/sendfile_compat.h"
-#include "apple/serial_compat.h"
-#include "apple/stat_compat.h"
-#include "apple/thread_compat.h"
-
 #else // other platforms
 
 # include <endian.h>

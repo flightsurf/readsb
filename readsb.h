@@ -95,13 +95,16 @@
 #include <zlib.h>
 #include <inttypes.h>
 #include <sched.h>
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
 #include "minilzo/minilzo.h"
 #include "threadpool.h"
 #include <stdatomic.h>
 #include <zstd.h>
 #include <sys/mman.h>
+
+#ifndef __APPLE__
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
+#endif
 
 
 #include "compat/compat.h"
