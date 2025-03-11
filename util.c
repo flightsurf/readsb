@@ -500,11 +500,14 @@ int my_epoll_create(int *event_fd_ptr) {
         perror("FATAL: epoll_create() failed:");
         exit(1);
     }
-    // add exit signaling eventfd, we want that for all our epoll fds
-    struct epoll_event epollEvent = { .events = EPOLLIN, .data = { .ptr = event_fd_ptr }};
-    if (epoll_ctl(fd, EPOLL_CTL_ADD, *event_fd_ptr, &epollEvent)) {
-        perror("epoll_ctl fail:");
-        exit(1);
+    // if an invalid event_fd is passed, ignore it (apple)
+    if (*event_fd_ptr >= 0) {
+        // add exit signaling eventfd, we want that for all our epoll fds
+        struct epoll_event epollEvent = { .events = EPOLLIN, .data = { .ptr = event_fd_ptr }};
+        if (epoll_ctl(fd, EPOLL_CTL_ADD, *event_fd_ptr, &epollEvent)) {
+            perror("epoll_ctl fail:");
+            exit(1);
+        }
     }
     return fd;
 }

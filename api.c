@@ -1775,7 +1775,11 @@ static void *apiThreadEntryPoint(void *arg) {
         if (count == maxEvents) {
             epollAllocEvents(&events, &maxEvents);
         }
-        count = epoll_wait(thread->epfd, events, maxEvents, 5 * SECONDS);
+        int64_t wait_ms = 5 * SECONDS;
+        #ifdef NO_EVENT_FD
+        wait_ms = imin(wait_ms, 100); // no event_fd, limit sleep to 100 ms
+        #endif
+        count = epoll_wait(thread->epfd, events, maxEvents, wait_ms);
 
         int64_t now = mstime();
         if (now > next_stats_sync) {

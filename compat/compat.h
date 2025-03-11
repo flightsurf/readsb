@@ -7,6 +7,8 @@
 
 #if defined(__APPLE__)
 
+#define NO_EVENT_FD
+
 /*
  * Mach endian conversion
  */

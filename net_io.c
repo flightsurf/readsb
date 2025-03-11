@@ -5455,6 +5455,9 @@ void modesNetPeriodicWork(void) {
             wait_ms = 1000;
         }
     }
+    #ifdef NO_EVENT_FD
+    wait_ms = imin(wait_ms, 100); // no event_fd, limit sleep to 100 ms
+    #endif
 
     // unlock decode mutex for waiting in handleEpoll
     pthread_mutex_unlock(&Threads.decode.mutex);

@@ -77,9 +77,11 @@ void setExit(int arg) {
 
     Modes.exitSoon = arg;
 
+    #ifndef NO_EVENT_FD
     uint64_t one = 1;
     ssize_t res = write(Modes.exitSoonEventfd, &one, sizeof(one));
     MODES_NOTUSED(res);
+    #endif
 }
 
 static void exitHandler(int sig) {
@@ -2909,8 +2911,14 @@ int main(int argc, char **argv) {
         return 3;
     }
 
+    #ifdef NO_EVENT_FD
+    // we don't set up eventfds for apple to reduce complexity
+    Modes.exitNowEventfd = -1;
+    Modes.exitSoonEventfd = -1;
+    #else
     Modes.exitNowEventfd = eventfd(0, EFD_NONBLOCK);
     Modes.exitSoonEventfd = eventfd(0, EFD_NONBLOCK);
+    #endif
 
 
     if (argc >= 2 && !strcmp(argv[1], "--structs")) {
@@ -3069,24 +3077,21 @@ int main(int argc, char **argv) {
                 setExit(1);
             }
         }
-        if (epoll_wait(mainEpfd, events, maxEvents, wait_time) > 0) {
-            if (Modes.exitSoon) {
-                if (Modes.apiShutdownDelay) {
-                    // delay for graceful api shutdown
-                    fprintf(stderr, "Waiting %.3f seconds (--api-shutdown-delay) ...\n", Modes.apiShutdownDelay / 1000.0);
-                    msleep(Modes.apiShutdownDelay);
-                }
-                // Signal to threads that program is exiting
-                Modes.exit = Modes.exitSoon;
-                uint64_t one = 1;
-                ssize_t res = write(Modes.exitNowEventfd, &one, sizeof(one));
-                MODES_NOTUSED(res);
-            } else if (!Modes.exit) {
-                // this shouldn't happen
-                fprintf(stderr, "wtf? too2Mee7\n");
-                msleep(50);
+        #ifdef NO_EVENT_FD
+        wait_time = imin(wait_time, 100); // no event_fd, limit sleep to 100 ms
+        #endif
+        epoll_wait(mainEpfd, events, maxEvents, wait_time);
+        if (Modes.exitSoon) {
+            if (Modes.apiShutdownDelay) {
+                // delay for graceful api shutdown
+                fprintf(stderr, "Waiting %.3f seconds (--api-shutdown-delay) ...\n", Modes.apiShutdownDelay / 1000.0);
+                msleep(Modes.apiShutdownDelay);
             }
-            continue;
+            // Signal to threads that program is exiting
+            Modes.exit = Modes.exitSoon;
+            uint64_t one = 1;
+            ssize_t res = write(Modes.exitNowEventfd, &one, sizeof(one));
+            MODES_NOTUSED(res);
         }
 
         int64_t elapsed0 = lapWatch(&mainloopTimer);
