@@ -59,7 +59,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
-#include <sys/sendfile.h>
 
 #include "uat2esnt/uat2esnt.h"
 
