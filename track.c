@@ -2871,7 +2871,7 @@ static void updateAircraft() {
 //
 
 static void removeStaleRange(void *arg, threadpool_threadbuffers_t * buffer_group) {
-    task_info_t *info = (task_info_t *) arg;
+    readsb_task_t *info = (readsb_task_t *) arg;
 
     int64_t now = info->now;
     //fprintf(stderr, "%9d %9d %9d\n", info->from, info->to, AIRCRAFT_BUCKETS);
@@ -2937,7 +2937,7 @@ static void removeStaleRange(void *arg, threadpool_threadbuffers_t * buffer_grou
 }
 
 static void activeUpdateRange(void *arg, threadpool_threadbuffers_t * buffer_group) {
-    task_info_t *info = (task_info_t *) arg;
+    readsb_task_t *info = (readsb_task_t *) arg;
     int64_t now = info->now;
     struct craftArray *ca = &Modes.aircraftActive;
 
@@ -3002,7 +3002,7 @@ void trackRemoveStale(int64_t now) {
 
     int taskCount;
     threadpool_task_t *tasks;
-    task_info_t *infos;
+    readsb_task_t *infos;
 
     taskCount = imin(Modes.allPoolSize, Modes.allTasks->task_count);
     tasks = Modes.allTasks->tasks;
@@ -3017,7 +3017,7 @@ void trackRemoveStale(int64_t now) {
     // assign tasks
     for (int i = 0; i < taskCount; i++) {
         threadpool_task_t *task = &tasks[i];
-        task_info_t *range = &infos[i];
+        readsb_task_t *range = &infos[i];
 
         range->now = now;
         range->from = i * section_len + imin(extra, i);
@@ -3058,7 +3058,7 @@ void trackRemoveStale(int64_t now) {
     // assign tasks
     for (int i = 0; i < taskCount; i++) {
         threadpool_task_t *task = &tasks[i];
-        task_info_t *range = &infos[i];
+        readsb_task_t *range = &infos[i];
 
         range->now = now;
 

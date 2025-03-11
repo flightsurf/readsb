@@ -5401,7 +5401,7 @@ static int64_t checkFlushService(struct net_service *service, int64_t now) {
 static void decodeTask(void *arg, threadpool_threadbuffers_t *buffer_group) {
     MODES_NOTUSED(buffer_group);
 
-    task_info_t *info = (task_info_t *) arg;
+    readsb_task_t *info = (readsb_task_t *) arg;
     struct messageBuffer *mb = &Modes.netMessageBuffer[info->from];
 
     //fprintf(stderr, "%.3f decodeTask %d\n", mstime()/1000.0, mb->id);
@@ -5488,13 +5488,13 @@ void modesNetPeriodicWork(void) {
         drainMessageBuffer(mb);
         handleEpoll(&Modes.services_out, mb);
     } else {
-        task_info_t *infos = Modes.decodeTasks->infos;
+        readsb_task_t *infos = Modes.decodeTasks->infos;
         threadpool_task_t *tasks = Modes.decodeTasks->tasks;
         int taskCount = 0;
 
         for (int kt = 0; kt < Modes.decodeThreads; kt++) {
             threadpool_task_t *task = &tasks[kt];
-            task_info_t *range = &infos[kt];
+            readsb_task_t *range = &infos[kt];
 
             range->from = kt;
 

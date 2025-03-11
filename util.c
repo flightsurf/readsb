@@ -714,11 +714,11 @@ double bearing(double lat0, double lon0, double lat1, double lon1) {
 task_group_t *allocate_task_group(uint32_t count) {
     task_group_t *group = cmalloc(sizeof(task_group_t));
     group->task_count = count;
-    group->infos = cmalloc(count * sizeof(task_info_t));
-    memset(group->infos, 0x0, count * sizeof(task_info_t));
+    group->infos = cmalloc(count * sizeof(readsb_task_t));
+    memset(group->infos, 0x0, count * sizeof(readsb_task_t));
     /*
     for (uint32_t k = 0; k < count; k++) {
-        task_info_t *info = &group->infos[k];
+        readsb_task_t *info = &group->infos[k];
         info->buffer_count = buffer_count;
         info->buffers = cmalloc(buffer_count * sizeof(buffer_t));
         memset(info->buffers, 0x0, buffer_count * sizeof(buffer_t));
@@ -734,7 +734,7 @@ task_group_t *allocate_task_group(uint32_t count) {
 void destroy_task_group(task_group_t *group) {
     /*
     for (uint32_t k = 0; k < group->task_count; k++) {
-        task_info_t *info = &group->infos[k];
+        readsb_task_t *info = &group->infos[k];
         for (uint32_t j = 0; j < info->buffer_count; j++) {
             free(info->buffers[j].buf);
         }
@@ -756,7 +756,7 @@ void threadpool_distribute_and_run(threadpool_t *pool, task_group_t *task_group,
     }
 
     threadpool_task_t *tasks = task_group->tasks;
-    task_info_t *infos = task_group->infos;
+    readsb_task_t *infos = task_group->infos;
 
     int section_len = totalRange / taskCount;
     int extra = totalRange % taskCount;
@@ -767,7 +767,7 @@ void threadpool_distribute_and_run(threadpool_t *pool, task_group_t *task_group,
     // assign tasks
     for (int i = 0; i < taskCount; i++) {
         threadpool_task_t *task = &tasks[i];
-        task_info_t *range = &infos[i];
+        readsb_task_t *range = &infos[i];
 
         range->now = now;
         range->from = p;

@@ -798,7 +798,7 @@ static void free_aircraft_range(int start, int end) {
 }
 
 static void save_blobs(void *arg, threadpool_threadbuffers_t *threadbuffers) {
-    task_info_t *info = (task_info_t *) arg;
+    readsb_task_t *info = (readsb_task_t *) arg;
     for (int j = info->from; j < info->to; j++) {
         //fprintf(stderr, "save_blob(%d)\n", j);
 
@@ -3091,7 +3091,7 @@ out:
 }
 
 static void load_blobs(void *arg, threadpool_threadbuffers_t * buffer_group) {
-    task_info_t *info = (task_info_t *) arg;
+    readsb_task_t *info = (readsb_task_t *) arg;
 
     for (int j = info->from; j < info->to; j++) {
         char blob[1024];
@@ -3529,7 +3529,7 @@ void writeInternalState() {
     threadpool_t *pool = threadpool_create(imax(1, Modes.num_procs), 4);
     task_group_t *group = allocate_task_group(parts + 1);
     threadpool_task_t *tasks = group->tasks;
-    task_info_t *infos = group->infos;
+    readsb_task_t *infos = group->infos;
 
     // assign tasks
     int taskCount = 0;
@@ -3542,7 +3542,7 @@ void writeInternalState() {
 
     for (int i = 0; i < parts; i++) {
         threadpool_task_t *task = &tasks[taskCount];
-        task_info_t *range = &infos[taskCount];
+        readsb_task_t *range = &infos[taskCount];
 
         range->now = now;
         range->from = i * stride;
@@ -3596,7 +3596,7 @@ void readInternalState() {
     threadpool_t *pool = threadpool_create(imax(1, Modes.num_procs), 4);
     task_group_t *group = allocate_task_group(parts + 1);
     threadpool_task_t *tasks = group->tasks;
-    task_info_t *infos = group->infos;
+    readsb_task_t *infos = group->infos;
 
     // assign tasks
     int taskCount = 0;
@@ -3610,7 +3610,7 @@ void readInternalState() {
     int k = STATE_BLOBS - 1;
     for (int i = 0; i < parts; i++) {
         threadpool_task_t *task = &tasks[taskCount];
-        task_info_t *range = &infos[taskCount];
+        readsb_task_t *range = &infos[taskCount];
 
         range->now = now;
         range->from = k * stride;

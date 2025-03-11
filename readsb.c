@@ -1023,7 +1023,7 @@ static void *decodeEntryPoint(void *arg) {
 }
 
 static void traceWriteTask(void *arg, threadpool_threadbuffers_t *buffer_group) {
-    task_info_t *info = (task_info_t *) arg;
+    readsb_task_t *info = (readsb_task_t *) arg;
 
     if (mono_milli_seconds() > Modes.traceWriteTimelimit) {
         return;
@@ -1100,7 +1100,7 @@ static void writeTraces(int64_t mono) {
 
     int taskCount = Modes.traceTasks->task_count;
     threadpool_task_t *tasks = Modes.traceTasks->tasks;
-    task_info_t *infos = Modes.traceTasks->infos;
+    readsb_task_t *infos = Modes.traceTasks->infos;
 
     // how long until we want to have checked every aircraft if a trace needs to be written
     int completeTime = 4 * SECONDS;
@@ -1153,7 +1153,7 @@ static void writeTraces(int64_t mono) {
 
 
             threadpool_task_t *task = &tasks[i];
-            task_info_t *range = &infos[i];
+            readsb_task_t *range = &infos[i];
 
             int thread_start = part * thread_section_len + imin(extra, part);
             int thread_end = thread_start + thread_section_len + (part < extra ? 1 : 0);
@@ -1188,7 +1188,7 @@ static void writeTraces(int64_t mono) {
 
     lastRunFinished = 1;
     for (int i = 0; i < taskCount; i++) {
-        task_info_t *range = &infos[i];
+        readsb_task_t *range = &infos[i];
         if (range->from != range->to) {
             lastRunFinished = 0;
         }

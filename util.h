@@ -222,12 +222,12 @@ typedef struct {
     int32_t from;
     int32_t to;
 
-} task_info_t;
+} readsb_task_t;
 
 
 typedef struct {
     uint32_t task_count;
-    task_info_t *infos;
+    readsb_task_t *infos;
     threadpool_task_t *tasks;
 } task_group_t;
 
