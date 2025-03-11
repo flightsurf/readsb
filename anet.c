@@ -69,7 +69,13 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#ifdef __APPLE__
+#include "compat/apple/net_compat.h"
+#endif
+
 #include "anet.h"
+
+#define _UNUSED(V) ((void) V)
 
 static void anetSetError(char *err, const char *fmt, ...)
 {
@@ -129,6 +135,13 @@ int anetTcpKeepAlive(char *err, int fd)
     int interval = 2;
     int count = 3;
 
+    #ifdef __APPLE__
+    _UNUSED(yes);
+    if (set_tcp_keepalive(fd, idle, interval, count) == -1) {
+        anetSetError(err, "setsockopt tcp keepalive: %s", strerror(errno));
+        return ANET_ERR;
+    }
+    #else
     if (
             setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void*) &yes, sizeof(yes))
             || setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, (void*) &idle, sizeof(idle))
@@ -138,6 +151,7 @@ int anetTcpKeepAlive(char *err, int fd)
         anetSetError(err, "setsockopt SO_KEEPALIVE: %s", strerror(errno));
         return ANET_ERR;
     }
+    #endif
     return ANET_OK;
 }
 

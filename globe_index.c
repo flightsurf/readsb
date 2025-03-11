@@ -1125,6 +1125,7 @@ static void mark_legs(traceBuffer tb, struct aircraft *a, int start, int recent)
     int64_t last_low = 0;
 
     int last_high_index = 0;
+    MODES_NOTUSED(last_high_index);
     int last_low_index = 0;
 
     int64_t last_airborne = 0;
@@ -1136,6 +1137,7 @@ static void mark_legs(traceBuffer tb, struct aircraft *a, int start, int recent)
     int last_5min_gap_index = -1;
     struct state last_5min_gap_state = { 0 };
     int last_10min_gap_index = -1;
+    MODES_NOTUSED(last_10min_gap_index);
 
     int was_ground = 0;
 
