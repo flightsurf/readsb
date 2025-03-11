@@ -3119,6 +3119,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    // all threads will be joined soon, wake them all so they exit due to Modes.exit
+    for (int i = 0; i < Modes.lockThreadsCount; i++) {
+        pthread_cond_signal(&Modes.lockThreads[i]->cond);
+    }
+
     close(mainEpfd);
     sfree(events);
 

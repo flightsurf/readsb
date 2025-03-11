@@ -301,12 +301,16 @@ void threadTimedWait(threadT *thread, struct timespec *ts, int64_t increment) {
 void threadSignalJoin(threadT *thread) {
     if (thread->joined)
         return;
-    int64_t timeout = Modes.joinTimeout;
     int err = 0;
+    #ifdef __APPLE__
+    pthread_join(thread->pthread, NULL);
+    #else
+    int64_t timeout = Modes.joinTimeout;
     while ((err = pthread_tryjoin_np(thread->pthread, NULL)) && timeout-- > 0) {
         pthread_cond_signal(&thread->cond);
         msleep(1);
     }
+    #endif
     if (err == 0) {
         thread->joined = 1;
     } else {
