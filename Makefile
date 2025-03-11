@@ -12,110 +12,130 @@ TRACKS_UUID ?= no
 PRINT_UUIDS ?= no
 
 DIALECT = -std=c11
-CFLAGS = $(DIALECT) -W -D_GNU_SOURCE -D_DEFAULT_SOURCE -Wall -Werror -fno-common -O2
+CFLAGS = $(DIALECT) -W -Wall -Werror -fno-common -O2
 CFLAGS += -DMODES_READSB_VERSION=\"$(READSB_VERSION)\"
-CFLAGS += -Wdate-time -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector-strong -Wformat -Werror=format-security
+CFLAGS += -Wdate-time -fstack-protector-strong -Wformat -Werror=format-security
 
-LIBS = -pthread -lpthread -lm -lrt -lzstd
+# Platform-specific settings
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+    CFLAGS += -D_GNU_SOURCE -D_DEFAULT_SOURCE
+    CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
+    LIBS = -pthread -lpthread -lm -lrt -lzstd
+else ifeq ($(UNAME), Darwin)
+    CFLAGS += -D_DARWIN_C_SOURCE
+    CFLAGS += -I./compat/apple  # For epoll_shim.h
+    CFLAGS += -I/opt/homebrew/include  # For zstd.h
+    LDFLAGS += -L/opt/homebrew/lib
+    LIBS = -pthread -lpthread -lm -lzstd
+    COMPAT += compat/apple/epoll_shim.o
+else
+    LIBS = -pthread -lpthread -lm -lrt -lzstd
+endif
 
 ifeq ($(ZLIB_STATIC), yes)
 	LIBS += -l:libz.a
 else
-	LIBS += -lz
+    LIBS += -lz
 endif
 
 ifeq ($(shell $(CC) -c feature_test.c -o feature_test.o -Wno-format-truncation -Werror >/dev/null 2>&1 && echo 1 || echo 0), 1)
-	CFLAGS += -Wno-format-truncation
+    CFLAGS += -Wno-format-truncation
 endif
 
 ifeq ($(shell uname -m | grep -qs -e arm -e aarch64 >/dev/null 2>&1 && echo 1 || echo 0), 1)
-  CFLAGS += -DSC16Q11_TABLE_BITS=8
+    CFLAGS += -DSC16Q11_TABLE_BITS=8
 endif
 
 ifeq ($(DISABLE_INTERACTIVE), yes)
-  CFLAGS += -DDISABLE_INTERACTIVE
+    CFLAGS += -DDISABLE_INTERACTIVE
 else
-  LIBS += $(shell pkg-config --libs ncurses)
+    ifeq ($(UNAME), Darwin)
+        LIBS += $(shell pkg-config --libs ncurses 2>/dev/null || echo -lncurses)
+    else
+        LIBS += $(shell pkg-config --libs ncurses)
+    endif
 endif
 
 # only disable workaround if zerocopy is disabled in librtlsdr, otherwise expect significantly increased CPU use
 ifeq ($(DISABLE_RTLSDR_ZEROCOPY_WORKAROUND), yes)
-  CFLAGS += -DDISABLE_RTLSDR_ZEROCOPY_WORKAROUND
+    CFLAGS += -DDISABLE_RTLSDR_ZEROCOPY_WORKAROUND
 endif
 
 ifeq ($(HISTORY), yes)
-  CFLAGS += -DALL_JSON=1
+    CFLAGS += -DALL_JSON=1
 endif
 
 ifneq ($(PREAMBLE_THRESHOLD_DEFAULT),)
-  CFLAGS += -DPREAMBLE_THRESHOLD_DEFAULT=$(PREAMBLE_THRESHOLD_DEFAULT)
+    CFLAGS += -DPREAMBLE_THRESHOLD_DEFAULT=$(PREAMBLE_THRESHOLD_DEFAULT)
 endif
 
 ifneq ($(GLOBE_PERM_IVAL),)
-  CFLAGS += -DGLOBE_PERM_IVAL=$(GLOBE_PERM_IVAL)
+    CFLAGS += -DGLOBE_PERM_IVAL=$(GLOBE_PERM_IVAL)
 endif
 
 ifneq ($(TRACE_THREADS),)
-  CFLAGS += -DTRACE_THREADS=$(TRACE_THREADS)
+    CFLAGS += -DTRACE_THREADS=$(TRACE_THREADS)
 endif
 
 ifneq ($(TRACE_RECENT_POINTS),)
-  CFLAGS += -DTRACE_RECENT_POINTS=$(TRACE_RECENT_POINTS)
+    CFLAGS += -DTRACE_RECENT_POINTS=$(TRACE_RECENT_POINTS)
 endif
 
 ifneq ($(AIRCRAFT_HASH_BITS),)
-  CFLAGS += -DAIRCRAFT_HASH_BITS=$(AIRCRAFT_HASH_BITS)
+    CFLAGS += -DAIRCRAFT_HASH_BITS=$(AIRCRAFT_HASH_BITS)
 endif
 
 ifeq ($(STATS_PHASE),yes)
-  CFLAGS += -DSTATS_PHASE
+    CFLAGS += -DSTATS_PHASE
 endif
 
 ifeq ($(TRACKS_UUID), yes)
-  CFLAGS += -DTRACKS_UUID
+    CFLAGS += -DTRACKS_UUID
 endif
 
 ifeq ($(PRINT_UUIDS), yes)
-  CFLAGS += -DPRINT_UUIDS
+    CFLAGS += -DPRINT_UUIDS
 endif
 
 ifneq ($(RECENT_RECEIVER_IDS),)
-  CFLAGS += -DRECENT_RECEIVER_IDS=$(RECENT_RECEIVER_IDS)
+    CFLAGS += -DRECENT_RECEIVER_IDS=$(RECENT_RECEIVER_IDS)
 endif
 
 ifeq ($(RTLSDR), yes)
-  SDR_OBJ += sdr_rtlsdr.o
-  CFLAGS += -DENABLE_RTLSDR
+    SDR_OBJ += sdr_rtlsdr.o
+    CFLAGS += -DENABLE_RTLSDR
 
-  ifeq ($(HAVE_BIASTEE), yes)
-    CFLAGS += -DENABLE_RTLSDR_BIASTEE
-  endif
+    ifeq ($(HAVE_BIASTEE), yes)
+        CFLAGS += -DENABLE_RTLSDR_BIASTEE
+    endif
 
-  ifdef RTLSDR_PREFIX
-    CFLAGS += -I$(RTLSDR_PREFIX)/include
-    LDFLAGS += -L$(RTLSDR_PREFIX)/lib
-  else
-    CFLAGS += $(shell pkg-config --cflags librtlsdr)
-    LDFLAGS += $(shell pkg-config --libs-only-L librtlsdr)
-  endif
+    ifdef RTLSDR_PREFIX
+        CFLAGS += -I$(RTLSDR_PREFIX)/include
+        LDFLAGS += -L$(RTLSDR_PREFIX)/lib
+    else
+        CFLAGS += $(shell pkg-config --cflags librtlsdr)
+        LDFLAGS += $(shell pkg-config --libs-only-L librtlsdr)
+    endif
 
-  ifeq ($(STATIC), yes)
-    LIBS_SDR += -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0
-  else
-    LIBS_SDR += -lrtlsdr -lusb-1.0
-  endif
+	# static linking not well supported, use at own risk
+    ifeq ($(STATIC), yes)
+		LIBS_SDR += -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0
+    else
+        LIBS_SDR += -lrtlsdr -lusb-1.0
+    endif
 endif
 
 ifeq ($(BLADERF), yes)
-  SDR_OBJ += sdr_bladerf.o sdr_ubladerf.o
-  CFLAGS += $(shell pkg-config --cflags libbladeRF) -DENABLE_BLADERF
-  LIBS_SDR += $(shell pkg-config --libs libbladeRF)
+    SDR_OBJ += sdr_bladerf.o sdr_ubladerf.o
+    CFLAGS += $(shell pkg-config --cflags libbladeRF) -DENABLE_BLADERF
+    LIBS_SDR += $(shell pkg-config --libs libbladeRF)
 endif
 
 ifeq ($(HACKRF), yes)
-  SDR_OBJ += sdr_hackrf.o
-  CFLAGS += $(shell pkg-config --cflags libhackrf) -DENABLE_HACKRF
-  LIBS_SDR += $(shell pkg-config --libs libhackrf)
+    SDR_OBJ += sdr_hackrf.o
+    CFLAGS += $(shell pkg-config --cflags libhackrf) -DENABLE_HACKRF
+    LIBS_SDR += $(shell pkg-config --libs libhackrf)
 endif
 
 ifeq ($(PLUTOSDR), yes)
@@ -125,9 +145,9 @@ ifeq ($(PLUTOSDR), yes)
 endif
 
 ifeq ($(SOAPYSDR), yes)
-  SDR_OBJ += sdr_soapy.o
-  CFLAGS += $(shell pkg-config --cflags SoapySDR) -DENABLE_SOAPYSDR
-  LIBS_SDR += $(shell pkg-config --libs SoapySDR)
+    SDR_OBJ += sdr_soapy.o
+    CFLAGS += $(shell pkg-config --cflags SoapySDR) -DENABLE_SOAPYSDR
+    LIBS_SDR += $(shell pkg-config --libs SoapySDR)
 endif
 
 # add custom overrides if user defines them
@@ -162,7 +182,9 @@ viewadsb: readsb
 	cp readsb viewadsb
 
 clean:
-	rm -f *.o uat2esnt/*.o compat/clock_gettime/*.o compat/clock_nanosleep/*.o readsb viewadsb cprtests crctests convert_benchmark
+	rm -f *.o uat2esnt/*.o compat/clock_gettime/*.o compat/clock_nanosleep/*.o compat/apple/*.o readsb viewadsb cprtests crctests convert_benchmark
+
+test: cprtest crctests benchmarks
 
 cprtest: cprtests
 	./cprtests
