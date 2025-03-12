@@ -33,7 +33,7 @@ Or check here for more build instructions and other useful stuff:
 - https://github.com/wiedehopf/adsb-wiki/wiki/Building-readsb-from-source
 - https://github.com/wiedehopf/adsb-wiki/wiki/Raspbian-Lite:-ADS-B-receiver
 
-For OS X check build and general info, check further down
+For macOS / OS X check build and general info, check further down
 
 ### aircraft.json format:
 
@@ -232,7 +232,7 @@ oh if you want that display:
 you'll have to update, just disabled the MLAT speed check from displayign stuff ... because usually it's not interesting
 
 
-## Apple / Mac OS X
+## Apple / macOS / OS X
 
 Thank you to https://github.com/ind006/readsb_macos/ for all the shims needed to make this work.
 
