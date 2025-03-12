@@ -254,7 +254,9 @@ Example command line:
 --lat -33.874 --lon 151.206
 # add --interactive for testing, it will show a list of planes in the terminal
 # optional output of json and other regularly updated files:
---write-json-every 0.5 --write-json=/home/USER/readsb_run
+--write-json-every 0.5 --write-json=/tmp/readsb_run
+# optional database info
+--db-file ~/tar1090/aircraft.csv.gz
 # optional listen ports:
 --net-ri-port 30001 --net-ro-port 30002 --net-sbs-port 30003 --net-bi-port 30004,30104 --net-bo-port 30005
 # optional sending of data to an aggregator:
@@ -266,10 +268,16 @@ The install script won't work so i'd recommend the following basic webserver con
 - serve the html directory as /tar1090
 - serve the write-json directory as /tar1090/data
 
-For nginx this would look something like this (added in traces / globe_history because why not):
+```
+git clone https://github.com/wiedehopf/tar1090 ~/tar1090
+wget -O ~/tar1090/aircraft.csv.gz https://github.com/wiedehopf/tar1090-db/raw/csv/aircraft.csv.gz
+```
+
+
+For nginx this would look something like this (replace USER appropriately):
 ```
 location /tar1090/data/ {
-    alias /home/USER/readsb_run/;
+    alias /tmp/readsb_run/;
     add_header Cache-Control "no-cache";
     location /tar1090/data/traces/ {
         gzip off;
