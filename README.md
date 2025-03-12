@@ -253,12 +253,12 @@ Example command line:
 # optionally add coordinates:
 --lat -33.874 --lon 151.206
 # add --interactive for testing, it will show a list of planes in the terminal
+# optional output of json and other regularly updated files:
+--write-json-every 0.5 --write-json=/home/USER/readsb_run
 # optional listen ports:
 --net-ri-port 30001 --net-ro-port 30002 --net-sbs-port 30003 --net-bi-port 30004,30104 --net-bo-port 30005
 # optional sending of data to an aggregator:
 --net-connector feed.flyrealtraffic.com,30004,beast_reduce_plus_out,7817bd08-f226-11ef-ba9e-072eee452592
-# optional output of json and other regularly updated files:
---write-json-every 0.5 --write-json=/var/run/readsb
 ```
 
 For a graphical interface, the tar1090 webinterface is recommended: https://github.com/wiedehopf/tar1090
@@ -266,24 +266,35 @@ The install script won't work so i'd recommend the following basic webserver con
 - serve the html directory as /tar1090
 - serve the write-json directory as /tar1090/data
 
-For nginx this would look something like this:
+For nginx this would look something like this (added in traces / globe_history because why not):
 ```
 location /tar1090/data/ {
-    alias /var/run/readsb/
+    alias /home/USER/readsb_run/;
+    add_header Cache-Control "no-cache";
+    location /tar1090/data/traces/ {
+        gzip off;
+        add_header Content-Encoding "gzip";
+        add_header Cache-Control "no-cache";
+    }
+}
+location /tar1090/globe_history/ {
+    alias /home/USER/readsb_history/;
+    gzip off;
+    add_header Content-Encoding "gzip";
     add_header Cache-Control "no-cache";
 }
 location /tar1090 {
-    alias /usr/local/share/tar1090/html/;
+    alias /home/USER/tar1090/html/;
     add_header Cache-Control "no-cache";
 }
 ```
 
 An easy way to add some traces when selecting a plane:
-Add `--write-globe-history=/var/globe_history` to the readsb command line.
+Add `--write-globe-history=/home/USER/readsb_history` to the readsb command line.
 You can also serve this folder as /tar1090/globe_history but that's only required for the history going back further
 than 24h.
 
-The classical tar1090 uses traces created via a shell scripts and served at /tar1090/chunks but running that shell
+The classical tar1090 uses traces created via a shell script and served at /tar1090/chunks but running that shell
 script is probably a hassle, so just use the above.
 
 
