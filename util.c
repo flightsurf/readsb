@@ -584,7 +584,7 @@ char *sprint_uuid(uint64_t id1, uint64_t id2, char *p) {
 int mkdir_error(const char *path, mode_t mode, FILE *err_stream) {
     int err = mkdir(path, mode);
     if (err != 0 && errno != EEXIST && err_stream) {
-        fprintf(err_stream, "mkdir: %s (%s)\n", strerror(errno), path);
+        fprintf(err_stream, "mkdir %s: %s\n", path, strerror(errno));
     }
     return err;
 }

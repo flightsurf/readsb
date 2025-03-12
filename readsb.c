@@ -2964,6 +2964,8 @@ int main(int argc, char **argv) {
         Modes.stats_10[j].start = Modes.stats_10[j].end = Modes.stats_current.start;
 
     if (Modes.json_dir) {
+        mkdir_error(Modes.json_dir, 0755, stderr);
+
         char pathbuf[PATH_MAX];
         snprintf(pathbuf, PATH_MAX, "%s/getState", Modes.json_dir);
         mkdir_error(pathbuf, 0755, stderr);
