@@ -241,6 +241,11 @@ You may need to modify the Makefile to point at where on your mac you have the s
 This in turn depends on whether you're using macports or homebrew for those libs and includes. The Makefile has paths
 pre-set for homebrew.
 
+These packages are needed, possibly more:
+```
+brew install git librtlsdr libusb ncurses
+```
+
 Build using:
 ```
 make -j4 RTLSDR=yes
