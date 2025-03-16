@@ -5265,7 +5265,8 @@ static void modesReadFromClient(struct client *c, struct messageBuffer *mb) {
         }
 
         // disconnect garbage feeds
-        if (c->garbage >= GARBAGE_THRESHOLD) {
+        // (only disconnect after a lot of garbage unless --net-ingest is specified)
+        if ((c->garbage >= GARBAGE_THRESHOLD && Modes.netIngest) || c->garbage >= 1024 * 1024) {
 
             *c->eod = '\0';
             char sample[256];
