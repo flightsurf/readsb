@@ -145,7 +145,7 @@ static void configSetDefaults(void) {
     Modes.net_output_api_ports = strdup("0");
     Modes.net_input_jaero_ports = strdup("0");
     Modes.net_output_jaero_ports = strdup("0");
-    Modes.net_connector_delay = 30 * 1000;
+    Modes.net_connector_delay = 15 * 1000;
     Modes.interactive_display_ttl = MODES_INTERACTIVE_DISPLAY_TTL;
     Modes.json_interval = 1000;
     Modes.json_location_accuracy = 2;

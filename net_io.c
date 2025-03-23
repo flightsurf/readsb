@@ -1229,21 +1229,14 @@ static void modesCloseClient(struct client *c) {
         con->c = NULL;
 
         int64_t sinceLastConnect = now - con->lastConnect;
-        // successfull connection, decrement backoff by connection time
-        if (sinceLastConnect > con->backoff) {
-            con->backoff = 0;
-        } else {
-            con->backoff -= sinceLastConnect;
+        if (sinceLastConnect > Modes.net_connector_delay) {
+            // reset backoff
+            con->backoff = Modes.net_connector_delay_min;
         }
-        // make sure it's not too small
-        con->backoff = imax(Modes.net_connector_delay_min, con->backoff);
 
-        // if we were connected for some time, an immediate reconnect is expected
         con->next_reconnect = con->lastConnect + con->backoff;
 
-        con->backoff = imin(Modes.net_connector_delay, 2 * con->backoff);
-
-        Modes.next_reconnect_callback = imin(Modes.next_reconnect_callback, con->next_reconnect + 1);
+        Modes.next_reconnect_callback = imin(Modes.next_reconnect_callback, con->next_reconnect);
         Modes.last_connector_fail = now;
     }
 
