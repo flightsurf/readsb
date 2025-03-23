@@ -635,6 +635,7 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
         con->next_reconnect = now + con->backoff;
         con->backoff = imin(Modes.net_connector_delay, 2 * con->backoff);
     } else {
+        //fprintf(stderr, "next ip\n");
         // quickly try all IPs associated with a name if there are multiple
         con->next_reconnect = now + 20;
     }
@@ -1239,6 +1240,8 @@ static void modesCloseClient(struct client *c) {
 
         // if we were connected for some time, an immediate reconnect is expected
         con->next_reconnect = con->lastConnect + con->backoff;
+
+        con->backoff = imin(Modes.net_connector_delay, 2 * con->backoff);
 
         Modes.next_reconnect_callback = imin(Modes.next_reconnect_callback, con->next_reconnect + 1);
         Modes.last_connector_fail = now;
