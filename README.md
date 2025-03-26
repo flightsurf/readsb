@@ -255,6 +255,8 @@ You can run it from the command line (try `screen -S readsb` and run it in there
 Example command line:
 ```sh
 ./readsb --quiet --net --device-type rtlsdr --gain auto
+# add console table of planes for a quick test:
+--interactive
 # optionally add coordinates:
 --lat -33.874 --lon 151.206
 # add --interactive for testing, it will show a list of planes in the terminal
