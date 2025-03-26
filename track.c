@@ -2713,7 +2713,8 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
 
     // forward all CPRs to the apex for faster garbage detection and such
     // even the duplicates and the garbage
-    if (Modes.netIngest && mm->cpr_valid) {
+    // unless garbage ports are configured
+    if (Modes.netIngest && mm->cpr_valid && !(Modes.garbage_ports && mm->garbage)) {
         mm->reduce_forward = 1;
         PPforward;
     }
