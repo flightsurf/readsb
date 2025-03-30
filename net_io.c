@@ -1489,13 +1489,7 @@ static int flushClient(struct client *c, int64_t now) {
         return 0;
     }
 
-    int writeBytes = toWrite;
-    // limit writes to half of the send q so we can make progress when the sendq is rather full and
-    // the OS buffers won't accept everything in the sendq at once
-    writeBytes = imin(writeBytes, c->sendq_max / 2);
-    // sends larger than 64KB don't speed things up and could cause issues
-    writeBytes = imin(writeBytes, 64 * 1024);
-    int bytesWritten = send(c->fd, c->sendq, writeBytes, 0);
+    int bytesWritten = send(c->fd, c->sendq, toWrite, 0);
     int err = errno;
 
     // If we get -1, it's only fatal if it's not EAGAIN/EWOULDBLOCK
@@ -1507,6 +1501,8 @@ static int flushClient(struct client *c, int64_t now) {
             modesCloseClient(c);
             return -1;
         }
+    }
+    if (bytesWritten < toWrite) {
         dropHalfUntil(now, c, now + 1 * SECONDS);
     }
     if (bytesWritten > toWrite) {
@@ -1516,7 +1512,7 @@ static int flushClient(struct client *c, int64_t now) {
         modesCloseClient(c);
         return -1;
     }
-    if (bytesWritten < writeBytes && Modes.debug_flush) {
+    if (bytesWritten < toWrite && Modes.debug_flush) {
 
         fprintTimePrecise(stderr, now);
         fprintf(stderr, " %s: send wrote: %d/%d bytes (%s port %s fd %d, SendQ %d)\n", c->service->descr, bytesWritten, toWrite, c->host, c->port, c->fd, c->sendq_len);
