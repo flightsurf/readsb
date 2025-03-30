@@ -1460,6 +1460,16 @@ static int pongReceived(struct client *c, int64_t now) {
     return 0;
 }
 
+static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
+    if (now > c->dropHalfAntiSpam) {
+        // only log this at most every 5 minutes
+        c->dropHalfAntiSpam = now + 5 * MINUTES;
+        fprintf(stderr, "%s: High latency or insufficient bandwidth, dropping every 2nd packet for this connection. "
+                "(%s port %s) (this message will be suppressed for 5 minutes for this connection)\n",
+                c->service->descr, c->host, c->port);
+    }
+    c->dropHalfUntil = until;
+}
 
 static int flushClient(struct client *c, int64_t now) {
     if (!c->service) { fprintf(stderr, "report error: Ahlu8pie\n"); return -1; }
@@ -1474,12 +1484,15 @@ static int flushClient(struct client *c, int64_t now) {
     int err = errno;
 
     // If we get -1, it's only fatal if it's not EAGAIN/EWOULDBLOCK
-    if (bytesWritten < 0 && err != EAGAIN && err != EWOULDBLOCK) {
-        fprintf(stderr, "%s: Send Error: %s: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
-                c->service->descr, strerror(err), c->host, c->port,
-                c->fd, c->sendq_len, c->buflen);
-        modesCloseClient(c);
-        return -1;
+    if (bytesWritten < 0) {
+        if (err != EAGAIN && err != EWOULDBLOCK) {
+            fprintf(stderr, "%s: Send Error: %s: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
+                    c->service->descr, strerror(err), c->host, c->port,
+                    c->fd, c->sendq_len, c->buflen);
+            modesCloseClient(c);
+            return -1;
+        }
+        dropHalfUntil(now, c, now + 1 * SECONDS);
     }
     if (bytesWritten > toWrite) {
         fprintf(stderr, "%s: send() weirdness: bytesWritten > toWrite: %s: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
@@ -1548,7 +1561,6 @@ static void flushWrites(struct net_writer *writer) {
             // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
             if ((c->sendq_len + writer->dataUsed) >= c->sendq_max) {
                 if (now - c->connectedSince < 10 * SECONDS) {
-                    c->dropHalfUntil = now + 2 * SECONDS;
                     fprintf(stderr, "%s: Discarding full SendQ: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
                             c->service->descr, c->host, c->port,
                             c->fd, c->sendq_len, c->buflen);
@@ -3824,16 +3836,7 @@ static int handleBeastCommand(struct client *c, char *p, int remote, int64_t now
     } else if (p[0] == 'W') {
         switch (p[1]) {
             case 'S':
-                {
-                    if (now > c->dropHalfAntiSpam) {
-                        // only log this at most every 5 minutes
-                        c->dropHalfAntiSpam = now + 5 * MINUTES;
-                        fprintf(stderr, "%s: High latency, dropping every 2nd packet for this connection. "
-                                "(%s port %s) (this message will be suppressed for 5 minutes for this connection)\n",
-                                c->service->descr, c->host, c->port);
-                    }
-                }
-                c->dropHalfUntil = now + PING_REDUCE_DURATION;
+                dropHalfUntil(now, c, now + PING_REDUCE_DURATION);
                 break;
         }
     }
