@@ -138,11 +138,9 @@
 #define MODES_OS_LONG_MSG_SIZE     (MODES_LONG_MSG_SAMPLES  * sizeof(uint16_t))
 #define MODES_OS_SHORT_MSG_SIZE    (MODES_SHORT_MSG_SAMPLES * sizeof(uint16_t))
 
-#define MODES_OUT_BUF_SIZE         (48*1024)
 #define MODES_OUT_FLUSH_INTERVAL   (500) // max flush interval
 
-// needs to be larger than OUT_BUF_SIZE above
-#define MODES_NET_SNDBUF_SIZE (64*1024)
+#define MODES_NET_SNDBUF_SIZE (8*1024)
 #define MODES_NET_SNDBUF_MAX  (7)
 
 #define HEX_UNKNOWN (0xDEADBEEF)
@@ -755,6 +753,7 @@ struct _Modes
     uint32_t preambleThreshold;
     uint32_t net_forward_min_messages;
     int net_output_flush_size; // Minimum Size of output data
+    int writerBufSize; // Maximum Size of output data
     int32_t net_output_beast_reduce_interval; // Position update interval for data reduction
     int32_t ping_reduce;
     int32_t ping_reject;
@@ -856,7 +855,8 @@ struct _Modes
     char *beast_serial; // Modes-S Beast device path
     struct client *serial_client;
 
-    int net_sndbuf_size; // TCP output buffer size (64Kb * 2^n)
+    int net_sndbuf_size; // TCP output buffer size (2^n multiplier)
+    int netBufSize; // TCP output buffer size
     int json_aircraft_history_next;
     int json_aircraft_history_full;
     int trace_hist_only;
@@ -873,6 +873,8 @@ struct _Modes
 
     int8_t updateStats;
     int8_t staleStop;
+
+    int8_t tcpBuffersAuto;
 
     struct timespec reader_cpu_accumulator; // CPU time used by the reader thread, copied out and reset by the main thread under the mutex
     ALIGNED struct mag_buf mag_buffers[MODES_MAG_BUFFERS]; // Converted magnitude buffers from RTL or file input
@@ -1269,6 +1271,7 @@ enum {
     OptNetConnectorDelay,
     OptNetHeartbeat,
     OptNetBuffer,
+    OptTcpBuffersAuto,
     OptNetVerbatim,
     OptNetReceiverId,
     OptNetReceiverIdJson,

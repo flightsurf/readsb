@@ -190,7 +190,7 @@ static struct net_service *serviceInit(struct net_service_group *group, const ch
         // set writer to zero
         memset(service->writer, 0, sizeof(struct net_writer));
 
-        service->writer->data = cmalloc(MODES_OUT_BUF_SIZE);
+        service->writer->data = cmalloc(Modes.writerBufSize);
 
         service->writer->service = service;
         service->writer->dataUsed = 0;
@@ -256,23 +256,34 @@ static int getSNDBUF(struct net_service *service) {
     if (service->sendqOverrideSize) {
         return service->sendqOverrideSize;
     } else {
-        return (MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size);
+        return Modes.netBufSize;
     }
 }
 static int getRCVBUF(struct net_service *service) {
     if (service->recvqOverrideSize) {
         return service->recvqOverrideSize;
     } else {
-        return (MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size);
+        return Modes.netBufSize;
     }
 }
-static void setBuffers(int fd, int sndsize, int rcvsize) {
-    if (sndsize > 0 && setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void*)&sndsize, sizeof(sndsize)) == -1) {
+static void setBuffers(struct client *c) {
+    if (Modes.tcpBuffersAuto) {
+        return;
+    }
+    // explicitely setting tcp buffers causes failure of linux tcp window auto tuning
+    // let's not dealy with this, set Modes.tcpBuffersAuto to 1 for the time being
+
+    int sndsize = getSNDBUF(c->service);
+    if (sndsize > 0 && setsockopt(c->fd, SOL_SOCKET, SO_SNDBUF, (void*)&sndsize, sizeof(sndsize)) == -1) {
         fprintf(stderr, "setsockopt SO_SNDBUF: %s", strerror(errno));
     }
 
-    if (rcvsize > 0 && setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void*)&rcvsize, sizeof(rcvsize)) == -1) {
-        fprintf(stderr, "setsockopt SO_RCVBUF: %s", strerror(errno));
+    if (0) {
+        int rcvsize = getRCVBUF(c->service);
+        // much better to just let the OS handle the receive buffer
+        if (rcvsize > 0 && setsockopt(c->fd, SOL_SOCKET, SO_RCVBUF, (void*)&rcvsize, sizeof(rcvsize)) == -1) {
+            fprintf(stderr, "setsockopt SO_RCVBUF: %s", strerror(errno));
+        }
     }
 }
 
@@ -332,7 +343,7 @@ static struct client *createSocketClient(struct net_service *service, int fd, ch
 
     //fprintf(stderr, "c->receiverId: %016"PRIx64"\n", c->receiverId);
 
-    c->bufmax = MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size;
+    c->bufmax = Modes.netBufSize;
     if (service->sendqOverrideSize) {
         c->bufmax = service->sendqOverrideSize;
     }
@@ -340,7 +351,7 @@ static struct client *createSocketClient(struct net_service *service, int fd, ch
     c->buf = cmalloc(c->bufmax);
 
     if (service->writer) {
-        c->sendq_max = MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size;
+        c->sendq_max = Modes.netBufSize;
         if (service->sendqOverrideSize) {
             c->sendq_max = service->sendqOverrideSize;
         }
@@ -674,10 +685,7 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
         perror("epoll_ctl fail:");
     }
 
-    // explicitely setting tcp buffers causes failure of linux tcp window auto tuning ... it just doesn't work well without the auto tuning
-    if (0) {
-        setBuffers(fd, getSNDBUF(con->service), getRCVBUF(con->service));
-    }
+    setBuffers(c);
 
     if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0 && errno != EINPROGRESS) {
         epoll_ctl(Modes.net_epfd, EPOLL_CTL_DEL, con->fd, &con->dummyClient.epollEvent);
@@ -863,7 +871,7 @@ static void initMessageBuffers() {
     memset(Modes.netMessageBuffer, 0x0, Modes.decodeThreads * sizeof(struct messageBuffer));
     for (int k = 0; k < Modes.decodeThreads; k++) {
         struct messageBuffer *buf = &Modes.netMessageBuffer[k];
-        buf->alloc = 128 * imin(3, Modes.net_sndbuf_size);
+        buf->alloc = 256 << Modes.net_sndbuf_size;
         buf->len = 0;
         buf->id = k;
         buf->activeClient = NULL;
@@ -1043,8 +1051,8 @@ void modesInitNet(void) {
     /* Beast input via network */
     Modes.beast_in_service = serviceInit(&Modes.services_in, "Beast TCP input", &Modes.beast_in, no_heartbeat, beast_heartbeat, READ_MODE_BEAST, NULL, decodeBinMessage);
     if (Modes.netIngest) {
-        Modes.beast_in_service->sendqOverrideSize = MODES_NET_SNDBUF_SIZE;
-        Modes.beast_in_service->recvqOverrideSize = MODES_NET_SNDBUF_SIZE;
+        Modes.beast_in_service->sendqOverrideSize = 2 * 1024;
+        Modes.beast_in_service->recvqOverrideSize = 8 * 1024;
         // --net-buffer won't increase receive buffer for ingest server to avoid running out of memory using lots of connections
     }
     serviceListen(Modes.beast_in_service, Modes.net_bind_address, Modes.net_input_beast_ports, Modes.net_epfd);
@@ -1174,6 +1182,7 @@ static void modesAcceptClients(struct client *c, int64_t now) {
             exit(1);
         }
 
+        setBuffers(c);
 
         sendFiveHeartbeats(c, now);
     }
@@ -1480,7 +1489,13 @@ static int flushClient(struct client *c, int64_t now) {
         return 0;
     }
 
-    int bytesWritten = send(c->fd, c->sendq, toWrite, 0);
+    int writeBytes = toWrite;
+    // limit writes to half of the send q so we can make progress when the sendq is rather full and
+    // the OS buffers won't accept everything in the sendq at once
+    writeBytes = imin(writeBytes, c->sendq_max / 2);
+    // sends larger than 64KB don't speed things up and could cause issues
+    writeBytes = imin(writeBytes, 64 * 1024);
+    int bytesWritten = send(c->fd, c->sendq, writeBytes, 0);
     int err = errno;
 
     // If we get -1, it's only fatal if it's not EAGAIN/EWOULDBLOCK
@@ -1501,7 +1516,7 @@ static int flushClient(struct client *c, int64_t now) {
         modesCloseClient(c);
         return -1;
     }
-    if (bytesWritten < toWrite && Modes.debug_flush) {
+    if (bytesWritten < writeBytes && Modes.debug_flush) {
 
         fprintTimePrecise(stderr, now);
         fprintf(stderr, " %s: send wrote: %d/%d bytes (%s port %s fd %d, SendQ %d)\n", c->service->descr, bytesWritten, toWrite, c->host, c->port, c->fd, c->sendq_len);
@@ -1534,7 +1549,7 @@ static int flushClient(struct client *c, int64_t now) {
 
     // If we haven't been able to empty the buffer for longer than 8 * flush_interval, disconnect.
     // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
-    int64_t flushTimeout = imax(1 * SECONDS, 8 * Modes.net_output_flush_interval);
+    int64_t flushTimeout = imax(2 * SECONDS, 8 * Modes.net_output_flush_interval);
     if (now - c->last_flush > flushTimeout && now - c->connectedSince > 10 * SECONDS) {
         fprintf(stderr, "%s: Couldn't flush data for %.2fs (Insufficient bandwidth?): disconnecting: %s port %s (fd %d, SendQ %d)\n", c->service->descr, flushTimeout / 1000.0, c->host, c->port, c->fd, c->sendq_len);
         modesCloseClient(c);
@@ -1608,7 +1623,7 @@ static void *prepareWrite(struct net_writer *writer, int len) {
 
     if (writer->dataUsed && writer->dataUsed + len >= Modes.net_output_flush_size) {
         flushWrites(writer);
-        if (writer->dataUsed + len > MODES_OUT_BUF_SIZE) {
+        if (writer->dataUsed + len > Modes.writerBufSize) {
             // this shouldn't happen due to flushWrites only writing to internal client buffers
             fprintf(stderr, "prepareWrite: not enough space in writer buffer, requested len: %d\n", len);
             return NULL;
@@ -3494,7 +3509,7 @@ void jsonPositionOutput(struct modesMessage *mm, struct aircraft *a) {
 void sendData(struct net_writer *output, char *data, int len) {
     char *p;
 
-    int buflen = MODES_OUT_BUF_SIZE;
+    int buflen = Modes.writerBufSize;
 
     while (len > 0) {
         p = prepareWrite(output, buflen);
@@ -5637,7 +5652,7 @@ void writeJsonToNet(struct net_writer *writer, struct char_buffer cb) {
     int written = 0;
     char *content = cb.buffer;
     char *pos;
-    int bytes = MODES_OUT_BUF_SIZE;
+    int bytes = Modes.writerBufSize;
 
     char *p = prepareWrite(writer, bytes);
     if (!p) {

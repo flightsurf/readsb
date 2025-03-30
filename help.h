@@ -159,7 +159,7 @@ static struct argp_option optionsReadsb[] = {
     {"net-ro-interval-beast-reduce", OptNetRoIntervalBeastReduce, "<seconds>", 0, "TCP output flush interval in seconds for beast-reduce outputs (default: value from --net-ro-interval, valid values 0.0 - 1.0)", 2},
     {"net-connector-delay", OptNetConnectorDelay, "<seconds>", 0, "Outbound re-connection delay (default: 15)", 2},
     {"net-heartbeat", OptNetHeartbeat, "<rate>", 0, "TCP heartbeat rate in seconds (default: 60 sec; 0 to disable)", 2},
-    {"net-buffer", OptNetBuffer, "<n>", 0, "TCP buffer size 64Kb * (2^n) (default: n=2, 256Kb)", 2},
+    {"net-buffer", OptNetBuffer, "<n>", 0, "control some buffer sizes: 8KB * (2^n) (default: n=1, 16KB)", 2},
     {"net-verbatim", OptNetVerbatim, 0, 0, "Forward messages unchanged", 2},
     {"sdr-buffer-size", OptSdrBufSize, "<KiB>", 0, "SDR buffer / USB transfer size in kibibytes (default: 256 which is equivalent to around 54 ms using rtl-sdr, option might be ignored in future versions)", 2},
 #ifdef ENABLE_RTLSDR

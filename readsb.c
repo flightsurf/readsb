@@ -153,7 +153,8 @@ static void configSetDefaults(void) {
     Modes.nfix_crc = 1;
     Modes.biastee = 0;
     Modes.position_persistence = 4;
-    Modes.net_sndbuf_size = 2; // Default to 256 kB SNDBUF / RCVBUF
+    Modes.tcpBuffersAuto = 1;
+    Modes.net_sndbuf_size = 1;
     Modes.net_output_flush_size = 1280; // Default to 1280 Bytes
     Modes.net_output_flush_interval = 50; // Default to 50 ms
     Modes.net_output_flush_interval_beast_reduce = -1; // default to net_output_flush_interval after config parse if not configured
@@ -1966,6 +1967,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case OptNetBuffer:
             Modes.net_sndbuf_size = atoi(arg);
             break;
+        case OptTcpBuffersAuto:
+            Modes.tcpBuffersAuto = 1;
+            break;
         case OptNetVerbatim:
             Modes.net_verbatim = 1;
             break;
@@ -1975,6 +1979,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case OptNetReceiverId:
             Modes.netReceiverId = 1;
             Modes.ping = 1;
+            Modes.tcpBuffersAuto = 1;
             break;
         case OptNetReceiverIdJson:
             Modes.netReceiverIdJson = 1;
@@ -2493,14 +2498,12 @@ static void configAfterParse() {
                 Modes.position_persistence);
     }
 
-    Modes.net_output_flush_size -= 8; // allow for sending 8 byte timestamp in some cases, unfortunate hack
-
-    if (Modes.net_output_flush_size > (MODES_OUT_BUF_SIZE)) {
-        Modes.net_output_flush_size = MODES_OUT_BUF_SIZE;
-    }
     if (Modes.net_output_flush_size < 750) {
         Modes.net_output_flush_size = 750;
     }
+    // add some room vs output flush size just in case
+    Modes.writerBufSize = imin(16 * 1024, Modes.net_output_flush_size + 1024);
+
     if (Modes.net_output_flush_interval > (MODES_OUT_FLUSH_INTERVAL)) {
         Modes.net_output_flush_interval = MODES_OUT_FLUSH_INTERVAL;
     }
@@ -2520,7 +2523,14 @@ static void configAfterParse() {
 
 
     if (Modes.net_sndbuf_size > (MODES_NET_SNDBUF_MAX)) {
+        fprintf(stderr, "automatically clamping --net-buffer to 7 which is %d bytes\n", MODES_NET_SNDBUF_SIZE << MODES_NET_SNDBUF_MAX);
         Modes.net_sndbuf_size = MODES_NET_SNDBUF_MAX;
+    }
+
+    Modes.netBufSize = MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size;
+    if (4 * Modes.net_output_flush_size > Modes.netBufSize) {
+        fprintf(stderr, "automatically increasing net buffer size due to large --ro-size setting\n");
+        Modes.netBufSize = 4 * Modes.net_output_flush_size;
     }
 
     if (Modes.net_connector_delay <= 50) {
