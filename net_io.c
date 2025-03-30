@@ -348,8 +348,6 @@ static struct client *createSocketClient(struct net_service *service, int fd, ch
             fprintf(stderr, "Out of memory allocating client SendQ\n");
             exit(1);
         }
-        // Have to keep track of this manually
-        service->writer->lastReceiverId = 0; // make sure to resend receiverId
 
         service->writer->connections++;
     }
@@ -1550,6 +1548,7 @@ static void flushWrites(struct net_writer *writer) {
             // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
             if ((c->sendq_len + writer->dataUsed) >= c->sendq_max) {
                 if (now - c->connectedSince < 10 * SECONDS) {
+                    c->dropHalfUntil = now + 2 * SECONDS;
                     fprintf(stderr, "%s: Discarding full SendQ: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
                             c->service->descr, c->host, c->port,
                             c->fd, c->sendq_len, c->buflen);
@@ -1564,9 +1563,15 @@ static void flushWrites(struct net_writer *writer) {
                 modesCloseClient(c);
                 continue;	// Go to the next client
             }
-            // Append the data to the end of the queue, increment len
-            memcpy(c->sendq + c->sendq_len, writer->data, writer->dataUsed);
-            c->sendq_len += writer->dataUsed;
+
+            c->dropHalfDroppedLast = !c->dropHalfDroppedLast;
+            if (c->dropHalfUntil > now && !c->dropHalfDroppedLast) {
+                // drop this chunk of data
+            } else {
+                // Append the data to the end of the queue, increment len
+                memcpy(c->sendq + c->sendq_len, writer->data, writer->dataUsed);
+                c->sendq_len += writer->dataUsed;
+            }
             // Try flushing...
             if (flushClient(c, now) < 0) {
                 continue;
@@ -1576,6 +1581,7 @@ static void flushWrites(struct net_writer *writer) {
             }
         }
     }
+    writer->lastReceiverId = 0; // unconditionally emit receiver id on start of new "packet"
     writer->dataUsed = 0;
     writer->lastWrite = now;
     return;
@@ -3817,17 +3823,17 @@ static int handleBeastCommand(struct client *c, char *p, int remote, int64_t now
         autoset_modeac();
     } else if (p[0] == 'W') {
         switch (p[1]) {
-            // reduce data rate, double beast reduce interval for 30 seconds
             case 'S':
                 {
-                    static int64_t antiSpam;
-                    // only log this at most every 10 minutes and only if it's already active
-                    if (now < Modes.doubleBeastReduceIntervalUntil && now > antiSpam) {
-                        antiSpam = now + 600 * SECONDS;
-                        fprintf(stderr, "%s: High latency, reducing data usage temporarily. (%s port %s)\n", c->service->descr, c->host, c->port);
+                    if (now > c->dropHalfAntiSpam) {
+                        // only log this at most every 5 minutes
+                        c->dropHalfAntiSpam = now + 5 * MINUTES;
+                        fprintf(stderr, "%s: High latency, dropping every 2nd packet for this connection. "
+                                "(%s port %s) (this message will be suppressed for 5 minutes for this connection)\n",
+                                c->service->descr, c->host, c->port);
                     }
                 }
-                Modes.doubleBeastReduceIntervalUntil = now + PING_REDUCE_DURATION;
+                c->dropHalfUntil = now + PING_REDUCE_DURATION;
                 break;
         }
     }

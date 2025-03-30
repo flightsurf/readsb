@@ -110,6 +110,8 @@ struct client
     int8_t modeac_requested; // 1 if this Beast output connection has asked for A/C
     int8_t receiverIdLocked; // receiverId has been transmitted by other side.
     int8_t unreasonable_messagerate;
+    int8_t dropHalfDroppedLast;
+    int64_t dropHalfUntil;
     char *sendq;  // Write buffer - allocated later
     int sendq_len; // Amount of data in SendQ
     int sendq_max; // Max size of SendQ
@@ -143,6 +145,7 @@ struct client
     char proxy_string[256]; // store string received from PROXY protocol v1 (v2 not supported currently)
     char host[NI_MAXHOST]; // For logging
     char port[NI_MAXSERV];
+    int64_t dropHalfAntiSpam;
 };
 
 // Client connection

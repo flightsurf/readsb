@@ -122,7 +122,8 @@ static void calculateMessageRate(struct aircraft *a, int64_t now) {
 // If so, update the validity and return 1
 
 static int32_t currentReduceInterval(int64_t now) {
-    return Modes.net_output_beast_reduce_interval * (1 + (Modes.doubleBeastReduceIntervalUntil > now));
+    MODES_NOTUSED(now);
+    return Modes.net_output_beast_reduce_interval;
 }
 
 static inline int will_accept_data(data_validity *d, datasource_t source, struct modesMessage *mm, struct aircraft *a) {
