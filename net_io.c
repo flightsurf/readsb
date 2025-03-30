@@ -1470,11 +1470,11 @@ static int pongReceived(struct client *c, int64_t now) {
 }
 
 static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
-    if (now > c->dropHalfAntiSpam) {
+    if (now > c->dropHalfAntiSpam && now - c->connectedSince > 15 * SECONDS) {
         // only log this at most every 5 minutes
         c->dropHalfAntiSpam = now + 5 * MINUTES;
-        fprintf(stderr, "%s: High latency or insufficient bandwidth, dropping every 2nd packet for this connection. "
-                "(%s port %s) (this message will be suppressed for 5 minutes for this connection)\n",
+        fprintf(stderr, "%s %s port %s: High latency or insufficient bandwidth"
+                ", dropping every 2nd packet (suppressing msg for 5 min)\n",
                 c->service->descr, c->host, c->port);
     }
     c->dropHalfUntil = until;
@@ -1571,10 +1571,12 @@ static void flushWrites(struct net_writer *writer) {
             }
             // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
             if ((c->sendq_len + writer->dataUsed) >= c->sendq_max) {
-                if (now - c->connectedSince < 10 * SECONDS) {
-                    fprintf(stderr, "%s: Discarding full SendQ: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
-                            c->service->descr, c->host, c->port,
-                            c->fd, c->sendq_len, c->buflen);
+                if (now - c->connectedSince < 15 * SECONDS) {
+                    if (Modes.debug_flush) {
+                        fprintf(stderr, "%s: Discarding full SendQ: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
+                                c->service->descr, c->host, c->port,
+                                c->fd, c->sendq_len, c->buflen);
+                    }
                     c->sendq_len = 0;
                     flushClient(c, now);
                     continue;
