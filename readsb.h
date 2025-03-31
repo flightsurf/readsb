@@ -896,9 +896,6 @@ struct _Modes
 
     struct statsCount globalStatsCount;
 
-    // array for thread numbers
-    ALIGNED int threadNumber[256];
-
     int lastRangeDirHour;
     ALIGNED struct distCoords rangeDirs[RANGEDIRS_IVALS][RANGEDIRS_BUCKETS];
 

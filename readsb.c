@@ -112,10 +112,6 @@ static void configSetDefaults(void) {
     // Default everything to zero/NULL
     memset(&Modes, 0, sizeof (Modes));
 
-    for (int i = 0; i < 256; i++) {
-        Modes.threadNumber[i] = i;
-    }
-
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain = MODES_MAX_GAIN;
 
