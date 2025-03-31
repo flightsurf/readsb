@@ -284,8 +284,11 @@ static void modesInit(void) {
     Modes.allTasks = allocate_task_group(2 * Modes.allPoolSize);
     Modes.allPool = threadpool_create(Modes.allPoolSize, 4);
 
-    for (int i = 0; i <= GLOBE_MAX_INDEX; i++) {
-        ca_init(&Modes.globeLists[i]);
+    if (Modes.json_globe_index) {
+        Modes.globeLists = cmCalloc(sizeof(struct craftArray) * (GLOBE_MAX_INDEX + 1));
+        for (int i = 0; i <= GLOBE_MAX_INDEX; i++) {
+            ca_init(&Modes.globeLists[i]);
+        }
     }
     ca_init(&Modes.aircraftActive);
 
@@ -1410,14 +1413,17 @@ static void cleanup_and_exit(int code) {
 
     receiverCleanup();
 
-    for (int i = 0; i <= GLOBE_MAX_INDEX; i++) {
-        ca_destroy(&Modes.globeLists[i]);
+    if (Modes.json_globe_index) {
+        for (int i = 0; i <= GLOBE_MAX_INDEX; i++) {
+            ca_destroy(&Modes.globeLists[i]);
+        }
     }
     ca_destroy(&Modes.aircraftActive);
 
     icaoFilterDestroy();
     quickDestroy();
 
+    sfree(Modes.globeLists);
     sfree(Modes.aircraft);
 
     exit(code);
