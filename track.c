@@ -251,6 +251,9 @@ static int compare_validity(const data_validity *lhs, const data_validity *rhs) 
 }
 
 static void update_range_histogram(struct aircraft *a, int64_t now) {
+    if (!Modes.outline_json) {
+        return;
+    }
 
     double lat = a->lat;
     double lon = a->lon;
@@ -263,7 +266,7 @@ static void update_range_histogram(struct aircraft *a, int64_t now) {
     if (rangeDirIval != Modes.lastRangeDirHour) {
         //log_with_timestamp("rangeDirIval: %d", rangeDirIval);
         // when the current interval changes, reset the data for it
-        memset(Modes.rangeDirs[rangeDirIval], 0, sizeof(Modes.rangeDirs[rangeDirIval]));
+        memset(Modes.rangeDirs[rangeDirIval], 0, RANGEDIRS_BUCKETS * sizeof(struct distCoords));
         Modes.lastRangeDirHour = rangeDirIval;
     }
 

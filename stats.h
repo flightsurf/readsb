@@ -171,12 +171,17 @@ struct statsCount {
     int rssi_table_alloc;
 };
 
+#define RANGEDIRS_BUCKETS 360
+#define RANGEDIRS_IVALS 64
+
 struct distCoords {
     float distance;
     float lat;
     float lon;
     int32_t alt;
 } __attribute__ ((__packed__));
+
+#define RANGEDIRSSIZE (RANGEDIRS_IVALS * RANGEDIRS_BUCKETS * sizeof(struct distCoords))
 
 void add_stats (const struct stats *st1, const struct stats *st2, struct stats *target);
 void display_stats (struct stats *st);

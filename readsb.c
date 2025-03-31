@@ -318,6 +318,10 @@ static void modesInit(void) {
     }
 
     quickInit();
+
+    if (Modes.outline_json) {
+        Modes.rangeDirs = cmCalloc(RANGEDIRSSIZE);
+    }
 }
 
 static void lockThreads() {
@@ -1388,6 +1392,9 @@ static void cleanup_and_exit(int code) {
     sfree(Modes.db);
     sfree(Modes.latString);
     sfree(Modes.lonString);
+
+    sfree(Modes.rangeDirs);
+
 
     int i;
     for (i = 0; i < MODES_MAG_BUFFERS; ++i) {
@@ -2666,7 +2673,7 @@ static void checkReplaceState() {
 }
 
 static void writeOutlineJson() {
-    if (!Modes.json_dir) {
+    if (!Modes.outline_json) {
         return;
     }
     free(writeJsonToFile(Modes.json_dir, "outline.json", generateOutlineJson()).buffer);
@@ -2718,9 +2725,12 @@ static void checkSetGain() {
         return;
     }
     if (strcasestr(tmp, "resetRangeOutline")) {
-        fprintf(stderr, "resetting range outline\n");
-        memset(Modes.rangeDirs, 0, sizeof(Modes.rangeDirs));
-        writeOutlineJson();
+
+        if (Modes.outline_json) {
+            fprintf(stderr, "resetting range outline\n");
+            memset(Modes.rangeDirs, 0, RANGEDIRSSIZE);
+            writeOutlineJson();
+        }
         return;
     }
 

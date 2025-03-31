@@ -411,12 +411,19 @@ static inline void *malloc_or_exit(size_t alignment, size_t size, const char *fi
     }
     return buf;
 }
+static inline void *calloc_or_exit(size_t alignment, size_t size, const char *file, int line) {
+    void *buf = malloc_or_exit(alignment, size, file, line);
+    memset(buf, 0x0, size);
+    return buf;
+}
 
 // disable this ... maybe it test in the future if it makes a diff if i'm bored
 #if 0
 #define cmalloc(size) malloc_or_exit(MemoryAlignment, size, __FILE__, __LINE__)
+#define cmCalloc(size) calloc_or_exit(MemoryAlignment, size, __FILE__, __LINE__)
 #else
 #define cmalloc(size) malloc_or_exit(0, size, __FILE__, __LINE__)
+#define cmCalloc(size) calloc_or_exit(0, size, __FILE__, __LINE__)
 #endif
 
 // Include subheaders after all the #defines are in place
@@ -897,7 +904,7 @@ struct _Modes
     struct statsCount globalStatsCount;
 
     int lastRangeDirHour;
-    ALIGNED struct distCoords rangeDirs[RANGEDIRS_IVALS][RANGEDIRS_BUCKETS];
+    struct distCoords (*rangeDirs)[RANGEDIRS_BUCKETS];
 
     int64_t apiShutdownDelay;
 };

@@ -3482,7 +3482,7 @@ void writeRangeDirs() {
         fprintf(stderr, "gzbuffer fail");
     if (gzfp) {
         writeGz(gzfp, &Modes.lastRangeDirHour, sizeof(Modes.lastRangeDirHour), pathbuf);
-        writeGz(gzfp, Modes.rangeDirs, sizeof(Modes.rangeDirs), pathbuf);
+        writeGz(gzfp, Modes.rangeDirs, RANGEDIRSSIZE, pathbuf);
         gzclose(gzfp);
     }
 }
@@ -3505,13 +3505,13 @@ static void readInternalMiscTask(void *arg, threadpool_threadbuffers_t * buffers
         if (gzfp) {
             cb = readWholeGz(gzfp, pathbuf);
             gzclose(gzfp);
-            if (cb.len == sizeof(Modes.lastRangeDirHour) + sizeof(Modes.rangeDirs)) {
+            if (cb.len == sizeof(Modes.lastRangeDirHour) + RANGEDIRSSIZE) {
                 fprintf(stderr, "actual range outline, read bytes: %zu\n", cb.len);
 
                 char *p = cb.buffer;
                 memcpy(&Modes.lastRangeDirHour, p, sizeof(Modes.lastRangeDirHour));
                 p += sizeof(Modes.lastRangeDirHour);
-                memcpy(Modes.rangeDirs, p, sizeof(Modes.rangeDirs));
+                memcpy(Modes.rangeDirs, p, RANGEDIRSSIZE);
             }
             free(cb.buffer);
         }
