@@ -1386,6 +1386,7 @@ static void cleanup_and_exit(int code) {
     sfree(Modes.net_output_jaero_ports);
     sfree(Modes.net_output_json_ports);
     sfree(Modes.net_output_api_ports);
+    sfree(Modes.garbage_ports);
     sfree(Modes.beast_serial);
     sfree(Modes.uuidFile);
     sfree(Modes.dbIndex);
@@ -1990,6 +1991,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             Modes.netReceiverIdJson = 1;
             break;
         case OptGarbage:
+            sfree(Modes.garbage_ports);
             Modes.garbage_ports = strdup(arg);
             break;
         case OptDecodeThreads:
