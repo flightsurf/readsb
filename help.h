@@ -105,6 +105,7 @@ static struct argp_option optionsReadsb[] = {
     {"dump-beast", OptDumpBeastDir, "<dir>,<interval>,<compressionLevel>", 0, "Dump compressed beast files to this directory, start a new file evey interval seconds", 1},
     {"write-json-every", OptJsonTime, "<sec>", 0, "Write json output and update API json every sec seconds (default 1)", 1},
     {"json-location-accuracy", OptJsonLocAcc , "<n>", 0, "Accuracy of receiver location in json metadata: 0=no location, 1=approximate, 2=exact", 1},
+    {"ac-hash-bits", OptAcHashBits, "<n>", 0, "Main hash map size: 2^n entries (default: AIRCRAFT_HASH_BITS)", 1},
     {"write-json-globe-index", OptJsonGlobeIndex, 0, 0, "Write specially indexed globe_xxxx.json files (for tar1090)", 1},
     {"write-receiver-id-json", OptNetReceiverIdJson, 0, 0, "Write receivers.json", 1},
     {"json-trace-interval", OptJsonTraceInt, "<seconds>", 0, "Interval after which a new position will guaranteed to be written to the trace and the json position output (default: 30)", 1},

@@ -115,6 +115,9 @@ static void configSetDefaults(void) {
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain = MODES_MAX_GAIN;
 
+    Modes.acHashBits = AIRCRAFT_HASH_BITS;
+    Modes.acBuckets = 1 << Modes.acHashBits; // this is critical for hashing purposes
+
     Modes.freq = MODES_DEFAULT_FREQ;
     Modes.check_crc = 1;
     Modes.net_heartbeat_interval = MODES_NET_HEARTBEAT_INTERVAL;
@@ -256,6 +259,8 @@ static void modesInit(void) {
     Modes.next_stats_update = roundSeconds(10, 5, now + 10 * SECONDS);
     Modes.next_stats_display = now + Modes.stats_display_interval;
 
+    Modes.aircraft = cmCalloc(Modes.acBuckets * sizeof(struct aircraft *));
+
     pthread_mutex_init(&Modes.traceDebugMutex, NULL);
     pthread_mutex_init(&Modes.hungTimerMutex, NULL);
     pthread_mutex_init(&Modes.sdrControlMutex, NULL);
@@ -269,7 +274,7 @@ static void modesInit(void) {
     threadInit(&Threads.misc, "misc");
     threadInit(&Threads.apiUpdate, "apiUpdate");
 
-    if (Modes.json_globe_index || Modes.netReceiverId || AIRCRAFT_HASH_BITS > 16) {
+    if (Modes.json_globe_index || Modes.netReceiverId || Modes.acHashBits > 16) {
         // to keep decoding and the other threads working well, don't use all available processors
         Modes.allPoolSize = imax(1, Modes.num_procs);
     } else {
@@ -1113,8 +1118,8 @@ static void writeTraces(int64_t mono) {
     int invocations = imax(1, completeTime / PERIODIC_UPDATE);
     // how many parts we want to split the complete workload into
     int n_parts = taskCount * invocations;
-    int thread_section_len = AIRCRAFT_BUCKETS / n_parts;
-    int extra = AIRCRAFT_BUCKETS % n_parts;
+    int thread_section_len = Modes.acBuckets / n_parts;
+    int extra = Modes.acBuckets % n_parts;
 
     // only assign new task if we finished the last set of tasks
     if (lastRunFinished) {
@@ -1165,10 +1170,10 @@ static void writeTraces(int64_t mono) {
 
             part++;
 
-            //fprintf(stderr, "%8d %8d %8d\n", thread_start, thread_end, AIRCRAFT_BUCKETS);
+            //fprintf(stderr, "%8d %8d %8d\n", thread_start, thread_end, Modes.acBuckets);
 
-            if (thread_end > AIRCRAFT_BUCKETS) {
-                thread_end = AIRCRAFT_BUCKETS;
+            if (thread_end > Modes.acBuckets) {
+                thread_end = Modes.acBuckets;
                 fprintf(stderr, "check traceWriteTask distribution\n");
             }
 
@@ -1179,7 +1184,7 @@ static void writeTraces(int64_t mono) {
             task->argument = range;
 
             if (part >= n_parts) {
-                if (thread_end != AIRCRAFT_BUCKETS || i != taskCount - 1) {
+                if (thread_end != Modes.acBuckets || i != taskCount - 1) {
                     fprintf(stderr, "check traceWriteTask distribution\n");
                 }
             }
@@ -1412,6 +1417,8 @@ static void cleanup_and_exit(int code) {
 
     icaoFilterDestroy();
     quickDestroy();
+
+    sfree(Modes.aircraft);
 
     exit(code);
 }
@@ -1846,6 +1853,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
         case OptJsonTraceInt:
             Modes.json_trace_interval = (int64_t)(1000 * atof(arg));
+            break;
+        case OptAcHashBits:
+            if (atoi(arg) > 24) {
+                Modes.acHashBits = 24;
+            } else if (atoi(arg) < 8) {
+                Modes.acHashBits = 8;
+            } else {
+                Modes.acHashBits = atoi(arg);
+            }
+            Modes.acBuckets = 1 << Modes.acHashBits; // this is critical for hashing purposes
             break;
         case OptJsonGlobeIndex:
             Modes.json_globe_index = 1;

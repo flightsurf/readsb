@@ -2048,7 +2048,7 @@ struct char_buffer generateVRS(int part, int n_parts, int reduced_data) {
     size_t buflen = 256*1024; // The initial buffer is resized as needed
     char *buf = (char *) cmalloc(buflen), *p = buf, *end = buf + buflen;
     int first = 1;
-    int part_len = AIRCRAFT_BUCKETS / n_parts;
+    int part_len = Modes.acBuckets / n_parts;
     int part_start = part * part_len;
 
     //fprintf(stderr, "%02d/%02d reduced_data: %d\n", part, n_parts, reduced_data);

@@ -928,11 +928,11 @@ void statsResetCount() {
 
 void statsCountAircraft(int64_t now) {
     struct statsCount *s = &(Modes.globalStatsCount);
-    uint32_t total_aircraft_count = 0;
+    int32_t total_aircraft_count = 0;
     uint64_t trace_chunk_size = 0;
     uint64_t trace_cache_size = 0;
     uint64_t trace_current_size = 0;
-    for (int j = 0; j < AIRCRAFT_BUCKETS; j++) {
+    for (int j = 0; j < Modes.acBuckets; j++) {
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
             total_aircraft_count++;
 
@@ -997,8 +997,8 @@ void statsCountAircraft(int64_t now) {
     Modes.trace_current_size = trace_current_size;
 
     static int64_t antiSpam2;
-    if (total_aircraft_count > 2 * AIRCRAFT_BUCKETS && now > antiSpam2 + 12 * HOURS) {
-        fprintf(stderr, "<3>increase AIRCRAFT_HASH_BITS, aircraft hash table fill: %0.1f\n", total_aircraft_count / (double) AIRCRAFT_BUCKETS);
+    if (total_aircraft_count > 2 * Modes.acBuckets && now > antiSpam2 + 12 * HOURS) {
+        fprintf(stderr, "<3>increase --ac-hash-bits, aircraft hash table fill: %0.1f\n", total_aircraft_count / (double) Modes.acBuckets);
         antiSpam2 = now;
     }
 }

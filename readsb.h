@@ -310,9 +310,8 @@ typedef enum {
 #define MODES_NOTUSED(V) ((void) V)
 
 #ifndef AIRCRAFT_HASH_BITS
-#define AIRCRAFT_HASH_BITS 20
+#define AIRCRAFT_HASH_BITS 14
 #endif
-#define AIRCRAFT_BUCKETS (1 << AIRCRAFT_HASH_BITS) // this is critical for hashing purposes
 
 #define MODES_ICAO_FILTER_TTL 60000
 
@@ -592,7 +591,11 @@ struct _Modes
     ssize_t volatile state_chunk_size;
     ssize_t volatile state_chunk_size_read;
 
-    ALIGNED struct aircraft * aircraft[AIRCRAFT_BUCKETS];
+
+    int acHashBits;
+    int acBuckets;
+    struct aircraft **aircraft;
+
     ALIGNED struct craftArray globeLists[GLOBE_MAX_INDEX+1];
     int receiver_table_hash_bits;
     int receiver_table_size;
@@ -1234,6 +1237,7 @@ enum {
     OptJsonTime,
     OptJsonLocAcc,
     OptJsonGlobeIndex,
+    OptAcHashBits,
     OptJsonTraceInt,
     OptJsonTraceHistOnly,
     OptDcFilter,

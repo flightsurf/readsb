@@ -8,7 +8,7 @@ static inline uint32_t dbHash(uint32_t addr) {
 }
 
 static inline uint32_t aircraftHash(uint32_t addr) {
-    return addrHash(addr, AIRCRAFT_HASH_BITS);
+    return addrHash(addr, Modes.acHashBits);
 }
 
 #define EMPTY 0xFFFFFFFF
@@ -657,7 +657,7 @@ int dbFinishUpdate() {
     Modes.db2Raw.len = 0;
 
     /*
-    for (int j = 0; j < AIRCRAFT_BUCKETS; j++) {
+    for (int j = 0; j < Modes.acBuckets; j++) {
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
             updateTypeReg(a);
         }
@@ -666,7 +666,7 @@ int dbFinishUpdate() {
 
     int64_t now = mstime();
 
-    threadpool_distribute_and_run(Modes.allPool, Modes.allTasks, updateTypeRegRange, AIRCRAFT_BUCKETS, 0, now);
+    threadpool_distribute_and_run(Modes.allPool, Modes.allTasks, updateTypeRegRange, Modes.acBuckets, 0, now);
 
     double elapsed = stopWatch(&watch) / 1000.0;
     fprintf(stderr, "Database update done! (critical part took %.3f seconds)\n", elapsed);

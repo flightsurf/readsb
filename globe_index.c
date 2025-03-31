@@ -808,7 +808,7 @@ static void save_blobs(void *arg, threadpool_threadbuffers_t *threadbuffers) {
         save_blob(j, &threadbuffers->buffers[0], &threadbuffers->buffers[1], Modes.state_dir);
 
         if (Modes.free_aircraft) {
-            int stride = AIRCRAFT_BUCKETS / STATE_BLOBS;
+            int stride = Modes.acBuckets / STATE_BLOBS;
             int start = stride * j;
             int end = start + stride;
             free_aircraft_range(start, end);
@@ -2719,7 +2719,7 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
             fprintf(stderr, "gzsetparams fail: %d", res);
     }
 
-    int stride = AIRCRAFT_BUCKETS / STATE_BLOBS;
+    int stride = Modes.acBuckets / STATE_BLOBS;
     int start = stride * blob;
     int end = start + stride;
 
@@ -3177,7 +3177,7 @@ int handleHeatmap(int64_t now) {
 
     threadpool_buffer_t passbuffer = { 0 };
 
-    for (int j = 0; j < AIRCRAFT_BUCKETS; j++) {
+    for (int j = 0; j < Modes.acBuckets; j++) {
         checkMiscBreak();
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
             if ((a->addr & MODES_NON_ICAO_ADDRESS) && a->airground == AG_GROUND) continue;
@@ -3637,7 +3637,7 @@ void readInternalState() {
     destroy_task_group(group);
 
     int64_t aircraftCount = 0; // includes quite old aircraft, just for checking hash table fill
-    for (int j = 0; j < AIRCRAFT_BUCKETS; j++) {
+    for (int j = 0; j < Modes.acBuckets; j++) {
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
             aircraftCount++;
         }
@@ -3646,7 +3646,7 @@ void readInternalState() {
 
     double elapsed = stopWatch(&watch) / 1000.0;
     fprintf(stderr, " .......... done, loaded %llu aircraft in %.3f seconds!\n", (unsigned long long) aircraftCount, elapsed);
-    fprintf(stderr, "aircraft table fill: %0.1f\n", aircraftCount / (double) AIRCRAFT_BUCKETS );
+    fprintf(stderr, "aircraft table fill: %0.1f\n", aircraftCount / (double) Modes.acBuckets );
 }
 
 void unlinkPerm(struct aircraft *a) {

@@ -2861,7 +2861,7 @@ void trackMatchAC(int64_t now) {
 
 /*
 static void updateAircraft() {
-    for (int j = 0; j < AIRCRAFT_BUCKETS; j++) {
+    for (int j = 0; j < Modes.acBuckets; j++) {
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
         }
     }
@@ -2879,7 +2879,7 @@ static void removeStaleRange(void *arg, threadpool_threadbuffers_t * buffer_grou
     readsb_task_t *info = (readsb_task_t *) arg;
 
     int64_t now = info->now;
-    //fprintf(stderr, "%9d %9d %9d\n", info->from, info->to, AIRCRAFT_BUCKETS);
+    //fprintf(stderr, "%9d %9d %9d\n", info->from, info->to, Modes.acBuckets);
 
     // timeout for aircraft with position
     int64_t posTimeout = now - 1 * HOURS;
@@ -3054,8 +3054,8 @@ void trackRemoveStale(int64_t now) {
     static int part = 0;
     int n_parts = 32 * taskCount;
 
-    section_len = AIRCRAFT_BUCKETS / n_parts;
-    extra = AIRCRAFT_BUCKETS % n_parts;
+    section_len = Modes.acBuckets / n_parts;
+    extra = Modes.acBuckets % n_parts;
 
 
     //fprintf(stderr, "part %d\n", part);
@@ -3070,8 +3070,8 @@ void trackRemoveStale(int64_t now) {
         range->from = part * section_len + imin(extra, part);
         range->to = range->from + section_len + (part < extra ? 1 : 0);
 
-        if (range->to > AIRCRAFT_BUCKETS || (part == n_parts - 1 && range->to != AIRCRAFT_BUCKETS)) {
-            range->to = AIRCRAFT_BUCKETS;
+        if (range->to > Modes.acBuckets || (part == n_parts - 1 && range->to != Modes.acBuckets)) {
+            range->to = Modes.acBuckets;
             fprintf(stderr, "check trackRemoveStale distribution\n");
         }
 
