@@ -766,9 +766,13 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
     return cb;
 }
 
-static inline void apiAdd(struct apiBuffer *buffer, struct aircraft *a, int64_t now) {
+static inline int apiAdd(struct apiBuffer *buffer, struct aircraft *a, int64_t now) {
     if (!(includeAircraftJson(now, a)))
-        return;
+        return 0;
+
+    if (buffer->len >= buffer->alloc) {
+        return -1;
+    }
 
     struct apiEntry *entry = &(buffer->list[buffer->len]);
     memset(entry, 0, sizeof(struct apiEntry));
@@ -791,6 +795,8 @@ static inline void apiAdd(struct apiBuffer *buffer, struct aircraft *a, int64_t 
     entry->globe_index = a->globe_index;
 
     buffer->len++;
+
+    return 1;
 }
 
 static inline void apiGenerateJson(struct apiBuffer *buffer, int64_t now) {
@@ -902,7 +908,11 @@ static int apiUpdate() {
         if (a == NULL)
             continue;
 
-        apiAdd(buffer, a, now);
+        int res = apiAdd(buffer, a, now);;
+        if (res == -1) {
+            fprintf(stderr, "transitory: skipping a couple of aircraft for api / json due to insufficient buffer\n");
+            break;
+        }
     }
     ca_unlock_read(ca);
 
