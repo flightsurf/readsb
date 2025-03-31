@@ -317,7 +317,9 @@ static void modesInit(void) {
 
     icaoFilterAdd(Modes.show_only);
 
-    init_globe_index();
+    if (Modes.json_globe_index) {
+        init_globe_index();
+    }
 
     quickInit();
 }

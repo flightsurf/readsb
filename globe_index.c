@@ -365,6 +365,9 @@ void cleanup_globe_index() {
 }
 
 int globe_index(double lat_in, double lon_in) {
+    if (!Modes.json_globe_index) {
+        return -5;
+    }
     int grid = GLOBE_INDEX_GRID;
     int lat = grid * ((int) ((lat_in + 90) / grid)) - 90;
     int lon = grid * ((int) ((lon_in + 180) / grid)) - 180;
