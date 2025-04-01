@@ -344,8 +344,8 @@ static struct client *createSocketClient(struct net_service *service, int fd, ch
     //fprintf(stderr, "c->receiverId: %016"PRIx64"\n", c->receiverId);
 
     c->bufmax = Modes.netBufSize;
-    if (service->sendqOverrideSize) {
-        c->bufmax = service->sendqOverrideSize;
+    if (service->recvqOverrideSize) {
+        c->bufmax = service->recvqOverrideSize;
     }
 
     c->buf = cmalloc(c->bufmax);
@@ -1052,7 +1052,7 @@ void modesInitNet(void) {
     Modes.beast_in_service = serviceInit(&Modes.services_in, "Beast TCP input", &Modes.beast_in, no_heartbeat, beast_heartbeat, READ_MODE_BEAST, NULL, decodeBinMessage);
     if (Modes.netIngest) {
         Modes.beast_in_service->sendqOverrideSize = 2 * 1024;
-        Modes.beast_in_service->recvqOverrideSize = 8 * 1024;
+        Modes.beast_in_service->recvqOverrideSize = 4 * 1024;
         // --net-buffer won't increase receive buffer for ingest server to avoid running out of memory using lots of connections
     }
     serviceListen(Modes.beast_in_service, Modes.net_bind_address, Modes.net_input_beast_ports, Modes.net_epfd);
@@ -1520,7 +1520,7 @@ static int flushClient(struct client *c, int64_t now) {
         modesCloseClient(c);
         return -1;
     }
-    if (0 && bytesWritten < toWrite && Modes.debug_flush) {
+    if (bytesWritten < toWrite && Modes.debug_flush) {
         fprintTimePrecise(stderr, now);
         fprintf(stderr, " %s: send wrote: %d/%d bytes (%s port %s fd %d, SendQ %d)\n", c->service->descr, bytesWritten, toWrite, c->host, c->port, c->fd, c->sendq_len);
     }
@@ -1571,7 +1571,10 @@ static void flushWrites(struct net_writer *writer) {
         return;
     }
     int64_t now = mstime();
-    //fprintTimePrecise(stderr, now); fprintf(stderr, "flushing %s %5d bytes\n", writer->service->descr, writer->dataUsed);
+    if (0 && Modes.debug_flush) {
+        fprintTimePrecise(stderr, now);
+        fprintf(stderr, " %s: flushWrites %5d bytes\n", writer->service->descr, writer->dataUsed);
+    }
     for (struct client *c = writer->service->clients; c; c = c->next) {
         if (!c->service)
             continue;
@@ -1579,7 +1582,6 @@ static void flushWrites(struct net_writer *writer) {
             if (c->pingEnabled) {
                 pong(c, now);
             }
-            // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
             if ((c->sendq_len + writer->dataUsed) > c->sendq_max) {
                 //&& now - c->connectedSince > 15 * SECONDS) {
                 if (now > c->discardSendAntiSpam) {
@@ -1632,11 +1634,12 @@ static void *prepareWrite(struct net_writer *writer, int len) {
         return NULL;
     }
 
-    if (writer->dataUsed && writer->dataUsed + len >= Modes.net_output_flush_size) {
+    if (writer->dataUsed && writer->dataUsed + len > Modes.net_output_flush_size) {
         flushWrites(writer);
     }
     if (writer->dataUsed + len > Modes.writerBufSize) {
-        // this shouldn't happen due to flushWrites only writing to internal client buffers
+        // this shouldn't happen, flushWrites never fails and writerBufSize
+        // must be larger than the output_flush_size
         fprintf(stderr, "%s: prepareWrite: not enough space in writer buffer, requested len: %d, already in buffer: %d\n", writer->service->descr, len, writer->dataUsed);
         return NULL;
     }
@@ -1651,7 +1654,10 @@ static void *prepareWrite(struct net_writer *writer, int len) {
 static void completeWrite(struct net_writer *writer, void *endptr) {
     if (writer->dataUsed == 0 && endptr - writer->data > 0) {
         int64_t now = mstime();
-        //fprintTimePrecise(stderr, now); fprintf(stderr, "completeWrite starting packet for %s\n", writer->service->descr);
+        if (0 && Modes.debug_flush) {
+            fprintTimePrecise(stderr, now);
+            fprintf(stderr, " completeWrite starting packet for %s\n", writer->service->descr);
+        }
         writer->nextFlush = now + writer->flushInterval;
     }
 

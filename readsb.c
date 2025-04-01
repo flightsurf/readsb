@@ -2556,9 +2556,11 @@ static void configAfterParse() {
 
     Modes.netBufSize = MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size;
 
-    // 8k minimum needed for json position output
+    // make the buffer large enough to hold the output flush size easily
+    // make it at least 8k so there is no issues even when one message is rather large
     Modes.writerBufSize = imax(8 * 1024, Modes.net_output_flush_size * 2);
 
+    // the net buffer needs to be large enough to hold the writer buffer
     if (Modes.writerBufSize > Modes.netBufSize) {
         Modes.netBufSize = Modes.writerBufSize;
     }
