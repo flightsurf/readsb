@@ -550,8 +550,11 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
     }
 
     if (!con->try_addr)  {
-        // don't resolve too often
-        if ((!con->addr_info || now - con->lastResolve > 2 * Modes.net_connector_delay) && !con->gai_request_in_progress)  {
+        // if ((!con->addr_info || now - con->lastResolve > 2 * Modes.net_connector_delay) && !con->gai_request_in_progress)  {
+        // keeping a DNS reply for any length of time without knowing lifetime is a bad idea
+        // cause issues with recreating docker containers and connecting to the wrong container due
+        // to the caching of the address info
+        if (!con->gai_request_in_progress)  {
             // launch a pthread for async getaddrinfo
             if (con->addr_info) {
                 freeaddrinfo(con->addr_info);
