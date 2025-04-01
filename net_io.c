@@ -1535,14 +1535,6 @@ static int flushClient(struct client *c, int64_t now) {
         toWrite -= bytesWritten;
         c->sendq_len -= bytesWritten;
 
-        c->bytesSent += bytesWritten;
-
-        if (0) {
-            double lostPercent = 100.0 - (double) c->bytesSent / (double) c->bytesFromWriter * 100.0;
-            fprintf(stderr, "%s: %s port %s: lost %4.1f%% of data, bytesWritten %d\n",
-                    c->service->descr, c->host, c->port, lostPercent, bytesWritten);
-        }
-
         c->last_send = now;	// If we wrote anything, update this.
         if (toWrite == 0) {
             c->last_flush = now;
@@ -1625,6 +1617,13 @@ static void flushWrites(struct net_writer *writer) {
                 // Append the data to the end of the queue, increment len
                 memcpy(c->sendq + c->sendq_len, writer->data, writer->dataUsed);
                 c->sendq_len += writer->dataUsed;
+                c->bytesSent += writer->dataUsed;
+
+                if (0) {
+                    double lostPercent = 100.0 - (double) c->bytesSent / (double) c->bytesFromWriter * 100.0;
+                    fprintf(stderr, "%s: %s port %s: lost %4.1f%% of data\n",
+                            c->service->descr, c->host, c->port, lostPercent);
+                }
             }
             if (c->dropHalfUntil > now) {
                 c->dropHalfDrop = !c->dropHalfDrop;
