@@ -1471,7 +1471,10 @@ static int pongReceived(struct client *c, int64_t now) {
 
 static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
 
-    if (now > c->dropHalfAntiSpam && now - c->connectedSince > 10 * SECONDS) {
+    if (
+            now > c->dropHalfAntiSpam
+            && (now - c->connectedSince > 10 * SECONDS || Modes.debug_net || Modes.debug_flush)
+       ) {
         int suppress;
         if (Modes.debug_flush) {
             suppress = 2;
@@ -1522,7 +1525,7 @@ static int flushClient(struct client *c, int64_t now) {
         modesCloseClient(c);
         return -1;
     }
-    if (bytesWritten < toWrite && Modes.debug_flush) {
+    if (0 && bytesWritten < toWrite && Modes.debug_flush) {
         fprintTimePrecise(stderr, now);
         fprintf(stderr, " %s: send wrote: %d/%d bytes (%s port %s fd %d, SendQ %d)\n", c->service->descr, bytesWritten, toWrite, c->host, c->port, c->fd, c->sendq_len);
     }
