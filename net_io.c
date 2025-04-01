@@ -1485,8 +1485,8 @@ static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
         }
         c->dropHalfAntiSpam = now + suppress * SECONDS;
         double lostPercent = 100.0 - (double) c->bytesSent / (double) c->bytesFromWriter * 100.0;
-        fprintf(stderr, "%s: %s port %s: High latency or insufficient bandwidth"
-                ", dropping data to compensate (this con lost %4.1f%% of data) (suppressing msg for %d sec)\n",
+        fprintf(stderr, "%s: %s port %s: Bad connection, dropping data"
+                " (connection lost %4.1f%% of data) (suppress msg for %d s)\n",
                 c->service->descr, c->host, c->port, lostPercent, suppress);
     }
     c->dropHalfUntil = until;
