@@ -2556,9 +2556,8 @@ static void configAfterParse() {
 
     Modes.netBufSize = MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size;
 
-    // add some room vs output flush size just in case
-    // 8 k needed for json position output
-    Modes.writerBufSize = imax(8 * 1024, Modes.net_output_flush_size + 1024);
+    // 8k minimum needed for json position output
+    Modes.writerBufSize = imax(8 * 1024, Modes.net_output_flush_size * 2);
 
     if (Modes.writerBufSize > Modes.netBufSize) {
         Modes.netBufSize = Modes.writerBufSize;

@@ -2464,10 +2464,10 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
 static void modesSendAsterixOutput(struct modesMessage *mm, struct net_writer *writer) {
     int64_t now = mstime();
     uint8_t category;
-    unsigned char bytes[Modes.net_output_flush_size * 2];
-    for (int i = 0; i < Modes.net_output_flush_size * 2; i++){
-        bytes[i] = 0;
-    }
+
+    unsigned char bytes[3 * 128];
+    memset(bytes, 0x0, 3 * 128);
+
     uint8_t fspec[7];
     for (size_t i = 0; i < 7; i++)
     {
@@ -2972,6 +2972,10 @@ static void modesSendAsterixOutput(struct modesMessage *mm, struct net_writer *w
                 fspec[i] |= 1;
                 fspec_len++;
             }
+        }
+
+        if (p > 2 * 128) {
+            fprintf(stderr, "ERROR: REPORT THIS BUG: asterix byte len too large: %d\n", p);
         }
 
         uint16_t msgLen = p + 3 + fspec_len;
