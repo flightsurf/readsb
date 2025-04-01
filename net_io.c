@@ -1513,7 +1513,7 @@ static int flushClient(struct client *c, int64_t now) {
         }
     }
     if (bytesWritten < toWrite) {
-        dropHalfUntil(now, c, now + 1 * SECONDS);
+        dropHalfUntil(now, c, now + 2 * SECONDS);
     }
     if (bytesWritten > toWrite) {
         fprintf(stderr, "%s: send() weirdness: bytesWritten > toWrite: %s: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
@@ -1603,31 +1603,20 @@ static void flushWrites(struct net_writer *writer) {
                 pong(c, now);
             }
 
-            c->bytesFromWriter += writer->dataUsed;
-
-            if ((c->sendq_len + writer->dataUsed) > c->sendq_max) {
-                //&& now - c->connectedSince > 15 * SECONDS) {
-                if (now > c->discardSendAntiSpam) {
-                    int suppress;
-                    if (Modes.debug_flush) {
-                        suppress = 0;
-                    } else if (Modes.debug_net) {
-                        suppress = 10;
-                    } else {
-                        suppress = 120;
-                    }
-                    c->discardSendAntiSpam = now + suppress * SECONDS;
-                    fprintf(stderr, "%s: %s port %s: Discarding full SendQ: %d write: %d) (suppressing for %d seconds)\n",
-                            c->service->descr, c->host, c->port,
-                            c->sendq_len, writer->dataUsed, suppress);
-                }
-                c->sendq_len = 0;
-                if (writer->dataUsed > c->sendq_max) {
-                    fprintf(stderr, "%s: ERROR: dataUsed > sendq_max: report this bug!\n", c->service->descr);
-                }
+            if (writer->dataUsed > c->sendq_max) {
+                fprintf(stderr, "%s: ERROR: dataUsed > sendq_max: report this bug!\n", c->service->descr);
+                continue;
             }
 
-            if (c->dropHalfUntil > now && c->dropHalfDrop) {
+            c->bytesFromWriter += writer->dataUsed;
+
+            int bufferInsufficient = (c->sendq_len + writer->dataUsed > c->sendq_max);
+
+            if (bufferInsufficient) {
+                dropHalfUntil(now, c, now + 2 * SECONDS);
+            }
+
+            if ((c->dropHalfUntil > now && c->dropHalfDrop) || bufferInsufficient) {
                 // drop this chunk of data
             } else {
                 // Append the data to the end of the queue, increment len
