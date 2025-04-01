@@ -110,7 +110,7 @@ struct client
     int8_t modeac_requested; // 1 if this Beast output connection has asked for A/C
     int8_t receiverIdLocked; // receiverId has been transmitted by other side.
     int8_t unreasonable_messagerate;
-    int8_t dropHalfDroppedLast;
+    int8_t dropHalfDrop;
     int64_t dropHalfUntil;
     char *sendq;  // Write buffer - allocated later
     int sendq_len; // Amount of data in SendQ
@@ -121,6 +121,8 @@ struct client
     int64_t recentMessagesReset;
     int64_t pingReceived;
     int64_t pongReceived;
+    uint64_t bytesSent;
+    uint64_t bytesFromWriter;
     uint64_t bytesReceived;
     uint64_t receiverId;
     uint64_t receiverId2;

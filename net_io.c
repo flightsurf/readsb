@@ -1471,7 +1471,7 @@ static int pongReceived(struct client *c, int64_t now) {
 
 static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
 
-    if (now > c->dropHalfAntiSpam) {
+    if (now > c->dropHalfAntiSpam && now - c->connectedSince > 10 * SECONDS) {
         int suppress;
         if (Modes.debug_flush) {
             suppress = 2;
@@ -1481,11 +1481,13 @@ static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
             suppress = 120;
         }
         c->dropHalfAntiSpam = now + suppress * SECONDS;
+        double lostPercent = 100.0 - (double) c->bytesSent / (double) c->bytesFromWriter * 100.0;
         fprintf(stderr, "%s: %s port %s: High latency or insufficient bandwidth"
-                ", dropping every 2nd packet (suppressing msg for %d sec)\n",
-                c->service->descr, c->host, c->port, suppress);
+                ", dropping data to compensate (this con lost %4.1f%% of data) (suppressing msg for %d sec)\n",
+                c->service->descr, c->host, c->port, lostPercent, suppress);
     }
     c->dropHalfUntil = until;
+    c->dropHalfDrop = 1;
 }
 
 static int flushClient(struct client *c, int64_t now) {
@@ -1530,6 +1532,14 @@ static int flushClient(struct client *c, int64_t now) {
         toWrite -= bytesWritten;
         c->sendq_len -= bytesWritten;
 
+        c->bytesSent += bytesWritten;
+
+        if (0) {
+            double lostPercent = 100.0 - (double) c->bytesSent / (double) c->bytesFromWriter * 100.0;
+            fprintf(stderr, "%s: %s port %s: lost %4.1f%% of data, bytesWritten %d\n",
+                    c->service->descr, c->host, c->port, lostPercent, bytesWritten);
+        }
+
         c->last_send = now;	// If we wrote anything, update this.
         if (toWrite == 0) {
             c->last_flush = now;
@@ -1550,14 +1560,24 @@ static int flushClient(struct client *c, int64_t now) {
             perror("epoll_ctl fail:");
     }
 
-    // If we haven't been able to empty the buffer for longer than 8 * flush_interval, disconnect.
-    // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
-    int64_t flushTimeout = imax(2 * SECONDS, 8 * Modes.net_output_flush_interval);
-    if (now - c->last_flush > flushTimeout && now - c->connectedSince > 10 * SECONDS) {
-        fprintf(stderr, "%s: Couldn't flush data for %.2fs (Insufficient bandwidth?): disconnecting: %s port %s (fd %d, SendQ %d)\n", c->service->descr, flushTimeout / 1000.0, c->host, c->port, c->fd, c->sendq_len);
+    // if we haven't been able to send any data on this connection for 2 seconds, drop it
+    int64_t sendTimeout = 5 * SECONDS;
+    if (now - c->last_send > sendTimeout && now - c->connectedSince > 15 * SECONDS) {
+        fprintf(stderr, "%s: Couldn't send any data for %.2fs (Insufficient bandwidth?): disconnecting: %s port %s (fd %d, SendQ %d)\n", c->service->descr, sendTimeout / 1000.0, c->host, c->port, c->fd, c->sendq_len);
         modesCloseClient(c);
         return -1;
     }
+    if (0) {
+        // If we haven't been able to empty the buffer for longer than 8 * flush_interval, disconnect.
+        // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
+        int64_t flushTimeout = imax(2 * SECONDS, 8 * Modes.net_output_flush_interval);
+        if (now - c->last_flush > flushTimeout && now - c->connectedSince > 10 * SECONDS) {
+            fprintf(stderr, "%s: Couldn't flush data for %.2fs (Insufficient bandwidth?): disconnecting: %s port %s (fd %d, SendQ %d)\n", c->service->descr, flushTimeout / 1000.0, c->host, c->port, c->fd, c->sendq_len);
+            modesCloseClient(c);
+            return -1;
+        }
+    }
+
     return bytesWritten;
 }
 
@@ -1582,6 +1602,9 @@ static void flushWrites(struct net_writer *writer) {
             if (c->pingEnabled) {
                 pong(c, now);
             }
+
+            c->bytesFromWriter += writer->dataUsed;
+
             if ((c->sendq_len + writer->dataUsed) > c->sendq_max) {
                 //&& now - c->connectedSince > 15 * SECONDS) {
                 if (now > c->discardSendAntiSpam) {
@@ -1604,13 +1627,15 @@ static void flushWrites(struct net_writer *writer) {
                 }
             }
 
-            c->dropHalfDroppedLast = !c->dropHalfDroppedLast;
-            if (c->dropHalfUntil > now && !c->dropHalfDroppedLast) {
+            if (c->dropHalfUntil > now && c->dropHalfDrop) {
                 // drop this chunk of data
             } else {
                 // Append the data to the end of the queue, increment len
                 memcpy(c->sendq + c->sendq_len, writer->data, writer->dataUsed);
                 c->sendq_len += writer->dataUsed;
+            }
+            if (c->dropHalfUntil > now) {
+                c->dropHalfDrop = !c->dropHalfDrop;
             }
             // Try flushing...
             if (flushClient(c, now) < 0) {
