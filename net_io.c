@@ -1478,7 +1478,7 @@ static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
         } else if (Modes.debug_net) {
             suppress = 10;
         } else {
-            suppress = 120;
+            suppress = 300;
         }
         c->dropHalfAntiSpam = now + suppress * SECONDS;
         double lostPercent = 100.0 - (double) c->bytesSent / (double) c->bytesFromWriter * 100.0;
