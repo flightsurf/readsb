@@ -146,6 +146,7 @@ struct client
     char host[NI_MAXHOST]; // For logging
     char port[NI_MAXSERV];
     int64_t dropHalfAntiSpam;
+    int64_t discardSendAntiSpam;
 };
 
 // Client connection

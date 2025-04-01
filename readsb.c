@@ -2531,9 +2531,6 @@ static void configAfterParse() {
     if (Modes.net_output_flush_size < 750) {
         Modes.net_output_flush_size = 750;
     }
-    // add some room vs output flush size just in case
-    Modes.writerBufSize = imin(16 * 1024, Modes.net_output_flush_size + 1024);
-
     if (Modes.net_output_flush_interval > (MODES_OUT_FLUSH_INTERVAL)) {
         Modes.net_output_flush_interval = MODES_OUT_FLUSH_INTERVAL;
     }
@@ -2558,10 +2555,15 @@ static void configAfterParse() {
     }
 
     Modes.netBufSize = MODES_NET_SNDBUF_SIZE << Modes.net_sndbuf_size;
-    if (4 * Modes.net_output_flush_size > Modes.netBufSize) {
-        fprintf(stderr, "automatically increasing net buffer size due to large --ro-size setting\n");
-        Modes.netBufSize = 4 * Modes.net_output_flush_size;
+
+    // add some room vs output flush size just in case
+    // 8 k needed for json position output
+    Modes.writerBufSize = imax(8 * 1024, Modes.net_output_flush_size + 1024);
+
+    if (Modes.writerBufSize > Modes.netBufSize) {
+        Modes.netBufSize = Modes.writerBufSize;
     }
+
 
     if (Modes.net_connector_delay <= 50) {
         Modes.net_connector_delay = 50;

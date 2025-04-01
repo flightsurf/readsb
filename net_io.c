@@ -1470,12 +1470,20 @@ static int pongReceived(struct client *c, int64_t now) {
 }
 
 static void dropHalfUntil(int64_t now, struct client *c, int64_t until) {
-    if (now > c->dropHalfAntiSpam && now - c->connectedSince > 15 * SECONDS) {
-        // only log this at most every 5 minutes
-        c->dropHalfAntiSpam = now + 5 * MINUTES;
-        fprintf(stderr, "%s %s port %s: High latency or insufficient bandwidth"
-                ", dropping every 2nd packet (suppressing msg for 5 min)\n",
-                c->service->descr, c->host, c->port);
+
+    if (now > c->dropHalfAntiSpam) {
+        int suppress;
+        if (Modes.debug_flush) {
+            suppress = 2;
+        } else if (Modes.debug_net) {
+            suppress = 10;
+        } else {
+            suppress = 120;
+        }
+        c->dropHalfAntiSpam = now + suppress * SECONDS;
+        fprintf(stderr, "%s: %s port %s: High latency or insufficient bandwidth"
+                ", dropping every 2nd packet (suppressing msg for %d sec)\n",
+                c->service->descr, c->host, c->port, suppress);
     }
     c->dropHalfUntil = until;
 }
@@ -1512,8 +1520,7 @@ static int flushClient(struct client *c, int64_t now) {
         modesCloseClient(c);
         return -1;
     }
-    if (bytesWritten < toWrite && Modes.debug_flush) {
-
+    if (0 && bytesWritten < toWrite && Modes.debug_flush) {
         fprintTimePrecise(stderr, now);
         fprintf(stderr, " %s: send wrote: %d/%d bytes (%s port %s fd %d, SendQ %d)\n", c->service->descr, bytesWritten, toWrite, c->host, c->port, c->fd, c->sendq_len);
     }
@@ -1560,6 +1567,9 @@ static int flushClient(struct client *c, int64_t now) {
 // Send the write buffer for the specified writer to all connected clients
 //
 static void flushWrites(struct net_writer *writer) {
+    if (writer->dataUsed == 0) {
+        return;
+    }
     int64_t now = mstime();
     //fprintTimePrecise(stderr, now); fprintf(stderr, "flushing %s %5d bytes\n", writer->service->descr, writer->dataUsed);
     for (struct client *c = writer->service->clients; c; c = c->next) {
@@ -1570,23 +1580,26 @@ static void flushWrites(struct net_writer *writer) {
                 pong(c, now);
             }
             // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
-            if ((c->sendq_len + writer->dataUsed) >= c->sendq_max) {
-                if (now - c->connectedSince < 15 * SECONDS) {
+            if ((c->sendq_len + writer->dataUsed) > c->sendq_max) {
+                //&& now - c->connectedSince > 15 * SECONDS) {
+                if (now > c->discardSendAntiSpam) {
+                    int suppress;
                     if (Modes.debug_flush) {
-                        fprintf(stderr, "%s: Discarding full SendQ: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
-                                c->service->descr, c->host, c->port,
-                                c->fd, c->sendq_len, c->buflen);
+                        suppress = 0;
+                    } else if (Modes.debug_net) {
+                        suppress = 10;
+                    } else {
+                        suppress = 120;
                     }
-                    c->sendq_len = 0;
-                    flushClient(c, now);
-                    continue;
+                    c->discardSendAntiSpam = now + suppress * SECONDS;
+                    fprintf(stderr, "%s: %s port %s: Discarding full SendQ: %d write: %d) (suppressing for %d seconds)\n",
+                            c->service->descr, c->host, c->port,
+                            c->sendq_len, writer->dataUsed, suppress);
                 }
-                // Too much data in client SendQ.  Drop client - SendQ exceeded.
-                fprintf(stderr, "%s: Dropped due to full SendQ: %s port %s (fd %d, SendQ %d, RecvQ %d)\n",
-                        c->service->descr, c->host, c->port,
-                        c->fd, c->sendq_len, c->buflen);
-                modesCloseClient(c);
-                continue;	// Go to the next client
+                c->sendq_len = 0;
+                if (writer->dataUsed > c->sendq_max) {
+                    fprintf(stderr, "%s: ERROR: dataUsed > sendq_max: report this bug!\n", c->service->descr);
+                }
             }
 
             c->dropHalfDroppedLast = !c->dropHalfDroppedLast;
@@ -1621,12 +1634,13 @@ static void *prepareWrite(struct net_writer *writer, int len) {
 
     if (writer->dataUsed && writer->dataUsed + len >= Modes.net_output_flush_size) {
         flushWrites(writer);
-        if (writer->dataUsed + len > Modes.writerBufSize) {
-            // this shouldn't happen due to flushWrites only writing to internal client buffers
-            fprintf(stderr, "prepareWrite: not enough space in writer buffer, requested len: %d\n", len);
-            return NULL;
-        }
     }
+    if (writer->dataUsed + len > Modes.writerBufSize) {
+        // this shouldn't happen due to flushWrites only writing to internal client buffers
+        fprintf(stderr, "%s: prepareWrite: not enough space in writer buffer, requested len: %d, already in buffer: %d\n", writer->service->descr, len, writer->dataUsed);
+        return NULL;
+    }
+    //fprintf(stderr, "%s: requested len: %d, dataUsed: %d, bufSize: %d\n", writer->service->descr, len, writer->dataUsed, Modes.writerBufSize);
 
     return writer->data + writer->dataUsed;
 }
@@ -1642,6 +1656,9 @@ static void completeWrite(struct net_writer *writer, void *endptr) {
     }
 
     writer->dataUsed = endptr - writer->data;
+    if (writer->dataUsed > Modes.writerBufSize) {
+        fprintf(stderr, "%s: ERROR: overflow: dataUsed: %d, bufSize: %d\n", writer->service->descr, writer->dataUsed, Modes.writerBufSize);
+    }
 
     if (writer->dataUsed >= Modes.net_output_flush_size) {
         flushWrites(writer);
@@ -3484,24 +3501,31 @@ static void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a, stru
 
 void jsonPositionOutput(struct modesMessage *mm, struct aircraft *a) {
     MODES_NOTUSED(mm);
-    char *p;
 
     int buflen = 8192;
+    char buf[8192];
 
-    p = prepareWrite(&Modes.json_out, buflen);
-    if (!p)
-        return;
-
-    char *end = p + buflen;
+    char *p = buf;
+    char *end = buf + buflen;
 
     p = sprintAircraftObject(p, end, a, mm->sysTimestamp, 2, NULL);
 
-    if (p + 1 < end) {
-        *p++ = '\n';
-        completeWrite(&Modes.json_out, p);
-    } else {
+    if (p + 1 >= end) {
         fprintf(stderr, "buffer insufficient jsonPositionOutput()\n");
+        return;
     }
+    *p++ = '\n';
+
+    int size = p - buf;
+
+    char *w = prepareWrite(&Modes.json_out, size);
+    if (!w) {
+        return;
+    }
+    memcpy(w, buf, size);
+    w += size;
+
+    completeWrite(&Modes.json_out, w);
 }
 
 void sendData(struct net_writer *output, char *data, int len) {
