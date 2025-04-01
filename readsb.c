@@ -1394,6 +1394,7 @@ static void cleanup_and_exit(int code) {
     sfree(Modes.net_output_jaero_ports);
     sfree(Modes.net_output_json_ports);
     sfree(Modes.net_output_api_ports);
+    sfree(Modes.net_output_asterix_ports);
     sfree(Modes.garbage_ports);
     sfree(Modes.beast_serial);
     sfree(Modes.uuidFile);
