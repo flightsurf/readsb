@@ -437,14 +437,15 @@ static int sendUUID(struct client *c, int64_t now) {
 }
 
 static int suppressConnectError(struct net_connector *con) {
+    uint32_t failLimit = 10;
     con->fail_counter += 1; // increment fail counter
     if (con->silent_fail) {
         return 1;
     }
-    if (con->fail_counter < 9 || Modes.debug_net) {
+    if (con->fail_counter < failLimit || Modes.debug_net) {
         return 0;
     }
-    if (con->fail_counter == 10 || con->fail_counter % 200 == 0) {
+    if (con->fail_counter == failLimit || con->fail_counter % 200 == 0) {
         fprintf(stderr, "%s: Connection to %s port %s failed %u times, suppressing most error messages until connection succeeds\n",
                 con->service->descr, con->address, con->port, con->fail_counter);
     }
