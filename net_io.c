@@ -304,7 +304,6 @@ static struct client *createSocketClient(struct net_service *service, int fd, ch
 
     c->service = service;
     c->fd = fd;
-    c->last_flush = now;
     c->last_send = now;
     c->last_read = now;
     c->connectedSince = now;
@@ -1505,7 +1504,6 @@ static int flushClient(struct client *c, int64_t now) {
     int toWrite = c->sendq_len;
 
     if (toWrite == 0) {
-        c->last_flush = now;
         return 0;
     }
 
@@ -1543,9 +1541,7 @@ static int flushClient(struct client *c, int64_t now) {
         c->sendq_len -= bytesWritten;
 
         c->last_send = now;	// If we wrote anything, update this.
-        if (toWrite == 0) {
-            c->last_flush = now;
-        } else {
+        if (toWrite > 0) {
             memmove((void*)c->sendq, c->sendq + bytesWritten, toWrite);
         }
     }
@@ -1568,16 +1564,6 @@ static int flushClient(struct client *c, int64_t now) {
         fprintf(stderr, "%s: Couldn't send any data for %.2fs (Insufficient bandwidth?): disconnecting: %s port %s (fd %d, SendQ %d)\n", c->service->descr, sendTimeout / 1000.0, c->host, c->port, c->fd, c->sendq_len);
         modesCloseClient(c);
         return -1;
-    }
-    if (0) {
-        // If we haven't been able to empty the buffer for longer than 8 * flush_interval, disconnect.
-        // give the connection 10 seconds to ramp up --> automatic TCP window scaling in Linux ...
-        int64_t flushTimeout = imax(2 * SECONDS, 8 * Modes.net_output_flush_interval);
-        if (now - c->last_flush > flushTimeout && now - c->connectedSince > 10 * SECONDS) {
-            fprintf(stderr, "%s: Couldn't flush data for %.2fs (Insufficient bandwidth?): disconnecting: %s port %s (fd %d, SendQ %d)\n", c->service->descr, flushTimeout / 1000.0, c->host, c->port, c->fd, c->sendq_len);
-            modesCloseClient(c);
-            return -1;
-        }
     }
 
     return bytesWritten;

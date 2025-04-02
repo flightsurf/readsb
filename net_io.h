@@ -126,7 +126,6 @@ struct client
     uint64_t bytesReceived;
     uint64_t receiverId;
     uint64_t receiverId2;
-    int64_t last_flush;
     int64_t last_send;
     int64_t last_read;  // This is used on write-only clients to help check for dead connections
     int64_t last_read_flush;
