@@ -616,6 +616,16 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
         con->try_addr = con->addr_info;
     }
 
+    if (!con->try_addr->ai_next) {
+        // limit tcp connection attemtps via backoff
+        con->next_reconnect = now + con->backoff;
+        con->backoff = imin(Modes.net_connector_delay, 2 * con->backoff);
+    } else {
+        //fprintf(stderr, "next ip\n");
+        // quickly try all IPs associated with a name if there are multiple
+        con->next_reconnect = now + 20;
+    }
+
     struct timespec watch;
     startWatch(&watch);
 
@@ -627,6 +637,17 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
     int64_t getnameinfoElapsed = lapWatch(&watch);
     if (getnameinfoElapsed > 1) {
         fprintf(stderr, "WARNING: getnameinfo() took %"PRId64" ms\n", getnameinfoElapsed);
+    }
+
+    if (
+            strcmp(con->resolved_addr, con->address) != 0
+            && (
+                strcmp(con->resolved_addr, "::") == 0
+                || strcmp(con->resolved_addr, "0.0.0.0") == 0
+               )
+       ) {
+        fprintf(stderr, "%s: %s port %s: Ignoring this DNS reply: %s\n", con->service->descr, con->address, con->port, con->resolved_addr);
+        return;
     }
 
     if (strcmp(con->resolved_addr, con->address) == 0) {
@@ -641,18 +662,6 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
         //fprintf(stderr, "%s: Attempting connection to %s port %s ... (gonna set SNDBUF %d RCVBUF %d)\n", con->service->descr, con->address, con->port, getSNDBUF(con->service), getRCVBUF(con->service));
         fprintf(stderr, "%s: Attempting connection to %s%s port %s ...\n", con->service->descr, con->address, con->resolved_addr, con->port);
     }
-
-    if (!con->try_addr->ai_next) {
-        // limit tcp connection attemtps via backoff
-        con->next_reconnect = now + con->backoff;
-        con->backoff = imin(Modes.net_connector_delay, 2 * con->backoff);
-    } else {
-        //fprintf(stderr, "next ip\n");
-        // quickly try all IPs associated with a name if there are multiple
-        con->next_reconnect = now + 20;
-    }
-
-
 
     struct addrinfo *ai = con->try_addr;
     fd = anetCreateSocket(Modes.aneterr, ai->ai_family, SOCK_NONBLOCK);
