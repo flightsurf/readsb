@@ -5730,10 +5730,19 @@ static void *pthreadGetaddrinfo(void *param) {
 
     struct addrinfo gai_hints;
 
-    gai_hints.ai_family = AF_UNSPEC;
-    gai_hints.ai_socktype = SOCK_STREAM;
-    gai_hints.ai_protocol = 0;
+    // no flags needed
     gai_hints.ai_flags = 0;
+    // return both IPv4 and IPv6 addresses
+    gai_hints.ai_family = AF_UNSPEC;
+
+    // this is for protocol port lookups not for DNS, set to zero
+    gai_hints.ai_protocol = 0;
+    // setting this to zero returns the same address multiple times
+    // just set it to TCP, should work just as well for UDP though
+    gai_hints.ai_socktype = SOCK_STREAM;
+
+    // these struct members don't seem to apply to the hints passed
+    // they are used to return results but not in the hints
     gai_hints.ai_addrlen = 0;
     gai_hints.ai_addr = NULL;
     gai_hints.ai_canonname = NULL;
