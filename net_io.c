@@ -616,14 +616,11 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
         con->try_addr = con->addr_info;
     }
 
+    // limit tcp connection attemtps via backoff
+    con->next_reconnect = now + con->backoff;
     if (!con->try_addr->ai_next) {
-        // limit tcp connection attemtps via backoff
-        con->next_reconnect = now + con->backoff;
+        // only increase backoff once all DNS results have been tried
         con->backoff = imin(Modes.net_connector_delay, 2 * con->backoff);
-    } else {
-        //fprintf(stderr, "next ip\n");
-        // quickly try all IPs associated with a name if there are multiple
-        con->next_reconnect = now + 20;
     }
 
     struct timespec watch;
