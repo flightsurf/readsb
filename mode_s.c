@@ -909,7 +909,7 @@ static void decodeESAirborneVelocity(struct modesMessage *mm, int check_imf) {
                 mm->gs_valid = 1;
 
                 if (mm->gs.selected > 0) {
-                    float ground_track = atan2(ew_vel, ns_vel) * 180.0 / M_PI;
+                    float ground_track = atan2f(ew_vel, ns_vel) * 180.0f / (float) M_PI;
                     // We don't want negative values but a 0-360 scale
                     if (ground_track < 0)
                         ground_track += 360;

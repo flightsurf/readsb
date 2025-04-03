@@ -6062,6 +6062,7 @@ static inline int skipMessage(struct modesMessage *mm) {
 }
 
 static void drainMessageBuffer(struct messageBuffer *buf) {
+    //fprintf(stderr, "drainMessageBuffer: %d\n", buf->len);
     if (Modes.decodeThreads < 2) {
         for (int k = 0; k < buf->len; k++) {
             struct modesMessage *mm = &buf->msg[k];
