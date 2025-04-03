@@ -693,15 +693,6 @@ trackDataAge (int64_t now, const data_validity *v)
     return 0;
   return (now - v->updated);
 }
-
-static inline double toRad(double degrees) {
-    return degrees * (M_PI / 180.0);
-}
-static inline double toDeg(double radians) {
-    return radians * (180.0 / M_PI);
-}
-// calculate great circle distance in meters
-//
 void to_state(struct aircraft *a, struct state *new, int64_t now, int on_ground, float track, int stale);
 void to_state_all(struct aircraft *a, struct state_all *new, int64_t now);
 void from_state_all(struct state_all *in, struct state *in2, struct aircraft *a , int64_t ts);

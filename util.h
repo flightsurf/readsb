@@ -161,6 +161,20 @@ char *sprint_uuid2(uint64_t id2, char *p);
 
 int mkdir_error(const char *path, mode_t mode, FILE *err_stream);
 
+
+static inline double toRad(double degrees) {
+    return degrees * (M_PI / 180.0);
+}
+static inline double toDeg(double radians) {
+    return radians * (180.0 / M_PI);
+}
+static inline float toRadf(float degrees) {
+    return degrees * (float) (M_PI / 180.0f);
+}
+static inline float toDegf(float radians) {
+    return radians * (float) (180.0f / M_PI);
+}
+
 double greatcircle(double lat0, double lon0, double lat1, double lon1, int approx);
 double bearing(double lat0, double lon0, double lat1, double lon1);
 

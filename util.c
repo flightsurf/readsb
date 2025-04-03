@@ -693,11 +693,9 @@ double bearing(double lat0, double lon0, double lat1, double lon1) {
     lat1 = toRad(lat1);
     lon1 = toRad(lon1);
 
-    // using float variants except for sin close to zero
-
     float y = sinf(lon1-lon0)*cosf(lat1);
     float x = cosf(lat0)*sinf(lat1) - sinf(lat0)*cosf(lat1)*cosf(lon1-lon0);
-    float res = atan2f(y, x) * (180 / (float) M_PI) + 360;
+    float res = toDegf(atan2f(y, x)) + 360.0f;
 
     if (CHECK_APPROXIMATIONS) {
         // check against using double trigonometric functions
