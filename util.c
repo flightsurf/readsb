@@ -638,12 +638,17 @@ double greatcircle(double lat0, double lon0, double lat1, double lon1, int appro
 
 
         // to have consistency to other calculations, use a circular earth
+        /*
         float ec = 2 * M_PI * 6371e3; // equatorial circumference
         float mc = 2 * M_PI * 6371e3; // meridial circumference
+        float dmer = (float) dlat / (2 * M_PI) * mc;
+        float dequ = (float) dlon / (2 * M_PI) * ec * cosf(avglat);
+        */
+        // eliminate 2 * M_PI
 
-        float avglat = lat0 + (lat1 - lat0) / 2;
-        float dmer = (float) dlat / (2 * (float) M_PI) * mc;
-        float dequ = (float) dlon / (2 * (float) M_PI) * ec * cosf(avglat);
+        float avglat = (float) lat0 + ((float) lat1 - (float) lat0) * 0.5f;
+        float dmer = (float) dlat * 6371e3f;
+        float dequ = (float) dlon * 6371e3f * cosf(avglat);
         float pyth = sqrtf(dmer * dmer + dequ * dequ);
 
         if (!approx && CHECK_APPROXIMATIONS) {
