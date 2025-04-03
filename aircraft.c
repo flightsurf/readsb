@@ -277,7 +277,9 @@ void toBinCraft(struct aircraft *a, struct binCraft *new, int64_t now) {
     new->alert = a->alert;
     new->spi = a->spi;
 
-    new->signal = get8bitSignal(a);
+    //new->signal = get8bitSignal(a); old version
+    new->signal = nearbyint((getSignal(a) + 50.0f) * (255.0f / 50.0f));
+    //fprintf(stderr, "%0.1f %u\n", getSignal(a), new->signal);
 
 #if defined(TRACKS_UUID)
     new->receiverId = (uint32_t) (a->receiverId >> 32);

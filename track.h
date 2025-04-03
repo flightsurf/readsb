@@ -758,15 +758,15 @@ static inline float signalRaw(struct aircraft *a) {
     if (a->signalNext >= 8) {
         sum = a->signalLevel[0] + a->signalLevel[1] + a->signalLevel[2] + a->signalLevel[3] +
             a->signalLevel[4] + a->signalLevel[5] + a->signalLevel[6] + a->signalLevel[7];
+        return sum / 8.0f;
     } else if (a->signalNext >= 4) {
         sum = 0;
         for (uint32_t i = 0; i < a->signalNext; i++) {
             sum += a->signalLevel[i];
         }
-    } else {
-        sum = 0;
+        return sum / a->signalNext;
     }
-    return sum / 8.0f;
+    return 0;
 }
 
 static inline float getSignal(struct aircraft *a) {
