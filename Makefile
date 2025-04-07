@@ -184,9 +184,12 @@ viewadsb: readsb
 clean:
 	rm -f *.o uat2esnt/*.o compat/clock_gettime/*.o compat/clock_nanosleep/*.o compat/apple/*.o readsb viewadsb cprtests crctests convert_benchmark
 
-test: cprtest crctests benchmarks
+test: cprtest crctest
 
 cprtest: cprtests
+	./cprtests
+
+crctest: cprtests
 	./cprtests
 
 cprtests: cpr.o cprtests.o
@@ -195,7 +198,7 @@ cprtests: cpr.o cprtests.o
 crctests: crc.c crc.h
 	$(CC) $(CFLAGS) -DCRCDEBUG -o $@ $<
 
-benchmarks: convert_benchmark
+benchmarks: oneoff/convert_benchmark
 	./convert_benchmark
 
 oneoff/convert_benchmark: oneoff/convert_benchmark.o convert.o util.o

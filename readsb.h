@@ -405,8 +405,12 @@ static inline void *malloc_or_exit(size_t alignment, size_t size, const char *fi
         buf = malloc(size);
     }
     if (unlikely(!buf)) {
-        setExit(2); // irregular exit ... soon
         fprintf(stderr, "FATAL: malloc_or_exit() of size %lld failed: %s:%d (insufficient memory?)\n", (long long) size, file, line);
+        #ifdef CRCDEBUG
+        exit(1);
+        #else
+        setExit(2); // irregular exit ... soon
+        #endif
     }
     return buf;
 }
