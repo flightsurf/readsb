@@ -23,7 +23,6 @@ CONFIG_SWITCH =
 
 ifneq ($(filter rtlsdr,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'RTLSDR=yes'
-	CONFIG_SWITCH += 'AIRCRAFT_HASH_BITS=15'
 endif
 
 ifneq ($(filter history,$(DEB_BUILD_PROFILES)),)
