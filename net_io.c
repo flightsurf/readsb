@@ -266,7 +266,23 @@ static int getRCVBUF(struct net_service *service) {
         return Modes.netBufSize;
     }
 }
-static void setBuffers(struct client *c) {
+static void setSockopts(struct client *c) {
+
+    if (anetTcpNoDelay(Modes.aneterr, c->fd) != ANET_OK) {
+        if (c->con) {
+            fprintf(stderr, "%s: Unable to set TCP_NODELAY: connection to %s port %s ...\n", c->con->service->descr, c->con->address, c->con->port);
+        } else {
+            fprintf(stderr, "%s: Unable to set TCP_NODELAY on connection from %s local port %s\n", c->service->descr, c->host, c->port);
+        }
+    }
+    if (anetTcpKeepAlive(Modes.aneterr, c->fd) != ANET_OK) {
+        if (c->con) {
+            fprintf(stderr, "%s: Unable to set keepalive: connection to %s port %s ...\n", c->con->service->descr, c->con->address, c->con->port);
+        } else {
+            fprintf(stderr, "%s: Unable to set keepalive on connection from %s local port %s\n", c->service->descr, c->host, c->port);
+        }
+    }
+
     if (Modes.tcpBuffersAuto) {
         return;
     }
@@ -676,10 +692,6 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
     con->connect_timeout = now + imin(Modes.net_connector_delay, 5000); // really if your connection won't establish after 5 seconds ... tough luck.
     //fprintf(stderr, "connect_timeout: %ld\n", (long) (con->connect_timeout - now));
 
-    if (anetTcpKeepAlive(Modes.aneterr, fd) != ANET_OK) {
-        fprintf(stderr, "%s: Unable to set keepalive: connection to %s port %s ...\n", con->service->descr, con->address, con->port);
-    }
-
     // struct client for epoll purposes
     struct client *c = &con->dummyClient;
 
@@ -694,7 +706,7 @@ static void serviceConnect(struct net_connector *con, int64_t now) {
         perror("epoll_ctl fail:");
     }
 
-    setBuffers(c);
+    setSockopts(c);
 
     if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0 && errno != EINPROGRESS) {
         epoll_ctl(Modes.net_epfd, EPOLL_CTL_DEL, con->fd, &con->dummyClient.epollEvent);
@@ -1184,14 +1196,12 @@ static void modesAcceptClients(struct client *c, int64_t now) {
                 fprintf(stderr, "%s: new c from %s port %s (fd %d)\n",
                         c->service->descr, c->host, c->port, fd);
             }
-            if (anetTcpKeepAlive(Modes.aneterr, fd) != ANET_OK)
-                fprintf(stderr, "%s: Unable to set keepalive on connection from %s port %s (fd %d)\n", c->service->descr, c->host, c->port, fd);
         } else {
             fprintf(stderr, "%s: Fatal: createSocketClient shouldn't fail!\n", s->descr);
             exit(1);
         }
 
-        setBuffers(c);
+        setSockopts(c);
 
         sendFiveHeartbeats(c, now);
     }
