@@ -121,7 +121,7 @@ static void calculateMessageRate(struct aircraft *a, int64_t now) {
 // Should we accept some new data from the given source?
 // If so, update the validity and return 1
 
-static int32_t currentReduceInterval(int64_t now) {
+static inline int32_t currentReduceInterval(int64_t now) {
     MODES_NOTUSED(now);
     return Modes.net_output_beast_reduce_interval;
 }
@@ -136,7 +136,12 @@ static inline int will_accept_data(data_validity *d, datasource_t source, struct
         return 0;
     }
 
-    if (source < d->source && now < d->updated + TRACK_STALE) {
+    // increase timeout to use lower quality data by the time no CRC reliable (addressReliable()) has been seen:
+    // if (source < d->source && (now < d->updated + TRACK_STALE + (now - a->seen))) {
+    // this simplifies to:
+    // basically an reliable CRC needs to have been received TRACK_STALE (15s) after the higher
+    // quality info was received
+    if (source < d->source && (a->seen < d->updated + TRACK_STALE)) {
         return 0;
     }
 
@@ -1954,7 +1959,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
     }
 
     // don't use messages with unreliable CRC too long after receiving a reliable address from an aircraft
-    if (now - a->seen > 30 * SECONDS) {
+    if (now - a->seen > TRACK_STALE) {
         res = NULL;
         goto exit;
     }
