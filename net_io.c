@@ -4970,7 +4970,7 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             if (eom + 2 > c->eod)// Incomplete message in buffer, retry later
                 break;
 
-            if (!Modes.netIngest && !c->receiverIdLocked) {
+            if (!Modes.netIngest) {
                 c->receiverId = receiverId;
             }
 
