@@ -118,6 +118,8 @@ static void configSetDefaults(void) {
     Modes.acHashBits = AIRCRAFT_HASH_BITS;
     Modes.acBuckets = 1 << Modes.acHashBits; // this is critical for hashing purposes
 
+    Modes.receiver_table_hash_bits = 6; // dynamically resized, start very small
+
     Modes.freq = MODES_DEFAULT_FREQ;
     Modes.check_crc = 1;
     Modes.net_heartbeat_interval = MODES_NET_HEARTBEAT_INTERVAL;

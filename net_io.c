@@ -5676,6 +5676,15 @@ void modesNetPeriodicWork(void) {
             int nParts = RECEIVER_MAINTENANCE_INTERVAL / free_client_interval;
             receiverTimeout((upcount % nParts), nParts, now);
             upcount++;
+
+            if (Modes.receiverCount > Modes.receiver_table_size * 3 / 4 && Modes.receiver_table_hash_bits < 16) {
+                // we clear the table, rehashing would be nicer but more complex
+                // this should be fine
+                receiverCleanup();
+                Modes.receiver_table_hash_bits = 16;
+                receiverInit();
+                fprintf(stderr, "receiverTable table size increased to: %d\n", Modes.receiver_table_size);
+            }
         }
     }
 

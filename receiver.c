@@ -29,10 +29,12 @@ struct receiver *receiverCreate(uint64_t id) {
         return NULL;
     }
     struct receiver *r = receiverGet(id);
-    if (r)
+    if (r) {
         return r;
-    if (Modes.receiverCount > Modes.receiver_table_size)
+    }
+    if (Modes.receiverCount > 2 * Modes.receiver_table_size) {
         return NULL;
+    }
     uint32_t hash = receiverHash(id);
     r = cmalloc(sizeof(struct receiver));
     *r = (struct receiver) {0};
@@ -41,8 +43,15 @@ struct receiver *receiverCreate(uint64_t id) {
     r->firstSeen = r->lastSeen = mstime();
     Modes.receiverTable[hash] = r;
     Modes.receiverCount++;
-    if (Modes.receiverCount % (Modes.receiver_table_size / 4) == 0)
-        fprintf(stderr, "receiverTable fill: %0.8f\n", Modes.receiverCount / (double) Modes.receiver_table_size);
+    if (Modes.receiverCount > Modes.receiver_table_size * 3 / 4) {
+        static int64_t antiSpam;
+        int64_t now = mstime();
+        if (now > antiSpam && Modes.receiver_table_hash_bits == 16) {
+            antiSpam = now + 60 * SECONDS;
+            fprintf(stderr, "receiverTable fill: %0.8f\n", Modes.receiverCount / (double) Modes.receiver_table_size);
+        }
+    }
+
     if (Modes.debug_receiver && Modes.receiverCount % 128 == 0)
         fprintf(stderr, "receiverCount: %"PRIu64"\n", Modes.receiverCount);
     return r;
@@ -112,16 +121,10 @@ void receiverTimeout(int part, int nParts, int64_t now) {
     }
 }
 void receiverInit() {
-    if (Modes.netReceiverId || Modes.netIngest || Modes.debug_no_discard || Modes.viewadsb) {
-        Modes.receiver_table_hash_bits = 16;
-    } else {
-        Modes.receiver_table_hash_bits = 8;
-    }
-
     Modes.receiver_table_size = 1 << Modes.receiver_table_hash_bits;
 
-    Modes.receiverTable = cmalloc(Modes.receiver_table_size * sizeof(struct receiver));
-    memset(Modes.receiverTable, 0x0,  Modes.receiver_table_size * sizeof(struct receiver));
+    Modes.receiverTable = cmalloc(Modes.receiver_table_size * sizeof(struct receiver *));
+    memset(Modes.receiverTable, 0x0,  Modes.receiver_table_size * sizeof(struct receiver *));
 }
 void receiverCleanup() {
     if (!Modes.receiverTable) {
@@ -137,6 +140,7 @@ void receiverCleanup() {
         }
     }
     sfree(Modes.receiverTable);
+    Modes.receiverCount = 0;
 }
 int receiverPositionReceived(struct aircraft *a, struct modesMessage *mm, double lat, double lon, int64_t now) {
     uint64_t id = mm->receiverId;
