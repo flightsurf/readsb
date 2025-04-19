@@ -161,6 +161,7 @@ static void configSetDefaults(void) {
     Modes.net_output_flush_interval_beast_reduce = -1; // default to net_output_flush_interval after config parse if not configured
     Modes.netReceiverId = 0;
     Modes.netIngest = 0;
+    Modes.ingestLimitRate = 5420;
     Modes.json_trace_interval = 20 * 1000;
     Modes.state_write_interval = 1 * HOURS;
     Modes.heatmap_current_interval = -15;
@@ -2129,6 +2130,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     // if (Modes.devel_log_ppm && fabs(ppm) > Modes.devel_log_ppm) {
                 }
 
+                if (strcasecmp(token[0], "ingestLimitRate") == 0 && token[1]) {
+                    Modes.ingestLimitRate = atoi(token[1]);
+                }
                 if (strcasecmp(token[0], "sbs_override_squawk") == 0 && token[1]) {
                     Modes.sbsOverrideSquawk = atoi(token[1]);
                 }

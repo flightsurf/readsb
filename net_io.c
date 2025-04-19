@@ -4632,22 +4632,30 @@ static int readClient(struct client *c, int64_t now) {
     // nread > 0 here
     Modes.stats_current.network_bytes_in += nread;
 
-    // disable for the time being
-    if (0 && Modes.netIngest && !Modes.debug_no_discard) {
-        if (now - c->recentMessagesReset > 1 * SECONDS) {
-            c->recentMessagesReset = now;
-            c->recentMessages = 0;
-            c->unreasonable_messagerate = 0;
-        }
-
-        if (c->recentMessages > 4000) {
+    if (Modes.netIngest) {
+        int windowSeconds = 2;
+        int aboveRate = (c->recentMessages > windowSeconds * Modes.ingestLimitRate);
+        if (aboveRate) {
             c->unreasonable_messagerate = 1;
-            if (now > c->recentMessagesReset) {
-                c->recentMessagesReset = now + 30 * SECONDS; // don't reset for 60 seconds to keep discarding this client
+            if (now > c->unreasonableRateReset) {
                 char uuid[64]; // needs 36 chars and null byte
                 sprint_uuid(c->receiverId, c->receiverId2, uuid);
-                fprintf(stderr, "GARBAGE for 60 seconds: message rate > 4000 rId %s %s\n", uuid, c->proxy_string);
+                fprintf(stderr, "GARBAGE due to high message rate %ld > %d rId %s %s\n", (long int) (c->recentMessages / windowSeconds), Modes.ingestLimitRate, uuid, c->proxy_string);
             }
+            c->unreasonableRateReset = now + 20 * SECONDS;
+        }
+
+        if (now > c->recentMessagesReset) {
+            if (0) {
+                char uuid[64]; // needs 36 chars and null byte
+                sprint_uuid(c->receiverId, c->receiverId2, uuid);
+                fprintf(stderr, "message rate %ld rId %s %s\n", (long int) (c->recentMessages / windowSeconds), uuid, c->proxy_string);
+            }
+            if (!aboveRate && now > c->unreasonableRateReset) {
+                c->unreasonable_messagerate = 0;
+            }
+            c->recentMessagesReset = now + windowSeconds * SECONDS;
+            c->recentMessages = 0;
         }
     }
 
