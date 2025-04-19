@@ -100,6 +100,7 @@ typedef enum
 {
     REDUCE_RARE,
     REDUCE_OFTEN,
+    REDUCE_DOUBLE,
 } reduce_freq_t;
 
 // data moves through three states:

@@ -203,8 +203,10 @@ static int accept_data(data_validity *d, datasource_t source, struct modesMessag
     if (now > d->next_reduce_forward || mm->reduce_forward) {
         int32_t reduceInterval = currentReduceInterval(now);
 
-        if (reduce_often == REDUCE_OFTEN) {
-            reduceInterval = reduceInterval * 3 / 4;
+        if (reduce_often == REDUCE_DOUBLE) {
+            reduceInterval = reduceInterval * 3 / 8;
+        } else if (reduce_often == REDUCE_OFTEN) {
+            reduceInterval = reduceInterval * 7 / 8;
         } else if (reduce_often == REDUCE_RARE) {
             reduceInterval = reduceInterval * 4;
         }
@@ -1334,7 +1336,7 @@ static void updatePosition(struct aircraft *a, struct modesMessage *mm, int64_t 
             if (mm->source != SOURCE_MLAT)
                 Modes.stats_current.cpr_global_skipped++;
         } else {
-            if (accept_data(&a->position_valid, mm->source, mm, a, REDUCE_OFTEN)) {
+            if (accept_data(&a->position_valid, mm->source, mm, a, REDUCE_DOUBLE)) {
                 if (mm->source != SOURCE_MLAT)
                     Modes.stats_current.cpr_global_ok++;
 
@@ -1363,7 +1365,7 @@ static void updatePosition(struct aircraft *a, struct modesMessage *mm, int64_t 
             // still note which position we decoded
             mm->decoded_lat = new_lat;
             mm->decoded_lon = new_lon;
-        } else if (location_result >= 0 && accept_data(&a->position_valid, mm->source, mm, a, REDUCE_OFTEN)) {
+        } else if (location_result >= 0 && accept_data(&a->position_valid, mm->source, mm, a, REDUCE_DOUBLE)) {
             if (mm->source != SOURCE_MLAT)
                 Modes.stats_current.cpr_local_ok++;
             mm->cpr_relative = 1;
@@ -2584,7 +2586,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
             } else if (!speed_check(a, mm->source, mm->decoded_lat, mm->decoded_lon, mm, CPR_NONE)) {
                 mm->pos_bad = 1;
                 // speed check failed, do nothing
-            } else if (accept_data(&a->position_valid, mm->source, mm, a, REDUCE_OFTEN)) {
+            } else if (accept_data(&a->position_valid, mm->source, mm, a, REDUCE_DOUBLE)) {
                 usePosition = 1;
             }
             if (usePosition) {
