@@ -2101,19 +2101,25 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         uint32_t oldsquawk = a->squawk;
 
         int changeTentative = 0;
+        int changeActual = 0;
         if (a->squawkTentative != mm->squawkHex && now - a->seen < 15 * SECONDS && will_accept_data(&a->squawk_valid, mm->source, mm, a)) {
-            a->squawk_valid.next_reduce_forward = now + currentReduceInterval(now);
-            mm->reduce_forward = 1;
             PPforward;
             changeTentative = 1;
         }
         if (
-                (mm->source == SOURCE_JAERO || (a->squawkTentative == mm->squawkHex && now - a->squawkTentativeChanged > 750))
+                (mm->source == SOURCE_JAERO || (a->squawkTentative == mm->squawkHex && now - a->squawkTentativeChanged > 250))
                 && accept_data(&a->squawk_valid, mm->source, mm, a, REDUCE_RARE)) {
+            changeActual = 1;
             if (mm->squawkHex != a->squawk) {
                 a->modeA_hit = 0;
             }
             a->squawk = mm->squawkHex;
+        }
+        // try and forward as soon as possible when the squawk changes
+        // but not if the squawk is flipflopping very quickly
+        if ((changeTentative || changeActual) && now - a->squawkTentativeChanged > currentReduceInterval(now)) {
+            a->squawk_valid.next_reduce_forward = now + currentReduceInterval(now);
+            mm->reduce_forward = 1;
         }
         if (changeTentative) {
             a->squawkTentative = mm->squawkHex;
@@ -2153,7 +2159,6 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
 
     if (mm->emergency_valid && accept_data(&a->emergency_valid, mm->source, mm, a, REDUCE_RARE)) {
         if (a->emergency != mm->emergency) {
-            mm->reduce_forward = 1;
             PPforward;
         }
         a->emergency = mm->emergency;
