@@ -75,11 +75,11 @@ void quickAdd(struct aircraft *a) {
 }
 
 void quickInit() {
-    if (quickBits > quickMinBits && Modes.aircraftActive.len < quickBuckets / 9) {
+    if (quickBits > quickMinBits && Modes.aircraftActive.len < quickBuckets * 2 / 8) {
         quickResize(quickBits - 1);
     } else if (quickBits < quickMinBits) {
         quickResize(quickMinBits);
-    } else if (quickBits < quickMaxBits && Modes.aircraftActive.len > quickBuckets / 3) {
+    } else if (quickBits < quickMaxBits && Modes.aircraftActive.len > quickBuckets * 5 / 8) {
         quickResize(quickBits + 1);
     }
 
