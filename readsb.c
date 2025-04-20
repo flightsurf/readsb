@@ -2821,7 +2821,7 @@ static void miscStuff(int64_t now) {
             notask_save_blob(blob, Modes.state_dir);
 
             int64_t elapsed = stopWatch(&watch);
-            if (elapsed > 0.5 * SECONDS || elapsed > blob_interval / 3) {
+            if (elapsed > 0.5 * SECONDS || elapsed > blob_interval) {
                 fprintf(stderr, "WARNING: save_blob %02x took %"PRIu64" ms!\n", blob, elapsed);
             }
 
