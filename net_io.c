@@ -5476,9 +5476,6 @@ static int64_t checkFlushService(struct net_service *service, int64_t now) {
         return now + default_wait;
     }
     struct net_writer *writer = service->writer;
-    if (!writer->connections) {
-        return now + default_wait;
-    }
     if (Modes.net_heartbeat_interval && service->heartbeat_out.msg
             && now - writer->lastWrite >= Modes.net_heartbeat_interval) {
         // If we have generated no messages for a while, send a heartbeat
