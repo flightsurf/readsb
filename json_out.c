@@ -1406,8 +1406,8 @@ static char *sprintTracePoint(char *p, char *end, struct state *state, struct st
     p = safe_snprintf(p, end, "\n[%.2f,%f,%f",
             (state->timestamp - referenceTs) / 1000.0, state->lat / 1E6, state->lon / 1E6);
 
-    if (state->timestamp > now) {
-        fprintf(stderr, "%06x WAT? trace timestamp in the future: %.3f\n", a->addr, state->timestamp / 1000.0);
+    if (state->timestamp > now + 2 * SECONDS) {
+        fprintf(stderr, "%06x WAT? trace timestamp in the future: %.3f > %.3f\n", a->addr, state->timestamp / 1000.0, now / 1000.0);
     }
 
     if (state->on_ground)
@@ -1707,7 +1707,7 @@ static void checkTraceCache(struct aircraft *a, traceBuffer tb, int64_t now) {
     }
 }
 
-struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int start, int last, threadpool_buffer_t *buffer, int64_t referenceTs) {
+struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int start, int last, threadpool_buffer_t *buffer, int64_t referenceTs, int64_t endStamp) {
     struct char_buffer cb = { 0 };
     if (!Modes.writeTraces) {
         fprintf(stderr, "generateTraceJson called when Modes.writeTraces not set, this is a bug, please report with configuration!\n");
@@ -1727,7 +1727,7 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
     }
 
     int traceCount = imax(last - start + 1, 0);
-    ssize_t alloc = traceCount * 300 + 1024;
+    ssize_t alloc = (traceCount + Modes.traceLastMax) * 300 + 1024;
 
     char *buf = check_grow_threadpool_buffer_t(buffer, alloc);
     char *p = buf;
@@ -1799,10 +1799,37 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
             p += bytes;
 
         } else {
+            int useLast = 0;
+            int64_t traceLastStart = 0;
+            if (!recent && a->traceLast) {
+                struct state *state = getState(a->traceLast, a->traceLastNext);
+                if (state->timestamp != 0) {
+                    // for simplictity only use if traceLast is fully populated (should usually happen quickly)
+                    useLast = 1;
+                    traceLastStart = state->timestamp;
+                }
+            }
             for (int i = start; i <= last && i < tb.len; i++) {
                 struct state *state = getState(tb.trace, i);
                 struct state_all *state_all = getStateAll(tb.trace, i);
+                if (useLast && state->timestamp >= traceLastStart) {
+                    break;
+                }
                 p = sprintTracePoint(p, end, state, state_all, referenceTs, now, a);
+            }
+            if (useLast) {
+                int i = a->traceLastNext;
+                for (int k = 0; k < Modes.traceLastMax; k++) {
+                    struct state *state = getState(a->traceLast, i);
+                    // don't go past end of timeframe if specified
+                    if (endStamp > 0 && state->timestamp > endStamp) {
+                        //fprintf(stderr, "%06x traceLast limiting to %d points due to last / timeframe\n", a->addr, k);
+                        break;
+                    }
+                    struct state_all *state_all = getStateAll(a->traceLast, i);
+                    p = sprintTracePoint(p, end, state, state_all, referenceTs, now, a);
+                    i = (i + 1) % Modes.traceLastMax;
+                }
             }
         }
 

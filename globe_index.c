@@ -564,7 +564,7 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
         atomic_fetch_add(&Modes.recentTraceWrites, 1);
 
         // prepare the data for the trace_recent file in /run
-        recent = generateTraceJson(a, tb, -2, -2, generate_buffer, 0);
+        recent = generateTraceJson(a, tb, -2, -2, generate_buffer, 0, -1);
 
         //if (Modes.debug_traceCount && ++count2 % 1000 == 0)
         //    fprintf(stderr, "recent trace write: %u\n", count2);
@@ -606,7 +606,7 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
             // statistics
             atomic_fetch_add(&Modes.fullTraceWrites, 1);
 
-            full = generateTraceJson(a, tb, startFull, -1, generate_buffer, 0);
+            full = generateTraceJson(a, tb, startFull, -1, generate_buffer, 0, -1);
 
             if (full.len > 0) {
                 snprintf(filename, 256, "traces/%02x/trace_full_%s%06x.json", a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
@@ -704,7 +704,7 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
         // statistics
         atomic_fetch_add(&Modes.permTraceWrites, 1);
 
-        hist = generateTraceJson(a, tb, start, end, generate_buffer, start_of_day);
+        hist = generateTraceJson(a, tb, start, end, generate_buffer, start_of_day, end_of_day);
         if (hist.len > 0) {
             permWritten = 1;
             char tstring[100];
