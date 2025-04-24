@@ -811,11 +811,16 @@ static int doGlobalCPR(struct aircraft *a, struct modesMessage *mm, double *lat,
 
     if (result < 0) {
         if (!mm->duplicate && (a->addr == Modes.cpr_focus || Modes.debug_cpr) && !inDiscCache(mm->sysTimestamp, a, mm)) {
-            fprintf(stderr, "CPR: decode failure for %06x (%d): even: %d %d   odd: %d %d  fflag: %s\n",
+            int64_t now = mstime();
+            fprintTime(stderr, now);
+            fprintf(stderr, "CPR: decode failure for %06x (%d): even: %6d %6d %4.1fs odd: %6d %6d %4.1fs fflag: %s\n",
                     a->addr, result,
                     a->cpr_even_lat, a->cpr_even_lon,
+                    fmin(999, ((double) now - a->cpr_even_valid.updated) / 1000.0),
                     a->cpr_odd_lat, a->cpr_odd_lon,
-                    fflag ? "odd" : "even");
+                    fmin(999, ((double) now - a->cpr_odd_valid.updated) / 1000.0),
+                    fflag ? "odd" : "even"
+                   );
         }
         return result;
     }
@@ -1313,11 +1318,10 @@ static void updatePosition(struct aircraft *a, struct modesMessage *mm, int64_t 
 
         if (0 && Modes.debug_cpr && location_result == -2) {
             fprintTime(stderr, now);
-            fprintf(stderr, " mm->cpr: (%8d) (%8d) %s %s, %s age: %0.1f between: %0.1f sources o: %s %s e: %s %s lpos src: %s \n",
+            fprintf(stderr, " mm->cpr: (%6d) (%6d) %s %s, %s age: %0.1f sources o: %s %s e: %s %s lpos src: %s \n",
                     mm->cpr_lat, mm->cpr_lon,
                     mm->cpr_odd ? " odd" : "even", cpr_type_string(mm->cpr_type), mm->cpr_odd ? "even" : " odd",
                     mm->cpr_odd ? fmin(999, ((double) now - a->cpr_even_valid.updated) / 1000.0) : fmin(999, ((double) now - a->cpr_odd_valid.updated) / 1000.0),
-                    time_between(a->cpr_odd_valid.updated, a->cpr_even_valid.updated) / 1000.0,
                     source_enum_string(a->cpr_odd_valid.source), cpr_type_string(a->cpr_odd_type),
                     source_enum_string(a->cpr_even_valid.source), cpr_type_string(a->cpr_even_type),
                     source_enum_string(a->position_valid.last_source));
