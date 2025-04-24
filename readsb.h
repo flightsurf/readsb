@@ -775,6 +775,7 @@ struct _Modes
     int32_t ping_reject;
     int32_t log_usb_jitter;
     int32_t devel_log_ppm;
+    int32_t traceLastMax;
     float beast_reduce_filter_distance;
     float beast_reduce_filter_altitude;
     int64_t net_connector_delay;

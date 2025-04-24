@@ -926,11 +926,13 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
     // make sure we don't think an extra position is still buffered in the trace memory
     a->tracePosBuffered = 0;
 
+    int traceLastSaved = (a->traceLast != NULL);
 
     // set trace pointers to zero before loading the trace
     a->trace_current_max = 0;
     a->trace_current = NULL;
     a->trace_chunks = NULL;
+    a->traceLast = NULL;
 
     // recalculate overall trace chunk size
     a->trace_chunk_overall_bytes = 0;
@@ -983,6 +985,19 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
         if (a->trace_current_len) {
             checkSize(stateBytes(a->trace_current_len));
             *p += memcpySize(a->trace_current, *p, stateBytes(a->trace_current_len));
+        }
+        if (traceLastSaved) {
+            //fprintf(stderr, "loading traceLast\n");
+            *p += memcpySize(&tmp_u64, *p, sizeof(tmp_u64));
+            int32_t oldTraceLastMax = tmp_u64;
+            if (oldTraceLastMax == Modes.traceLastMax) {
+                checkSize(stateBytes(Modes.traceLastMax));
+                a->traceLast = cmCalloc(stateBytes(Modes.traceLastMax));
+                *p += memcpySize(a->traceLast, *p, stateBytes(Modes.traceLastMax));
+                //fprintf(stderr, "loaded traceLast\n");
+            } else {
+                *p += stateBytes(oldTraceLastMax);
+            }
         }
 #undef checkSize
 
@@ -1791,6 +1806,8 @@ static void traceCleanupNoUnlink(struct aircraft *a) {
 
     a->tracePosBuffered = 0;
     a->trace_len = 0;
+
+    sfree(a->traceLast);
 
     destroyTraceCache(&a->traceCache);
 }
@@ -2642,9 +2659,26 @@ no_save_state:
         return 0;
     }
 
+    if (Modes.traceLastMax && !a->traceLast) {
+        a->traceLast = cmCalloc(stateBytes(Modes.traceLastMax));
+        a->traceLastNext = 0;
+    }
+
     struct state *new = getState(a->trace_current, a->trace_current_len);
 
     to_state(a, new, now, on_ground, track, stale);
+
+    if (Modes.traceLastMax) {
+        struct state *newLast = getState(a->traceLast, a->traceLastNext);
+        memcpy(newLast, new, sizeof(struct state));
+
+        struct state_all *newLastAll = getStateAll(a->traceLast, a->traceLastNext);
+        if (newLastAll) {
+            to_state_all(a, newLastAll, now);
+        }
+
+        a->traceLastNext = (a->traceLastNext + 1) % Modes.traceLastMax;
+    }
 
     // trace_all stuff:
     struct state_all *new_all = getStateAll(a->trace_current, a->trace_current_len);
@@ -2779,6 +2813,11 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
 
                 // add space for 2 magic constants / 2 struct sizes
                 size_state += 4 * sizeof(uint64_t);
+
+                if (copy->traceLast) {
+                    size_state += sizeof(uint64_t);
+                    size_state += stateBytes(Modes.traceLastMax);
+                }
             }
 
             if (!copy || (p + size_state > buf + alloc)) {
@@ -2906,6 +2945,12 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
                     }
                 }
                 p += memcpySize(p, copy->trace_current, stateBytes(copy->trace_current_len));
+
+                if (copy->traceLast) {
+                    uint64_t traceLastMax = Modes.traceLastMax;
+                    p += memcpySize(p, &traceLastMax, sizeof(traceLastMax));
+                    p += memcpySize(p, copy->traceLast, stateBytes(Modes.traceLastMax));
+                }
             }
         }
     }

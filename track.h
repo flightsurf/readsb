@@ -564,6 +564,9 @@ struct aircraft
   int64_t lastStatusTs;
   int64_t lastOverrideTs;
 
+  fourState *traceLast;
+  int32_t traceLastNext;
+
   // DANGER, this section is zeroed when saving and loading data
 
   char zeroStart;

@@ -163,6 +163,7 @@ static void configSetDefaults(void) {
     Modes.netIngest = 0;
     Modes.ingestLimitRate = 5420;
     Modes.json_trace_interval = 20 * 1000;
+    Modes.traceLastMax = SFOUR * 8;
     Modes.state_write_interval = 1 * HOURS;
     Modes.heatmap_current_interval = -15;
     Modes.heatmap_interval = 60 * SECONDS;
@@ -2130,6 +2131,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     // if (Modes.devel_log_ppm && fabs(ppm) > Modes.devel_log_ppm) {
                 }
 
+                if (strcasecmp(token[0], "traceLast") == 0 && token[1]) {
+                    Modes.traceLastMax = atoi(token[1]);
+                }
                 if (strcasecmp(token[0], "ingestLimitRate") == 0 && token[1]) {
                     Modes.ingestLimitRate = atoi(token[1]);
                 }
@@ -2431,6 +2435,14 @@ static void configAfterParse() {
         Modes.writeTraces = 1;
     } else if (Modes.heatmap || Modes.trace_focus != BADDR) {
         Modes.keep_traces = 35 * MINUTES; // heatmap is written every 30 minutes
+    }
+    if (Modes.globe_history_dir && Modes.traceLastMax > 0) {
+        //ensure traceLastMax is always dividable by SFOUR
+        if (Modes.traceLastMax % SFOUR != 0) {
+            Modes.traceLastMax = (Modes.traceLastMax / SFOUR + 1) * SFOUR;
+        }
+    } else {
+        Modes.traceLastMax = 0;
     }
 
     Modes.traceMax = alignSFOUR((Modes.keep_traces + 1 * HOURS) / 1000 * 3); // 3 position per second, usually 2 per second is max
