@@ -1801,6 +1801,9 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
         } else {
             int useLast = 0;
             int64_t traceLastStart = 0;
+            // only use traceLast if aircraft isn't active any more (so it's not as in many full
+            // jsons in memory, make it easier on the browsers to show live traces unless it's
+            // needed)
             if (!recent && a->traceLast && now > a->seenPosReliable + 5 * SECONDS) {
                 struct state *state = getState(a->traceLast, a->traceLastNext);
                 if (state->timestamp != 0) {
