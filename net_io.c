@@ -4932,8 +4932,8 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
                 sample[sizeof(sample) - 1] = '\0';
 
                 fprintf(stderr, "%s: Synthetic timestamp detected without --devel=accept_synthetic"
-                        "or --devel=ignore_synthetic specified, disconnecting client: %s port %s,"
-                        "hexdump of data containing 0x1A 0xE8: %s\n",
+                        " or --devel=ignore_synthetic specified, disconnecting client: %s port %s,"
+                        " hexdump of data containing 0x1A 0xE8: %s\n",
                         c->service->descr, c->host, c->port, sample);
 
                 modesCloseClient(c);
