@@ -2183,7 +2183,7 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
         int64_t after = nsThreadTime();
         int64_t now = mstime();
         fprintTimePrecise(stderr, now);
-        fprintf(stderr, " %s%06x compressChunk: cpu%7.3f ms compressed %8d ratio %5.2f chunkTime %5.1fh points %5d chunks %3d %5d\n",
+        fprintf(stderr, " %s%06x compressChunk: cpu%7.3f ms compressed %8d ratio %5.2f chunkTime %5.1fh points %5d %5d\n",
                 ((a->addr & MODES_NON_ICAO_ADDRESS) ? "" : " "),
                 a->addr,
                 (after - before) * 1e-6,
@@ -2191,7 +2191,6 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
                 stateBytes(target->numStates) / (double) target->compressed_size,
                 (target->lastTimestamp - target->firstTimestamp) / (double) HOURS,
                 target->numStates,
-                a->trace_chunk_len,
                 extending);
         //lp %5.1fh
         //(now - (getState(a->trace_current, a->trace_current_len - 1))->timestamp) / (double) HOURS,
