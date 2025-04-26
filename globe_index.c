@@ -2043,7 +2043,10 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
             //fprintf(stderr, "not extending: zstd_magic\n");
             extending = 0;
         }
-        if (extending && extending < pointCount && extending < Modes.traceChunkPoints / 8) {
+        // i'm not sure why this was a good idea at any point
+        // extending the chunk is pretty much always better than making a new one as long as the
+        // data it is extended by is within the chunk duration
+        if (0 && extending && extending < pointCount && extending < Modes.traceChunkPoints / 8) {
             //fprintf(stderr, "not extending: exceeding chunk duration\n");
             extending = 0;
         }
