@@ -2116,6 +2116,11 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
          int compressionLevel);
          */
 
+        // when extending the compressed data, the newly data is compressed and simply concatenated
+        // with the old compressed data
+        // when asking zstd to decompress the concatenated range of bytes, it will transparently
+        // decompress all those concatenated compressed objects
+
         int maxSize = ZSTD_compressBound(newBytes);
         int totalBuffer = maxSize;
         if (extending) {
