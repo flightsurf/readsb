@@ -2451,15 +2451,9 @@ static void configAfterParse() {
 
     Modes.traceMax = alignSFOUR((Modes.keep_traces + 1 * HOURS) / 1000 * 3); // 3 position per second, usually 2 per second is max
 
-    if (Modes.json_trace_interval > 10 * SECONDS) {
-        Modes.traceReserve = alignSFOUR(16);
-    } else if (Modes.json_trace_interval > 5 * SECONDS) {
-        Modes.traceReserve = alignSFOUR(32);
-    } else {
-        Modes.traceReserve = alignSFOUR(64);
-    }
+    Modes.traceReserve = alignSFOUR(16);
 
-    Modes.traceChunkPoints = alignSFOUR(4 * 64);
+    Modes.traceChunkPoints = alignSFOUR(2 * 64);
     Modes.traceChunkMaxBytes = 16 * 1024;
 
     if (Modes.json_trace_interval < 1) {
@@ -2467,7 +2461,7 @@ static void configAfterParse() {
     }
 
     if (Modes.json_trace_interval < 4 * SECONDS) {
-        double oversize = 4.0 / fmax(1, (double) Modes.json_trace_interval / 1000.0);
+        double oversize = 2.0 / fmax(1, (double) Modes.json_trace_interval / 1000.0);
         Modes.traceChunkPoints = alignSFOUR(Modes.traceChunkPoints * oversize);
         Modes.traceChunkMaxBytes *= oversize;
     }
@@ -2477,8 +2471,14 @@ static void configAfterParse() {
     Modes.traceRecentPoints = alignSFOUR(TRACE_RECENT_POINTS);
     Modes.traceCachePoints = alignSFOUR(Modes.traceRecentPoints + TRACE_CACHE_EXTRA);
 
+    if (Modes.traceChunkPoints < Modes.traceRecentPoints) {
+        Modes.traceChunkPoints = Modes.traceRecentPoints;
+    }
+
     if (Modes.verbose) {
-        fprintf(stderr, "traceChunkPoints: %d size: %ld\n", Modes.traceChunkPoints, (long) stateBytes(Modes.traceChunkPoints));
+        fprintf(stderr, "traceChunkPoints: %d size: %ld traceChunkMaxBytes %d\n",
+                Modes.traceChunkPoints, (long) stateBytes(Modes.traceChunkPoints),
+                Modes.traceChunkMaxBytes);
     }
 
     Modes.num_procs = 1; // default this value to 1
