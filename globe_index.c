@@ -1926,6 +1926,13 @@ static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t af
 
 static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, threadpool_buffer_t *passbuffer) {
     a->chunkRecompressed = 1;
+    if (memcmp(zstd_magic, chunk->compressed, sizeof(zstd_magic)) != 0) {
+        return 0.0f;
+    }
+    if (0 && chunk->compressed_size > 20 * 1024) {
+        // typically less useful and it starts taking long
+        return 0.0f;
+    }
     int64_t before = 0;
     if (Modes.verbose) { before = nsThreadTime(); };
     if (!passbuffer->dctx) {
@@ -1976,10 +1983,11 @@ static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, 
                 stateBytes(chunk->numStates) / (double) chunk->compressed_size,
                 (chunk->lastTimestamp - chunk->firstTimestamp) / (double) HOURS,
                 chunk->numStates);
-        fprintf(stderr, "savings %4.1f old %lld new %lld\n",
+        fprintf(stderr, "savings %4.1f old %lld new %lld chunks %3d\n",
                 recompressSavings * 100.0f,
                 (long long) chunk->compressed_size,
-                (long long) compressedSize);
+                (long long) compressedSize,
+                a->trace_chunk_len);
 
     }
 
@@ -2020,11 +2028,12 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
 
     if (a->trace_chunk_len > 0) {
         lastChunk = &a->trace_chunks[a->trace_chunk_len - 1];
+        int64_t refTs = lastChunk->firstTimestamp;
 
         int k = 0;
         while(k < pointCount / SFOUR) {
             int64_t ts2 = getState(source, k * SFOUR + (SFOUR - 1))->timestamp;
-            int64_t diff_last = ts2 - lastChunk->firstTimestamp;
+            int64_t diff_last = ts2 - refTs;
 
             // minimize duration of last and next chunk
             if (diff_last > chunkDuration) {
@@ -2044,13 +2053,25 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
             //fprintf(stderr, "not extending: zstd_magic\n");
             extending = 0;
         }
-        // i'm not sure why this was a good idea at any point
-        // extending the chunk is pretty much always better than making a new one as long as the
-        // data it is extended by is within the chunk duration
-        if (0 && extending && extending < pointCount && extending < Modes.traceChunkPoints / 8) {
-            //fprintf(stderr, "not extending: exceeding chunk duration\n");
-            extending = 0;
+    }
+    // if there is a single inactive span just adding all points to the fresh chunk would be fine
+    // but it's possible there is another inactive span, in this case we can save some memory by
+    // making an extra chunk that only has the timejump
+    if (!extending) {
+        int64_t refTs = getState(source, 0)->timestamp;
+
+        int k = 0;
+        while(k < pointCount / SFOUR) {
+            int64_t ts2 = getState(source, k * SFOUR)->timestamp;
+            int64_t diff_last = ts2 - refTs;
+
+            // minimize duration of last and next chunk
+            if (diff_last > chunkDuration) {
+                break;
+            }
+            k++;
         }
+        pointCount = k * SFOUR;
     }
 
     int newBytes = 0;
@@ -2071,7 +2092,7 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
 
         newBytes = stateBytes(pointCount);
     } else {
-        if (!a->chunkRecompressed && lastChunk && memcmp(zstd_magic, lastChunk->compressed, sizeof(zstd_magic)) == 0) {
+        if (!a->chunkRecompressed && lastChunk) {
             // recompress finished buffer
             recompressStateChunk(a, lastChunk, passbuffer);
         }
@@ -2363,23 +2384,14 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
             fprintf(stderr, "compressCurrent: why so many passes? %d\n", passes);
         }
 
-        if (a->trace_current_len >= alignSFOUR(32) + minCurrentPoints()) {
-            struct state *firstCurrent = getState(a->trace_current, 0);
-            struct state *lastCurrent = getState(a->trace_current, a->trace_current_len - 1);
-            if (lastCurrent->timestamp - firstCurrent->timestamp > traceChunkDuration()) {
-                compressCurrent(a, passbuffer);
-            }
-        }
-
-
         // not so sure this is a good approach
         // maybe just do the recompress once the next chunk is created
         if (1 && a->trace_chunk_len > 0) {
             stateChunk *lastChunk = &a->trace_chunks[a->trace_chunk_len - 1];
-            if (lastChunk) {
-                int64_t diff_last = now - lastChunk->firstTimestamp;
-                if (diff_last > traceChunkDuration() * 3 / 2 && !a->chunkRecompressed && memcmp(zstd_magic, lastChunk->compressed, sizeof(zstd_magic)) == 0) {
-                    compressCurrent(a, passbuffer);
+            int64_t diff_last = now - lastChunk->firstTimestamp;
+            if (diff_last > traceChunkDuration() * 3 / 2 && !a->chunkRecompressed) {
+                compressCurrent(a, passbuffer);
+                if (lastChunk == &a->trace_chunks[a->trace_chunk_len - 1]) {
                     recompressStateChunk(a, lastChunk, passbuffer);
                 }
             }
