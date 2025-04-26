@@ -1260,8 +1260,10 @@ static void modesCloseClient(struct client *c) {
             con->backoff = Modes.net_connector_delay_min;
         }
 
-        // force fresh DNS lookup on disconnect
-        con->try_addr = NULL;
+        // force fresh DNS lookup on disconnect if connected for more than 5 seconds
+        if (sinceLastConnect > 1 * SECONDS) {
+            con->try_addr = NULL;
+        }
 
         con->next_reconnect = con->lastConnect + con->backoff;
 
