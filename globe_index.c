@@ -1925,6 +1925,7 @@ static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t af
 }
 
 static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, threadpool_buffer_t *passbuffer) {
+    a->chunkRecompressed = 1;
     int64_t before = 0;
     if (Modes.verbose) { before = nsThreadTime(); };
     if (!passbuffer->dctx) {
@@ -2070,14 +2071,13 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
 
         newBytes = stateBytes(pointCount);
     } else {
-        // disable, not worth it
-        if (1 && lastChunk && memcmp(zstd_magic, lastChunk->compressed, sizeof(zstd_magic)) == 0) {
+        if (!a->chunkRecompressed && lastChunk && memcmp(zstd_magic, lastChunk->compressed, sizeof(zstd_magic)) == 0) {
             // recompress finished buffer
             recompressStateChunk(a, lastChunk, passbuffer);
-
         }
 
         // make new chunk
+        a->chunkRecompressed = 0;
         target = resizeTraceChunks(a, a->trace_chunk_len + 1);
 
         if (!target) {
@@ -2346,12 +2346,21 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
     if (a->trace_current_len > 0) {
         // reset trace_current allocation to nominal size if possible / necessary
         if (a->trace_current_max != get_nominal_trace_current_points(a, now)) {
+            if (a->trace_current_max > get_nominal_trace_current_points(a, now)) {
+                compressCurrent(a, passbuffer);
+            }
             resizeTraceCurrent(a, now);
         }
 
 
-        if (a->trace_current_len >= a->trace_current_max - Modes.traceReserve) {
+        // multiple passes in case compressCurrent() isn't making enough room in trace_current
+        int passes = 0;
+        while (passes < 4 && a->trace_current_len >= a->trace_current_max - Modes.traceReserve) {
             compressCurrent(a, passbuffer);
+            passes++;
+        }
+        if (passes > 2) {
+            fprintf(stderr, "compressCurrent: why so many passes? %d\n", passes);
         }
 
         if (a->trace_current_len >= alignSFOUR(32) + minCurrentPoints()) {
@@ -2359,6 +2368,20 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
             struct state *lastCurrent = getState(a->trace_current, a->trace_current_len - 1);
             if (lastCurrent->timestamp - firstCurrent->timestamp > traceChunkDuration()) {
                 compressCurrent(a, passbuffer);
+            }
+        }
+
+
+        // not so sure this is a good approach
+        // maybe just do the recompress once the next chunk is created
+        if (1 && a->trace_chunk_len > 0) {
+            stateChunk *lastChunk = &a->trace_chunks[a->trace_chunk_len - 1];
+            if (lastChunk) {
+                int64_t diff_last = now - lastChunk->firstTimestamp;
+                if (diff_last > traceChunkDuration() * 3 / 2 && !a->chunkRecompressed && memcmp(zstd_magic, lastChunk->compressed, sizeof(zstd_magic)) == 0) {
+                    compressCurrent(a, passbuffer);
+                    recompressStateChunk(a, lastChunk, passbuffer);
+                }
             }
         }
     }

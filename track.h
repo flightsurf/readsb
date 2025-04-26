@@ -466,7 +466,8 @@ struct aircraft
   // 24 bit
   uint32_t last_message_crc_fixed : 1;
   uint32_t is_df18_exception : 1;
-  uint32_t padding_b : 6;
+  uint32_t chunkRecompressed : 1;
+  uint32_t padding_b : 5;
   // 32 bit !!
 
   // ----
