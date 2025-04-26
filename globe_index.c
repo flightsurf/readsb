@@ -587,13 +587,17 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
     int memWritten = 0;
     // prepare the data for the trace_full file in /run
     if ((trace_write & WMEM)) {
-        if (a->trace_writeCounter > 0) {
-            memWritten = a->trace_writeCounter;
-            //if (Modes.debug_traceCount && ++count3 % 1000 == 0)
-            //    fprintf(stderr, "memory trace writes: %u\n", count3);
-            if (a->addr == TRACE_FOCUS)
-                fprintf(stderr, "full\n");
+        // don't check for trace_writeCounter > 0 as before
+        // unconditionally write trace_full to reduce memory usage via /run for aircraft that have
+        // been inactive for some time
 
+        memWritten = a->trace_writeCounter;
+        //if (Modes.debug_traceCount && ++count3 % 1000 == 0)
+        //    fprintf(stderr, "memory trace writes: %u\n", count3);
+        if (a->addr == TRACE_FOCUS)
+            fprintf(stderr, "full\n");
+
+        if (a->trace_writeCounter > 0) {
             int64_t before = mono_milli_seconds();
 
             mark_legs(tb, a, 0, 0);
@@ -602,22 +606,28 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
             if (elapsed > 2 * SECONDS || focus) {
                 fprintf(stderr, "%06x mark_legs() took %.1f s!\n", a->addr, elapsed / 1000.0);
             }
+        }
 
-            // statistics
-            atomic_fetch_add(&Modes.fullTraceWrites, 1);
+        // statistics
+        atomic_fetch_add(&Modes.fullTraceWrites, 1);
 
-            full = generateTraceJson(a, tb, startFull, -1, generate_buffer, 0, -1);
+        full = generateTraceJson(a, tb, startFull, -1, generate_buffer, 0, -1);
 
-            if (full.len > 0) {
-                snprintf(filename, 256, "traces/%02x/trace_full_%s%06x.json", a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
+        if (full.len > 0) {
+            snprintf(filename, 256, "traces/%02x/trace_full_%s%06x.json", a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
 
-                writeJsonToGzip(Modes.json_dir, filename, full, 5);
-            }
+            writeJsonToGzip(Modes.json_dir, filename, full, 5);
         }
 
         if (a->trace_writeCounter >= 0xc0ffee) {
+            // avoid CPU spikes by randomizing next full trace writes on startup
             a->trace_next_mw = now + random() % (GLOBE_MEM_IVAL * 9 / 8);
-            a->trace_writeCounter = random() % memThreshold;
+            if (now - a->seenPosReliable < 5 * MINUTES) {
+                // only set this for active aircraft, not necessary for inactive ones
+                a->trace_writeCounter = random() % memThreshold;
+            } else {
+                a->trace_writeCounter = 0;
+            }
         } else {
             a->trace_next_mw = now + GLOBE_MEM_IVAL + random() % (GLOBE_MEM_IVAL / 8);
             a->trace_writeCounter = 0;
@@ -1018,7 +1028,7 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
         }
 
         // write traces into /run/readsb so they are present for the webinterface
-        if (a->pos_reliable_valid.source != SOURCE_INVALID || (now - a->seenPosReliable) < 15 * MINUTES) {
+        if (a->pos_reliable_valid.source != SOURCE_INVALID || now - a->seenPosReliable < 15 * MINUTES) {
             // write these trace immediately
             a->trace_writeCounter = 0xc0ffee;
             a->trace_write |= WRECENT;
