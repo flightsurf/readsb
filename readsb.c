@@ -2104,8 +2104,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 if (strcasecmp(token[0], "beast_set_noforward_timestamp") == 0) {
                     Modes.beast_set_noforward_timestamp = 1;
                 }
+
                 if (strcasecmp(token[0], "accept_synthetic") == 0) {
                     Modes.dump_accept_synthetic_now = 1;
+                }
+                if (strcasecmp(token[0], "ignore_synthetic") == 0) {
+                    Modes.dump_ignore_synthetic_now = 1;
                 }
                 if (strcasecmp(token[0], "dump_reduce") == 0) {
                     Modes.dump_reduce = 1;
