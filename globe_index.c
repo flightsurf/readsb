@@ -1964,14 +1964,31 @@ static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, 
         return 0.0f;
     }
 
+    int oldSize = chunk->compressed_size;
+
+    //fprintf(stderr, "%5d %5d\n", (int) compressedSize, oldSize);
+
+    if ((int) compressedSize < oldSize) {
+        sfree(chunk->compressed);
+        chunk->compressed = cmalloc(compressedSize);
+
+        memcpy(chunk->compressed, compressed, compressedSize);
+        chunk->compressed_size = compressedSize;
+    }
+
+    int newSize = chunk->compressed_size;
     float recompressSavings = 0.0f;
-    if (chunk->compressed_size == 0) {
+    if (newSize == 0) {
         fprintf(stderr, "chunk->compressed_size == 0\n");
     } else {
-        recompressSavings = (float) (chunk->compressed_size - (int) compressedSize) / (float) chunk->compressed_size;
+        recompressSavings = (float) (oldSize - newSize) / (float) oldSize;
     }
 
     if (Modes.verbose) {
+        static int64_t tOld = 1; // ensure to avoid zero division
+        static int64_t tNew = 1;
+        tOld += oldSize;
+        tNew += newSize;
         int64_t after = nsThreadTime();
         int64_t now = mstime();
         fprintTimePrecise(stderr, now);
@@ -1983,19 +2000,14 @@ static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, 
                 stateBytes(chunk->numStates) / (double) chunk->compressed_size,
                 (chunk->lastTimestamp - chunk->firstTimestamp) / (double) HOURS,
                 chunk->numStates);
-        fprintf(stderr, "savings %4.1f old %lld new %lld chunks %3d\n",
+        fprintf(stderr, "savings %4.1f old %5d new %5d chunks %3d | totalSavings %7.3f\n",
                 recompressSavings * 100.0f,
-                (long long) chunk->compressed_size,
-                (long long) compressedSize,
-                a->trace_chunk_len);
+                oldSize,
+                newSize,
+                a->trace_chunk_len,
+                (double) (tOld - tNew) / tOld * 100.0);
 
     }
-
-    sfree(chunk->compressed);
-    chunk->compressed = cmalloc(compressedSize);
-
-    memcpy(chunk->compressed, compressed, compressedSize);
-    chunk->compressed_size = compressedSize;
 
     return recompressSavings;
 }
