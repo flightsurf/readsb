@@ -2570,12 +2570,11 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
         }
     }
 
-    if (baro_rate_diff >= 450) {
+    if (baro_rate_diff >= 200) {
         if (traceDebug) {
             fprintf(stderr, "baro_rate_change: %0.0f %0.0f -> %0.0f", baro_rate_diff, last->baro_rate / _rate_factor, (double) a->baro_rate);
         }
-
-        goto save_state;
+        save_state_no_buf = 1;
     }
 
     // record ground air state changes precisely
@@ -2599,11 +2598,7 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
         int max_diff = 250;
 
         if (alt <= 7000) {
-            if (buffered && last->baro_alt == buffered->baro_alt) {
-                max_diff = 200; // for transponders with 100 ft altitude increments
-            } else {
-                max_diff = 100;
-            }
+            max_diff = 75;
         } else if (alt <= 12000) {
             max_diff = 200;
         } else {
@@ -2612,7 +2607,7 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
 
         if (alt_diff >= max_diff) {
             if (traceDebug) fprintf(stderr, "alt_change1: %d -> %d", last_alt, alt);
-            if (alt_diff == max_diff || (buffered && last->baro_alt == buffered->baro_alt)) {
+            if (alt_diff < 250 && alt_diff * 3 <= max_diff * 4) {
                 save_state_no_buf = 1;
             } else {
                 goto save_state;
@@ -2628,7 +2623,11 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
         int64_t too_long = ((max_elapsed / 4) * base / (float) alt_diff);
         if (alt_diff >= 25 && elapsed > too_long) {
             if (traceDebug) fprintf(stderr, "alt_change2: %d -> %d, %5.1f", last_alt, alt, too_long / 1000.0);
-            save_state_no_buf = 1;
+            if (buffered && alt == buffered->baro_alt) {
+                goto save_state;
+            } else {
+                save_state_no_buf = 1;
+            }
         }
     }
 
