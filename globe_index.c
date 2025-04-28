@@ -2786,14 +2786,14 @@ no_save_state:
 
     if (Modes.traceLastMax) {
         struct state *newLast = getState(a->traceLast, a->traceLastNext);
-        memcpy(newLast, new, sizeof(struct state));
-
         struct state_all *newLastAll = getStateAll(a->traceLast, a->traceLastNext);
+        a->traceLastNext = (a->traceLastNext + 1) % Modes.traceLastMax;
+
+        memcpy(newLast, new, sizeof(struct state));
         if (newLastAll) {
             to_state_all(a, newLastAll, now);
         }
 
-        a->traceLastNext = (a->traceLastNext + 1) % Modes.traceLastMax;
     }
 
     // trace_all stuff:
