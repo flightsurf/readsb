@@ -283,8 +283,8 @@ static inline struct state_all *getStateAll(fourState *buffer, int position) {
 }
 typedef struct stateChunk {
     unsigned char *compressed;
-    int compressed_size;
-    int numStates;
+    int32_t compressed_size;
+    int32_t numStates;
     int64_t firstTimestamp;
     int64_t lastTimestamp;
 } stateChunk;
