@@ -2070,7 +2070,17 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
     // but it's possible there is another inactive span, in this case we can save some memory by
     // making an extra chunk that only has the timejump
     if (!extending) {
-        int64_t refTs = getState(source, 0)->timestamp;
+        int64_t refTs;
+        // keeping the actual inactive time jump in the chunk doesn't hurt
+        // thus use the first SFOUR unit forward as reference to ignore the inactive jump to
+        // determine how many points this chunk is created with
+        // when extending the chunk this is disregarded so this stays a small chunk
+        // still useful
+        if (pointCount > SFOUR) {
+            refTs = getState(source, SFOUR)->timestamp;
+        } else {
+            refTs = getState(source, 0)->timestamp;
+        }
 
         int k = 0;
         while(k < pointCount / SFOUR) {
@@ -2104,7 +2114,7 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
 
         newBytes = stateBytes(pointCount);
     } else {
-        if (!a->chunkRecompressed && lastChunk) {
+        if (lastChunk) {
             // recompress finished buffer
             recompressStateChunk(a, lastChunk, passbuffer);
         }
@@ -2398,14 +2408,11 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
 
         // not so sure this is a good approach
         // maybe just do the recompress once the next chunk is created
-        if (1 && a->trace_chunk_len > 0) {
+        if (now - a->seenPosReliable > traceChunkDuration() && !a->chunkRecompressed && a->trace_chunk_len > 0) {
             stateChunk *lastChunk = &a->trace_chunks[a->trace_chunk_len - 1];
-            int64_t diff_last = now - lastChunk->firstTimestamp;
-            if (diff_last > traceChunkDuration() * 3 / 2 && !a->chunkRecompressed) {
-                compressCurrent(a, passbuffer);
-                if (lastChunk == &a->trace_chunks[a->trace_chunk_len - 1]) {
-                    recompressStateChunk(a, lastChunk, passbuffer);
-                }
+            compressCurrent(a, passbuffer);
+            if (lastChunk == &a->trace_chunks[a->trace_chunk_len - 1]) {
+                recompressStateChunk(a, lastChunk, passbuffer);
             }
         }
     }
