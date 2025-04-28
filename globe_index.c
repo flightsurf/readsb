@@ -479,6 +479,11 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
         a->trace_write = 0;
     }
 
+    if (!a->initialTraceWriteDone) {
+        a->initialTraceWriteDone = 1;
+        trace_write |= (WMEM | WRECENT);
+    }
+
     if (a->trace_len == 0) {
         return;
     }
@@ -488,8 +493,7 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
     int recent_points = Modes.traceRecentPoints;
     int memThreshold = recent_points - 2;
     if (a->trace_writeCounter >= memThreshold) {
-        trace_write |= WMEM;
-        trace_write |= WRECENT;
+        trace_write |= (WMEM | WRECENT);
     }
 
     int focus = (a->addr == Modes.leg_focus);
@@ -538,6 +542,16 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
 
     threadpool_buffer_t *reassemble_buffer = &buffer_group->buffers[0];
     threadpool_buffer_t *generate_buffer = &buffer_group->buffers[1];
+
+    if (0 && (trace_write & WMEM)) {
+        fprintTimePrecise(stderr, now);
+        fprintf(stderr, " %s%06x %d %d\n",
+                ((a->addr & MODES_NON_ICAO_ADDRESS) ? "" : " "),
+                a->addr,
+                (trace_write & WMEM),
+                (trace_write & WRECENT)
+               );
+    }
 
     if ((trace_write & (WPERM | WMEM))) {
         tb = reassembleTrace(a, -1, -1, reassemble_buffer);
@@ -1022,17 +1036,14 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
             a->trace_next_perm = now;
             scheduleMemBothWrite(a, now);
             fprintf(stderr, "leg_focus: %06x trace len: %d\n", a->addr, a->trace_len);
-            a->trace_write |= WRECENT;
-            a->trace_write |= WPERM;
-            a->trace_write |= WMEM;
+            a->trace_write |= (WRECENT | WPERM | WMEM);
         }
 
         // write traces into /run/readsb so they are present for the webinterface
         if (a->pos_reliable_valid.source != SOURCE_INVALID || now - a->seenPosReliable < 15 * MINUTES) {
             // write these trace immediately
             a->trace_writeCounter = 0xc0ffee;
-            a->trace_write |= WRECENT;
-            a->trace_write |= WMEM;
+            a->trace_write |= (WRECENT | WMEM);
         }
     } else {
         traceCleanupNoUnlink(a);
@@ -2370,10 +2381,12 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
     }
 
     if (Modes.writeTraces) {
-        if (now > a->trace_next_perm)
+        if (now > a->trace_next_perm) {
             a->trace_write |= WPERM;
-        if (now > a->trace_next_mw)
+        }
+        if (now > a->trace_next_mw) {
             a->trace_write |= WMEM;
+        }
     }
 
     // on day change write out the traces for yesterday

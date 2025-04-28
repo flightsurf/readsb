@@ -1482,6 +1482,9 @@ static char *sprintTracePoint(char *p, char *end, struct state *state, struct st
 }
 
 static void checkTraceCache(struct aircraft *a, traceBuffer tb, int64_t now) {
+    if (now - a->seenPosReliable > TRACE_CACHE_LIFETIME) {
+        return; // don't create cache if the aircraft hasn't been seen recently
+    }
     struct traceCache *cache = &a->traceCache;
     if (!cache->entries || !cache->json || !cache->json_max) {
         if (Modes.trace_hist_only & 8) {

@@ -1050,10 +1050,9 @@ static void traceWriteTask(void *arg, threadpool_threadbuffers_t *buffer_group) 
     // increment info->from to mark this part of the task as finshed
     for (int j = info->from; j < info->to; j++, info->from++) {
         for (a = Modes.aircraft[j]; a; a = a->next) {
-            if (Modes.triggerPastDayTraceWrite && !a->initialTraceWriteDone) {
+            if (Modes.triggerPastDayTraceWrite && a->trace_len > 0 && !a->initialTraceWriteDone) {
                 a->trace_writeCounter = 0xc0ffee;
-                a->trace_write |= WRECENT;
-                a->trace_write |= WMEM;
+                a->trace_write |= (WRECENT | WMEM);
             }
             if (a->trace_write) {
                 int64_t before = mono_milli_seconds();
@@ -1061,7 +1060,6 @@ static void traceWriteTask(void *arg, threadpool_threadbuffers_t *buffer_group) 
                     return;
                 }
                 traceWrite(a, buffer_group);
-                a->initialTraceWriteDone = 1;
                 int64_t elapsed = mono_milli_seconds() - before;
                 if (elapsed > 4 * SECONDS) {
                     fprintf(stderr, "<3>traceWrite() for %06x took %.1f s!\n", a->addr, elapsed / 1000.0);
