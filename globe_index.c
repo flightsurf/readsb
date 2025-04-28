@@ -413,19 +413,21 @@ static void sprintDateDir(char *base_dir, struct tm *utc, char *dateDir) {
     snprintf(dateDir, PATH_MAX * 3/4, "%s/%s", base_dir, tstring);
 }
 static void createDateDir(char *base_dir, struct tm *utc, char *dateDir) {
-    if (!strcmp(TDATE_FORMAT, "%Y/%m/%d")) {
-        char yy[100];
-        char mm[100];
-        strftime (yy, 100, "%Y", utc);
-        strftime (mm, 100, "%m", utc);
-        char pathbuf[PATH_MAX];
-
-        snprintf(pathbuf, PATH_MAX, "%s/%s", base_dir, yy);
-        mkdir_error(pathbuf, 0755, stderr);
-
-        snprintf(pathbuf, PATH_MAX, "%s/%s/%s", base_dir, yy, mm);
-        mkdir_error(pathbuf, 0755, stderr);
+    if (strcmp(TDATE_FORMAT, "%Y/%m/%d")) {
+        fprintf(stderr, "check TDATE_FORMAT\n");
     }
+    char yy[100];
+    char mm[100];
+    strftime (yy, 100, "%Y", utc);
+    strftime (mm, 100, "%m", utc);
+    char pathbuf[PATH_MAX];
+
+    snprintf(pathbuf, PATH_MAX, "%s/%s", base_dir, yy);
+    mkdir_error(pathbuf, 0755, stderr);
+
+    snprintf(pathbuf, PATH_MAX, "%s/%s/%s", base_dir, yy, mm);
+    mkdir_error(pathbuf, 0755, stderr);
+
     sprintDateDir(base_dir, utc, dateDir);
 
     //fprintf(stderr, "making sure directory exists: %s\n", dateDir);
@@ -3537,7 +3539,6 @@ void checkNewDay(int64_t now) {
 
     // at 15 min past midnight, start a permanent write of all traces
     // create the new directory for writing traces
-    // prevent the webserver from reading it until they are in a finished state
     time_t fifteenAgo = (now - 15 * MINUTES) / 1000; // in seconds
     struct tm utcFifteenAgo;
     gmtime_r(&fifteenAgo, &utcFifteenAgo);
@@ -3549,10 +3550,6 @@ void checkNewDay(int64_t now) {
 
         snprintf(filename, PATH_MAX, "%s/traces", dateDir);
         int err = mkdir_error(filename, 0755, stderr);
-
-        if (Modes.trace_hist_only) {
-            chmod(filename, 0755);
-        }
 
         // if the directory exists we assume we already have created the subdirectories
         // if the directory couldn't be created no need to try and create subdirectories it won't work.
@@ -3578,9 +3575,6 @@ void checkNewDay(int64_t now) {
         gmtime_r(&yesterday, &tm_yesterday);
 
         createDateDir(Modes.globe_history_dir, &tm_yesterday, dateDir); // doesn't usually create a directory ... but use the function anyhow worst that can happen is an empty directory for yesterday
-
-        snprintf(filename, PATH_MAX, "%s/traces", dateDir);
-        chmod(filename, 0755);
 
         compressACAS(dateDir);
     }
