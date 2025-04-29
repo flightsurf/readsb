@@ -1939,11 +1939,13 @@ static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t af
 
 static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, threadpool_buffer_t *passbuffer) {
     a->chunkRecompressed = 1;
-    if (memcmp(zstd_magic, chunk->compressed, sizeof(zstd_magic)) != 0) {
+    if (Modes.traceChunkMaxBytes > 16 * 1024) {
+        // priority on no delays when the chunks are bigger
+        // recompressing takes a moment and it's only a 2% memory save
+        // less when traceChunkPoints is > 128, then it's only 1%
         return 0.0f;
     }
-    if (0 && chunk->compressed_size > 20 * 1024) {
-        // typically less useful and it starts taking long
+    if (memcmp(zstd_magic, chunk->compressed, sizeof(zstd_magic)) != 0) {
         return 0.0f;
     }
     int64_t before = 0;

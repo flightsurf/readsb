@@ -2459,7 +2459,8 @@ static void configAfterParse() {
     }
 
     if (Modes.json_trace_interval < 4 * SECONDS) {
-        double oversize = 2.0 / fmax(1, (double) Modes.json_trace_interval / 1000.0);
+        //double oversize = 2.0 / fmax(1, (double) Modes.json_trace_interval / 1000.0);
+        double oversize = 2;
         Modes.traceChunkPoints = alignSFOUR(Modes.traceChunkPoints * oversize);
         Modes.traceChunkMaxBytes *= oversize;
     }
