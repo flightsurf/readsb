@@ -2000,28 +2000,32 @@ static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, 
     }
 
     if (Modes.verbose) {
+        int64_t after = nsThreadTime();
+        int64_t now = mstime();
+
+        pthread_mutex_lock(&Modes.traceDebugMutex);
+
         static int64_t tOld = 1; // ensure to avoid zero division
         static int64_t tNew = 1;
         tOld += oldSize;
         tNew += newSize;
-        int64_t after = nsThreadTime();
-        int64_t now = mstime();
         fprintTimePrecise(stderr, now);
-        fprintf(stderr, " %s%06x compressChunk: cpu%7.3f ms compressed %8d ratio %5.2f chunkTime %5.1fh points %5d ",
+        fprintf(stderr, " %s%06x compressChunk: cpu%7.3f ms compressed %8d ratio %5.2f chunkTime %5.1fh points %5d"
+                " savings %4.1f old %5d new %5d chunks %3d | totalSavings %7.3f\n",
                 ((a->addr & MODES_NON_ICAO_ADDRESS) ? "" : " "),
                 a->addr,
                 (after - before) * 1e-6,
                 chunk->compressed_size,
                 stateBytes(chunk->numStates) / (double) chunk->compressed_size,
                 (chunk->lastTimestamp - chunk->firstTimestamp) / (double) HOURS,
-                chunk->numStates);
-        fprintf(stderr, "savings %4.1f old %5d new %5d chunks %3d | totalSavings %7.3f\n",
+                chunk->numStates,
                 recompressSavings * 100.0f,
                 oldSize,
                 newSize,
                 a->trace_chunk_len,
                 (double) (tOld - tNew) / tOld * 100.0);
 
+        pthread_mutex_unlock(&Modes.traceDebugMutex);
     }
 
     return recompressSavings;
@@ -2243,6 +2247,9 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
     if (Modes.verbose) {
         int64_t after = nsThreadTime();
         int64_t now = mstime();
+
+        pthread_mutex_lock(&Modes.traceDebugMutex);
+
         fprintTimePrecise(stderr, now);
         fprintf(stderr, " %s%06x compressChunk: cpu%7.3f ms compressed %8d ratio %5.2f chunkTime %5.1fh points %5d %5d\n",
                 ((a->addr & MODES_NON_ICAO_ADDRESS) ? "" : " "),
@@ -2255,6 +2262,8 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
                 extending);
         //lp %5.1fh
         //(now - (getState(a->trace_current, a->trace_current_len - 1))->timestamp) / (double) HOURS,
+
+        pthread_mutex_unlock(&Modes.traceDebugMutex);
     }
 
     return pointCount;
