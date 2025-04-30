@@ -62,6 +62,11 @@ ifeq ($(DISABLE_RTLSDR_ZEROCOPY_WORKAROUND), yes)
     CFLAGS += -DDISABLE_RTLSDR_ZEROCOPY_WORKAROUND
 endif
 
+ifeq ($(LTO), yes)
+	CFLAGS += -flto
+	LDFLAGS += -flto
+endif
+
 ifeq ($(HISTORY), yes)
     CFLAGS += -DALL_JSON=1
 endif
