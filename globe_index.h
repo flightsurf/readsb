@@ -7,9 +7,10 @@
 #define WMEM (1<<11)
 #define WPERM (1<<12)
 
-#ifndef GLOBE_PERM_IVAL
-#define GLOBE_PERM_IVAL (4 * HOURS)
-#endif
+// this setting is mostly meaningless now
+// permanent traces are only written after 4h of inactivity or at the end of the UTC day
+#define GLOBE_PERM_IVAL (10 * MINUTES)
+
 #define GLOBE_MEM_IVAL (60 * MINUTES)
 
 #define GLOBE_INDEX_GRID 3

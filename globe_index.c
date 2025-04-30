@@ -753,6 +753,7 @@ perm_done:
         }
         // note what we have written to disk
         a->trace_perm_last_timestamp = endStamp;
+        a->traceWrittenForYesterday = Modes.triggerPermWriteDay;
     }
 
     if (Modes.debug_traceCount) {
@@ -2394,22 +2395,30 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
     }
 
     if (Modes.writeTraces) {
+        int64_t permCheckIval = 10 * MINUTES;
         if (now > a->trace_next_perm) {
-            a->trace_write |= WPERM;
+            // wait until aircraft is inactive to write permanent trace
+            // unless it's the end of the day, then the permanent trace needs to be written
+            if (now - a->seenPosReliable > 4 * HOURS || a->traceWrittenForYesterday != Modes.triggerPermWriteDay) {
+                a->trace_write |= WPERM;
+            } else {
+                // reschedule
+                a->trace_next_perm = now + permCheckIval;
+            }
         }
         if (now > a->trace_next_mw) {
             a->trace_write |= WMEM;
         }
-    }
-
-    // on day change write out the traces for yesterday
-    // for which day and which time span is written is determined by traceday
-    if (a->traceWrittenForYesterday != Modes.triggerPermWriteDay) {
-        a->traceWrittenForYesterday = Modes.triggerPermWriteDay;
-        if (a->addr == TRACE_FOCUS)
-            fprintf(stderr, "schedule_perm\n");
-
-        a->trace_next_perm = now + random() % (5 * MINUTES);
+        // on day change write out the traces for yesterday
+        // for which day and which time span is written is determined by traceday
+        if (a->traceWrittenForYesterday != Modes.triggerPermWriteDay) {
+            if (a->trace_next_perm > now + permCheckIval) {
+                if (a->addr == TRACE_FOCUS) {
+                    fprintf(stderr, "schedule_perm\n");
+                }
+                a->trace_next_perm = now + random() % permCheckIval;
+            }
+        }
     }
 
     if (a->trace_current_len > 0) {
