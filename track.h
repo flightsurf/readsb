@@ -514,7 +514,7 @@ struct aircraft
   data_validity alert_valid;
   data_validity spi_valid;
 
-  int64_t seenPosGlobal; // seen global CPR or other hopefully reliable position
+  int64_t unused4345345;
   double latReliable; // last reliable position based on json_reliable threshold
   double lonReliable; // last reliable position based on json_reliable threshold
   char typeCode[4];

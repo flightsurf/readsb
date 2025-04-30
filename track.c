@@ -875,7 +875,7 @@ static int doLocalCPR(struct aircraft *a, struct modesMessage *mm, double *lat, 
     }
 
     int64_t now = mm->sysTimestamp;
-    if (now < a->seenPosGlobal + 10 * MINUTES && a->localCPR_allow_ac_rel) {
+    if (now - a->seenPosReliable < 10 * MINUTES && a->localCPR_allow_ac_rel) {
         reflat = a->lat;
         reflon = a->lon;
 
@@ -980,6 +980,43 @@ static int64_t time_between(int64_t t1, int64_t t2) {
     else
         return t2 - t1;
 }
+static void addReceiverId(struct aircraft *a, struct modesMessage *mm, int64_t elapsed) {
+    a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
+    a->receiverIds[a->receiverIdsNext] = simpleHash(mm->receiverId);
+
+    int64_t advance = imin(RECEIVERIDBUFFER * 500, elapsed);
+    int iterations = 0;
+    while (advance > 750) {
+        iterations++;
+        // ADS-B positions nominally come in every 500 ms receiver id
+        // buffer has 12 positions, if the positions don't come in
+        // often enough we zero them so it's only roughly the receiver
+        // ids for the last 6 seconds
+        advance -= 500;
+        a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
+        a->receiverIds[a->receiverIdsNext] = 0;
+    }
+    if (iterations > 20) {
+        fprintf(stderr, "%06x\n", a->addr);
+    }
+    if (0 && a->addr == Modes.cpr_focus) {
+        fprintf(stderr, "%u\n", simpleHash(mm->receiverId));
+    }
+
+    uint16_t *set1 = a->receiverIds;
+    uint16_t set2[RECEIVERIDBUFFER] = { 0 };
+    int div = 0;
+    for (int k = 0; k < RECEIVERIDBUFFER; k++) {
+        int unequal = 0;
+        for (int j = 0; j < div; j++) {
+            unequal += (set1[k] != set2[j]);
+        }
+        if (unequal == div && set1[k]) {
+            set2[div++] = set1[k];
+        }
+    }
+    a->receiverCount = div;
+}
 
 static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now) {
     if (0 && a->addr == Modes.cpr_focus) {
@@ -1074,8 +1111,6 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
         }
     }
 
-    int64_t elapsed_pos = now - a->seen_pos;
-
     // Update aircraft state
     a->prev_lat = a->lat;
     a->prev_lon = a->lon;
@@ -1097,43 +1132,8 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
     } else {
         if (mm->source == SOURCE_MLAT && mm->receiverCountMlat) {
             a->receiverCount = mm->receiverCountMlat;
-        } else if (a->position_valid.source < SOURCE_TISB) {
-            a->receiverCount = 1;
         } else {
-            a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
-            a->receiverIds[a->receiverIdsNext] = simpleHash(mm->receiverId);
-            int64_t advance = imin(RECEIVERIDBUFFER * 500, elapsed_pos);
-            int iterations = 0;
-            while (advance > 750) {
-                iterations++;
-                // ADS-B positions nominally come in every 500 ms receiver id
-                // buffer has 12 positions, if the positions don't come in
-                // often enough we zero them so it's only roughly the receiver
-                // ids for the last 6 seconds
-                advance -= 500;
-                a->receiverIdsNext = (a->receiverIdsNext + 1) % RECEIVERIDBUFFER;
-                a->receiverIds[a->receiverIdsNext] = 0;
-            }
-            if (iterations > 20) {
-                fprintf(stderr, "%06x\n", a->addr);
-            }
-            if (0 && a->addr == Modes.cpr_focus) {
-                fprintf(stderr, "%u\n", simpleHash(mm->receiverId));
-            }
-
-            uint16_t *set1 = a->receiverIds;
-            uint16_t set2[RECEIVERIDBUFFER] = { 0 };
-            int div = 0;
-            for (int k = 0; k < RECEIVERIDBUFFER; k++) {
-                int unequal = 0;
-                for (int j = 0; j < div; j++) {
-                    unequal += (set1[k] != set2[j]);
-                }
-                if (unequal == div && set1[k]) {
-                    set2[div++] = set1[k];
-                }
-            }
-            a->receiverCount = div;
+            addReceiverId(a, mm, now - a->prev_pos_time);
         }
     }
 
@@ -1972,7 +1972,13 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         if (now - a->seen > 300 * SECONDS) {
             Modes.stats_current.unique_aircraft++;
         }
+        int64_t elapsed_seen = now - a->seen;
+
         a->seen = now;
+
+        if (now - a->seen_pos > 500 * RECEIVERIDBUFFER) {
+            addReceiverId(a, mm, elapsed_seen);
+        }
     }
 
     // don't use messages with unreliable CRC too long after receiving a reliable address from an aircraft
@@ -3628,18 +3634,16 @@ static const char *source_string(datasource_t source) {
 }
 
 void updateValidities(struct aircraft *a, int64_t now) {
-
-    int64_t elapsed_seen_global = now - a->seenPosGlobal;
     int64_t elapsed_pos = now - a->seen_pos;
 
-    if (elapsed_pos > 5 * SECONDS && a->receiverCount > 0) {
+    if (now - a->seen > 500 * RECEIVERIDBUFFER && a->receiverCount > 0) {
         a->receiverCount = 0;
         for (int i = 0; i < RECEIVERIDBUFFER; i++) {
             a->receiverIds[i] = 0;
         }
     }
 
-    if (a->globe_index >= 0 && now > a->seen_pos + Modes.trackExpireMax) {
+    if (a->globe_index >= 0 && elapsed_pos > Modes.trackExpireMax) {
         set_globe_index(a, -5);
     }
 
@@ -3647,7 +3651,7 @@ void updateValidities(struct aircraft *a, int64_t now) {
         a->category = 0;
 
     // reset position reliability when no position was received for 60 minutes
-    if (a->pos_reliable_odd != 0 && a->pos_reliable_even != 0 && elapsed_seen_global > POS_RELIABLE_TIMEOUT) {
+    if (a->pos_reliable_odd != 0 && a->pos_reliable_even != 0 && elapsed_pos > POS_RELIABLE_TIMEOUT) {
         a->pos_reliable_odd = 0;
         a->pos_reliable_even = 0;
     }
@@ -3764,7 +3768,6 @@ static void showPositionDebug(struct aircraft *a, struct modesMessage *mm, int64
 }
 
 static void incrementReliable(struct aircraft *a, struct modesMessage *mm, int64_t now, int odd) {
-    a->seenPosGlobal = now;
     a->localCPR_allow_ac_rel = 1;
 
     float threshold = Modes.json_reliable;
