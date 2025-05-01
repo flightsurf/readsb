@@ -104,13 +104,15 @@ struct apiBuffer {
     int len;
     int len_flag;
     int alloc;
+    int jsonLen;
+    char *json;
     struct apiEntry *list;
     struct apiEntry *list_flag;
     struct range list_pos_range;
     struct range list_flag_pos_range;
     int64_t timestamp;
-    char *json;
-    int jsonLen;
+    int hashBuckets;
+    int hashBits;
     struct apiEntry **hexHash;
     struct apiEntry **regHash;
     struct apiEntry **callsignHash;

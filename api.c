@@ -1,18 +1,17 @@
 #include "readsb.h"
 
-#define API_HASH_BITS (16)
-#define API_BUCKETS (1 << API_HASH_BITS)
-
 static int apiUpdate();
-static inline uint32_t hexHash(uint32_t addr) {
-    return addrHash(addr, API_HASH_BITS);
+static inline uint32_t hexHash(uint32_t addr, struct apiBuffer *buffer) {
+    uint32_t res = addrHash(addr, buffer->hashBits);
+    //fprintf(stderr, "%06x -> %06u\n", addr, res);
+    return res;
 }
 
-static inline uint32_t regHash(char *reg) {
+static inline uint32_t regHash(char *reg, struct apiBuffer *buffer) {
     const uint64_t seed = 0x30732349f7810465ULL;
     uint64_t h = fasthash64(reg, 12, seed);
 
-    uint32_t bits = API_HASH_BITS;
+    uint32_t bits = buffer->hashBits;
     uint64_t res = h ^ (h >> 32);
 
     if (bits < 16)
@@ -26,11 +25,11 @@ static inline uint32_t regHash(char *reg) {
     return (uint32_t) res;
 }
 
-static inline uint32_t callsignHash(char *callsign) {
+static inline uint32_t callsignHash(char *callsign, struct apiBuffer *buffer) {
     const uint64_t seed = 0x30732349f7810465ULL;
     uint64_t h = fasthash64(callsign, 8, seed);
 
-    uint32_t bits = API_HASH_BITS;
+    uint32_t bits = buffer->hashBits;
     uint64_t res = h ^ (h >> 32);
 
     if (bits < 16)
@@ -264,7 +263,8 @@ static int findInBox(struct apiEntry *haystack, int haylen, struct apiOptions *o
     //fprintf(stderr, "box: lat %.1f to %.1f, lon %.1f to %.1f, count: %d\n", box[0], box[1], box[2], box[3], count);
     return count;
 }
-static int findRegList(struct apiEntry **hashList, char *regList, int regCount, struct apiEntry *matches, size_t *alloc) {
+static int findRegList(struct apiBuffer *buffer, char *regList, int regCount, struct apiEntry *matches, size_t *alloc) {
+    struct apiEntry **hashList = buffer->regHash;
     int count = 0;
     for (int k = 0; k < regCount; k++) {
         char *reg = &regList[k * 12];
@@ -273,7 +273,7 @@ static int findRegList(struct apiEntry **hashList, char *regList, int regCount, 
             reg[i] = toupper(reg[i]);
         }
         //fprintf(stderr, "reg: %s\n", reg);
-        uint32_t hash = regHash(reg);
+        uint32_t hash = regHash(reg, buffer);
         struct apiEntry *e = hashList[hash];
         while (e) {
             if (strncmp(e->bin.registration, reg, 12) == 0) {
@@ -286,7 +286,8 @@ static int findRegList(struct apiEntry **hashList, char *regList, int regCount, 
     }
     return count;
 }
-static int findCallsignList(struct apiEntry **hashList, char *callsignList, int callsignCount, struct apiEntry *matches, size_t *alloc) {
+static int findCallsignList(struct apiBuffer *buffer, char *callsignList, int callsignCount, struct apiEntry *matches, size_t *alloc) {
+    struct apiEntry **hashList = buffer->callsignHash;
     int count = 0;
     for (int k = 0; k < callsignCount; k++) {
         char *callsign = &callsignList[k * 8];
@@ -297,7 +298,7 @@ static int findCallsignList(struct apiEntry **hashList, char *callsignList, int 
                 callsign[i] = ' ';
             }
         }
-        uint32_t hash = callsignHash(callsign);
+        uint32_t hash = callsignHash(callsign, buffer);
         //fprintf(stderr, "callsign: %8s hash: %u\n", callsign, hash);
         struct apiEntry *e = hashList[hash];
         while (e) {
@@ -312,11 +313,13 @@ static int findCallsignList(struct apiEntry **hashList, char *callsignList, int 
     }
     return count;
 }
-static int findHexList(struct apiEntry **hashList, uint32_t *hexList, int hexCount, struct apiEntry *matches, size_t *alloc) {
+static int findHexList(struct apiBuffer *buffer, uint32_t *hexList, int hexCount, struct apiEntry *matches, size_t *alloc) {
+    struct apiEntry **hashList = buffer->hexHash;
     int count = 0;
     for (int k = 0; k < hexCount; k++) {
         uint32_t addr = hexList[k];
-        uint32_t hash = hexHash(addr);
+        uint32_t hash = hexHash(addr, buffer);
+        //fprintf(stderr, "----> %06x -> %06u\n", addr, hash);
         struct apiEntry *e = hashList[hash];
         while (e) {
             if (e->bin.hex == addr) {
@@ -484,7 +487,7 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
 
         if (options->is_hexList) {
             // optionally add matches for &find_hex
-            count += findHexList(buffer->hexHash, options->hexList, options->hexCount, matches + count, &alloc);
+            count += findHexList(buffer, options->hexList, options->hexCount, matches + count, &alloc);
         }
     } else if (options->is_circle) {
         doFree = 1; matches = apiAlloc(haylen); if (!matches) { return cb; };
@@ -495,15 +498,15 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
     } else if (options->is_hexList) {
         doFree = 1; matches = apiAlloc(options->hexCount); if (!matches) { return cb; };
 
-        count = findHexList(buffer->hexHash, options->hexList, options->hexCount, matches, &alloc);
+        count = findHexList(buffer, options->hexList, options->hexCount, matches, &alloc);
     } else if (options->is_regList) {
         doFree = 1; matches = apiAlloc(options->regCount); if (!matches) { return cb; };
 
-        count = findRegList(buffer->regHash, options->regList, options->regCount, matches, &alloc);
+        count = findRegList(buffer, options->regList, options->regCount, matches, &alloc);
     } else if (options->is_callsignList) {
         doFree = 1; matches = apiAlloc(options->callsignCount); if (!matches) { return cb; };
 
-        count = findCallsignList(buffer->callsignHash, options->callsignList, options->callsignCount, matches, &alloc);
+        count = findCallsignList(buffer, options->callsignList, options->callsignCount, matches, &alloc);
     } else if (options->is_typeList) {
         doFree = 1; matches = apiAlloc(haylen); if (!matches) { return cb; };
 
@@ -829,15 +832,15 @@ static inline void apiGenerateJson(struct apiBuffer *buffer, int64_t now) {
         }
         uint32_t hash;
 
-        hash = hexHash(entry->bin.hex);
+        hash = hexHash(entry->bin.hex, buffer);
         entry->nextHex = buffer->hexHash[hash];
         buffer->hexHash[hash] = entry;
 
-        hash = regHash(entry->bin.registration);
+        hash = regHash(entry->bin.registration, buffer);
         entry->nextReg = buffer->regHash[hash];
         buffer->regHash[hash] = entry;
 
-        hash = callsignHash(entry->bin.callsign);
+        hash = callsignHash(entry->bin.callsign, buffer);
         entry->nextCallsign = buffer->callsignHash[hash];
         buffer->callsignHash[hash] = entry;
         //fprintf(stderr, "callsign: %8s hash: %u\n", entry->bin.callsign, hash);
@@ -889,10 +892,29 @@ static int apiUpdate() {
         }
     }
 
+    int reallocHash = 0;
+    while (buffer->hashBuckets < buffer->alloc) {
+        buffer->hashBits += 1;
+        buffer->hashBuckets = 1 << buffer->hashBits;
+
+        reallocHash = 1;
+
+    }
+    if (reallocHash) {
+        //fprintf(stderr, "-----> hashBuckets: %d\n", buffer->hashBuckets);
+        sfree(buffer->hexHash);
+        sfree(buffer->regHash);
+        sfree(buffer->callsignHash);
+
+        buffer->hexHash = cmalloc(buffer->hashBuckets * sizeof(struct apiEntry*));
+        buffer->regHash = cmalloc(buffer->hashBuckets * sizeof(struct apiEntry*));
+        buffer->callsignHash = cmalloc(buffer->hashBuckets * sizeof(struct apiEntry*));
+    }
+
     // reset hashList to NULL
-    memset(buffer->hexHash, 0x0, API_BUCKETS * sizeof(struct apiEntry*));
-    memset(buffer->regHash, 0x0, API_BUCKETS * sizeof(struct apiEntry*));
-    memset(buffer->callsignHash, 0x0, API_BUCKETS * sizeof(struct apiEntry*));
+    memset(buffer->hexHash, 0x0, buffer->hashBuckets * sizeof(struct apiEntry*));
+    memset(buffer->regHash, 0x0, buffer->hashBuckets * sizeof(struct apiEntry*));
+    memset(buffer->callsignHash, 0x0, buffer->hashBuckets * sizeof(struct apiEntry*));
 
     // reset api list, just in case we don't set the entries completely due to oversight
     memset(buffer->list, 0x0, buffer->alloc * sizeof(struct apiEntry));
@@ -1943,12 +1965,6 @@ void apiBufferInit() {
     Modes.apiFlip = cmalloc(size);
     memset(Modes.apiFlip, 0x0, size);
 
-    for (int i = 0; i < 2; i++) {
-        struct apiBuffer *buffer = &Modes.apiBuffer[i];
-        buffer->hexHash = cmalloc(API_BUCKETS * sizeof(struct apiEntry*));
-        buffer->regHash = cmalloc(API_BUCKETS * sizeof(struct apiEntry*));
-        buffer->callsignHash = cmalloc(API_BUCKETS * sizeof(struct apiEntry*));
-    }
     apiUpdate(); // run an initial apiUpdate
 
     Modes.apiBufferInitDone++;
