@@ -199,10 +199,10 @@ static struct argp_option optionsReadsb[] = {
     {0, 0, 0, OPTION_DOC, "Beast binary and HULC protocol input with hardware handshake enabled.", 6},
     {"beast-serial", OptBeastSerial, "<path>", 0, "Path to GNS HULC serial device (default /dev/ttyUSB0)", 6},
 
-    {0,0,0,0, "ifile-specific options, use with --ifile:", 7},
+    {0,0,0,0, "ifile-specific options, use with --device-type ifile:", 7},
     {"ifile", OptIfileName, "<path>", 0, "Read samples from given file ('-' for stdin)", 7},
     {"iformat", OptIfileFormat, "<type>", 0, "Set sample format (UC8, SC16, SC16Q11)", 7},
-    {"throttle", OptIfileThrottle, 0, 0, "Process samples at the original capture speed (must be specified after --device-type ifile)", 7},
+    {"throttle", OptIfileThrottle, 0, 0, "Process samples at the original capture speed", 7},
 #ifdef ENABLE_PLUTOSDR
     {0,0,0,0, "ADALM-Pluto SDR options:", 8},
     {0,0,0, OPTION_DOC, "use with --device-type plutosdr", 8},

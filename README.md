@@ -318,214 +318,151 @@ script is probably a hassle, so just use the above.
 might be out of date, check the command on a freshly compiled version
 
 ```
-Usage: readsb [OPTION...] 
+Usage: readsb [OPTIONS...] 
 readsb Mode-S/ADSB/TIS Receiver   
-Build options: 
+Build options: ENABLE_RTLSDR 
 
- General options:
-      --cpr-focus=<hex>      show CPR details for this hex
-      --db-file=<file.csv.gz>   Default: "none" (as of writing a compatible
-                             file is available here:
-                             https://github.com/wiedehopf/tar1090-db/tree/csv)
-      --db-file-lt           Write long type to aircraft.json as field desc
-      --debug=<flags>        Debug mode (verbose), n: network, P: CPR, S: speed
-                             check
-      --device-type=<type>   Select SDR type
-      --filter-DF=<type>     When displaying decoded ModeS messages on stdout
-                             only show this DF type
-      --fix                  Enable CRC single-bit error correction (default)
-      --forward-mlat         Allow forwarding of received mlat results to
-                             output ports
-      --freq=<hz>            Set frequency (default: 1090 MHz)
-      --gain=<db>            Set gain (default: max gain. Use -10 for
-                             auto-gain)
-      --gnss                 Show altitudes as GNSS when available
-      --heatmap=<interval in seconds>
-                             Make Heatmap, each aircraft at most every interval
-                             seconds (creates historydir/heatmap.bin and exit
-                             after that)
-      --heatmap-dir=<dir>    Change the directory where heatmaps are saved
-                             (default is in globe history dir)
-      --interactive          Interactive mode refreshing data on screen.
-                             Implies --throttle
-      --interactive-ttl=<sec>   Remove from list if idle for <sec> (default:
-                             60)
-      --jaero-timeout=<n>    How long in minutes JAERO positions remain valid
-                             and on the map in tar1090 (default:33)
-      --json-location-accuracy=<n>
-                             Accuracy of receiver location in json metadata:
-                             0=no location, 1=approximate, 2=exact
-      --json-reliable=<n>    Minimum position reliability to put it into json
-                             (default: 1, globe options will default set this
-                             to 2, disable speed filter: -1, max: 4)
-                                   --json-trace-hist-only=1,2,3,8
-Don't write recent(1), full(2), either(3) traces
-                             to /run, only archive via write-globe-history (8:
-                             irregularly write limited traces to run, subject
-                             to change)
-      --json-trace-interval=<seconds>
-                             Interval after which a new position will
-                             guaranteed to be written to the trace and the json
-                             position output (default: 30)
-      --lat=<lat>            Reference/receiver surface latitude
-      --leg-focus=<hex>      show leg marking details for this hex
-      --lon=<lon>            Reference/receiver surface longitude
-      --max-range=<dist>     Absolute maximum range for position decoding (in
-                             nm, default: 300)
-      --metric               Use metric units
-      --mlat                 Display raw messages in Beast ASCII mode
-      --modeac               Enable decoding of SSR Modes 3/A & 3/C
-      --modeac-auto          Enable Mode A/C if requested by a Beast
-                             connection
-      --no-fix               Disable CRC single-bit error correction
-      --no-fix-df            Disable CRC single-bit error correction on the DF
-                             type to produce more DF17 messages (disabling
-                             reduces CPU usage)
-      --no-interactive       Disable interactive mode, print to stdout
-      --onlyaddr             Show only ICAO addresses
-      --position-persistence=<n>   Position persistence against outliers
-                             (default: 4), incremented by json-reliable minus
-                             1
-      --preamble-threshold=<40-400>
-                             lower threshold --> more CPU usage (default: 58,
-                             pi zero / pi 1: 75, hot CPU 42)
-      --quiet                Disable output (default)
-      --range-outline-hours=<hours>
-                             Make the range outline retain data for the last X
-                             hours (float, default: 24.0)
-      --raw                  Show only messages hex values
-      --receiver-focus=<receiverId>
-                             only process messages from receiverId
-      --show-only=<addr>     Show only messages by given ICAO on stdout
-      --snip=<level>         Strip IQ file removing samples < level
-      --stats                With --ifile print stats at exit. No other output
-      --stats-every=<sec>    Show and reset stats every <sec> seconds
-      --stats-range          Collect/show range histogram
-      --trace-focus=<hex>    show traceAdd details for this hex
-      --write-globe-history=<dir>
-                             Extended Globe History
-      --write-json=<dir>     Periodically write json output to <dir>
-      --write-json-binCraft-only=<n>
-                             Use only binary binCraft format for globe files
-                             (1), for aircraft.json as well (2)
-      --write-json-every=<sec>   Write json output and update API json every
-                             sec seconds (default 1)
-      --write-json-globe-index   Write specially indexed globe_xxxx.json files
-                             (for tar1090)
-      --write-json-gzip      Write aircraft.json also as aircraft.json.gz
-      --write-prom=<filepath>   Periodically write prometheus output to
-                             <filepath>
-      --write-receiver-id-json   Write receivers.json
-      --write-state=<dir>    Write state to disk to have traces and outline
-                             after a restart
-                            
-      --write-state-only-on-exit   Don't continously update state.
 
- Network options:
-      --net                  Enable networking
-      --net-api-port=<port>  TCP API listen port (in contrast to other
-                             listeners, only a single port is allowed) (update
-                             frequency controlled by write-json-every
-                             parameter) (default: 0)
-      --net-beast-reduce-filter-alt=<pressure altitude in ft>
-                             beast-reduce: remove aircraft which are above
-                             altitude
-      --net-beast-reduce-filter-dist=<distance in nmi>
-                             beast-reduce: remove aircraft which are further
-                             than distance from the receiver
-      --net-beast-reduce-interval=<seconds>
-                             BeastReduce position update interval, longer means
-                             less data (default: 0.125, valid range: 0.000 -
-                             14.999)
-      --net-beast-reduce-out-port=<ports>
-                             TCP BeastReduce output listen ports (default: 0)
-      --net-bi-port=<ports>  TCP Beast input listen ports  (default: 0)
-      --net-bind-address=<ip>   IP address to bind to (default: Any; Use
-                             127.0.0.1 for private)
-      --net-bo-port=<ports>  TCP Beast output listen ports (default: 0)
-      --net-buffer=<n>       TCP buffer size 64Kb * (2^n) (default: n=2, 256Kb)
-                            
-      --net-connector=<ip,port,protocol>
-                             Establish connection, can be specified multiple
-                             times (e.g. 127.0.0.1,23004,beast_out) Protocols:
-                             beast_out, beast_in, raw_out, raw_in, sbs_in,
-                             sbs_in_jaero, sbs_out, sbs_out_jaero, sbs_out_prio 
-                             vrs_out, json_out, asterix_out, asterix_in, 
-                             gpsd_in (one failover ip/address,port can be specified:
-                             primary-address,primary-port,protocol,failover-address,failover-port)
-      --net-connector-delay=<seconds>
-                             Outbound re-connection delay (default: 30)
-      --net-garbage=<ports>  timeout receivers, output messages from timed out
-                             receivers as beast on <ports>
-      --net-heartbeat=<rate> TCP heartbeat rate in seconds (default: 60 sec; 0
-                             to disable)
-                                   --net-ingest           primary ingest node
-      --net-json-port=<ports>   TCP json position output listen ports, sends
-                             one line with a json object containing aircraft
-                             details for every position received (default: 0)
-      --net-json-port-include-noposition
-TCP json position output: include aircraft without
-                             position (state is sent for aircraft for every
-                             DF11 with CRC if the aircraft hasn't sent a
-                             position in the last 10 seconds and interval
-                             allowing)
-      --net-json-port-interval=<seconds>
-                             Set minimum interval between outputs per aircraft
-                             for TCP json output, default: 0.0 (every
-                             position)
-      --net-only             Enable just networking, no RTL device or file
-                             used
-      --net-receiver-id      forward receiver ID
-      --net-ri-port=<ports>  TCP raw input listen ports  (default: 0)
-      --net-ro-interval=<rate>   TCP output flush interval in seconds (maximum
-                             interval between two network writes of accumulated
-                             data)(default: 0.05, valid values 0.005 - 1.0)
-      --net-ro-port=<ports>  TCP raw output listen ports (default: 0)
-      --net-ro-size=<size>   TCP output flush size (maximum amount of
-                             internally buffered data before writing to
-                             network) (default: 1200)
-      --net-sbs-in-port=<ports>   TCP BaseStation input listen ports (default:
-                             0)
-      --net-sbs-jaero-in-port=<ports>
-                             TCP SBS Jaero input listen ports (default: 0)
-      --net-sbs-jaero-port=<ports>
-                             TCP SBS Jaero output listen ports (default: 0)
-      --net-sbs-port=<ports> TCP BaseStation output listen ports (default: 0)
-      --net-sbs-reduce       Apply beast reduce logic and interval to SBS
-                             outputs
-      --net-ao-port=<ports>  TCP ASTERIX output listen ports (default: 0)
-      --net-ai-port=<ports>  TCP ASTERIX input listen ports (default: 0)
-      --net-asterix-reduce   Apply beast reduce logic and interval to ASTERIX
-                             outputs
-      --net-verbatim         Forward messages unchanged
-      --net-vrs-interval=<seconds>
-                             TCP VRS json output interval (default: 5.0)
-      --net-vrs-port=<ports> TCP VRS json output listen ports (default: 0)
-      --uuid-file=<path>     path to UUID file
+General options:
+  --lat=<lat>                                                    Reference/receiver surface latitude
+  --lon=<lon>                                                    Reference/receiver surface longitude
+  --no-interactive                                               Disable interactive mode, print to stdout
+  --interactive-ttl=<sec>                                        Remove from list if idle for <sec> (default: 60)
+  --modeac                                                       Enable decoding of SSR Modes 3/A & 3/C
+  --modeac-auto                                                  Enable Mode A/C if requested by a Beast connection
+  --max-range=<dist>                                             Absolute maximum range for position decoding (in nm, default: 300)
+  --fix                                                          Enable CRC single-bit error correction (default)
+  --no-fix                                                       Disable CRC single-bit error correction
+  --no-fix-df                                                    Disable CRC single-bit error correction on the DF type to produce more DF17 messages (disabling reduces CPU usage)
+  --metric                                                       Use metric units
+  --show-only=<addr>                                             Show only messages by given ICAO on stdout
+  --process-only=<addr>                                          Process only messages by given ICAO
+  --filter-DF=<type>                                             When displaying decoded ModeS messages on stdout only show this DF type
+  --device-type=<type>                                           Select SDR type (this needs to be placed on the command line before any SDR type specific options)
+  --gain=<db>                                                    Set gain (default: auto gain, possible values for rtl-sdr devices: auto auto-verbose 0.0 0.9 1.4 2.7 3.7 7.7 8.7 12.5 14.4 15.7 16.6 19.7 20.7 22.9 25.4 28.0 29.7 32.8 33.8 36.4 37.2 38.6 40.2 42.1 43.4 43.9 44.5 48.0 49.6 58)
+  --freq=<hz>                                                    Set frequency (default: 1090 MHz)
+  --interactive                                                  Interactive mode refreshing data on screen. Implies --throttle
+  --raw                                                          Show only messages hex values
+  --preamble-threshold=<40-400>                                  lower threshold --> more CPU usage (default: 58, pi zero / pi 1: 75, hot CPU 42)
+  --forward-mlat                                                 Forward received beast mlat results to beast output ports
+  --forward-mlat-sbs                                             Forward received mlat results to sbs output ports
+  --stats                                                        Print stats at exit. No other output
+  --stats-range                                                  Collect/show range histogram
+  --stats-every=<sec>                                            Show and reset stats every <sec> seconds (rounded to the nearest 10 seconds due to implementation, first inteval can be up to 5 seconds shorter)
+  --auto-exit=<sec>                                              Run for X seconds, then exit (default: run indefinitely)
+  --range-outline-hours=<hours>                                  Make the range outline retain data for the last X hours (float, default: 24.0)
+  --onlyaddr                                                     Show only ICAO addresses
+  --gnss                                                         Show altitudes as GNSS when available
+  --snip=<level>                                                 Strip IQ file removing samples < level
+  --debug=<flags>                                                Debug mode (verbose), n: network, P: CPR, S: speed check
+  --devel=<mode>                                                 Development debugging mode, see source for options, can be specified more than once
+  --receiver-focus=<receiverId>                                  only process messages from receiverId
+  --cpr-focus=<hex>                                              show CPR details for this hex
+  --leg-focus=<hex>                                              show leg marking details for this hex
+  --trace-focus=<hex>                                            show traceAdd details for this hex
+  --quiet                                                        Disable output (default)
+  --write-json=<dir>                                             Periodically write json output to <dir>
+  --write-prom=<filepath>                                        Periodically write prometheus output to <filepath>
+  --write-globe-history=<dir>                                    Write traces to this directory, 1 gz compressed json per day and airframe
+  --write-state=<dir>                                            Write state to disk to have traces after a restart
+  --write-state-every=<seconds>                                  Continuously write state to disk every X seconds (default: 3600)
+  --write-state-only-on-exit                                     Don't continously update state.
+  --heatmap-dir=<dir>                                            Change the directory where heatmaps are saved (default is in globe history dir)
+  --heatmap=<interval in seconds>                                Make Heatmap, each aircraft at most every interval seconds (creates historydir/heatmap.bin and exit after that)
+  --dump-beast=<dir>,<interval>,<compressionLevel>               Dump compressed beast files to this directory, start a new file evey interval seconds
+  --write-json-every=<sec>                                       Write json output and update API json every sec seconds (default 1)
+  --json-location-accuracy=<n>                                   Accuracy of receiver location in json metadata: 0=no location, 1=approximate, 2=exact
+  --ac-hash-bits=<n>                                             Main hash map size: 2^n entries (default: AIRCRAFT_HASH_BITS)
+  --write-json-globe-index                                       Write specially indexed globe_xxxx.json files (for tar1090)
+  --write-receiver-id-json                                       Write receivers.json
+  --json-trace-interval=<seconds>                                Interval after which a new position will guaranteed to be written to the trace and the json position output (default: 30)
+  --json-trace-hist-only=1,2,3,8                                 Don't write recent(1), full(2), either(3) traces to /run, only archive via write-globe-history (8: irregularly write limited traces to run, subject to change)
+  --write-json-gzip                                              Write aircraft.json also as aircraft.json.gz
+  --write-json-binCraft-only=<n>                                 Use only binary binCraft format for globe files (1), for aircraft.json as well (2)
+  --write-binCraft-old                                           write old gzipped binCraft files
 
- Modes-S Beast options, use with --device-type modesbeast:
-      --beast-baudrate=<baud>   Override Baudrate (default rate 3000000 baud)
-      --beast-crc-off        Turn OFF CRC checking
-      --beast-df045-on       Turn ON DF0/4/5 filter
-      --beast-df1117-on      Turn ON DF11/17-only filter
-      --beast-fec-off        Turn OFF forward error correction
-      --beast-mlat-off       Turn OFF MLAT time stamps
-      --beast-modeac         Turn ON mode A/C
-      --beast-serial=<path>  Path to Beast serial device (default
-                             /dev/ttyUSB0)
+  --json-reliable=<n>                                            Minimum position reliability to put it into json (default: 1, globe options will default set this to 2, disable speed filter: -1, max: 4)
+  --position-persistence=<n>                                     Position persistence against outliers (default: 4), incremented by json-reliable minus 1
+  --jaero-timeout=<n>                                            How long in minutes JAERO positions remain valid and on the map in tar1090 (default:33)
+  --db-file=<file.csv.gz>                                        Default: "none" (as of writing a compatible file is available here: https://github.com/wiedehopf/tar1090-db/tree/csv)
+  --db-file-lt                                                   aircraft.json: add long type as field desc, add field ownOp for the owner, add field year
 
- GNS HULC options, use with --device-type gnshulc:
-      --beast-serial=<path>  Path to GNS HULC serial device (default
-                             /dev/ttyUSB0)
+Network options:
+  --net-connector=<ip,port,protocol>                             Establish connection, can be specified multiple times (e.g. 127.0.0.1,23004,beast_out) Protocols: beast_out, beast_in, raw_out, raw_in, sbs_in, sbs_in_jaero, sbs_out, sbs_out_jaero, vrs_out, json_out, gpsd_in, uat_in, uat_replay_out, planefinder_in, asterix_in, asterix_out (one failover ip/address,port can be specified: primary-address,primary-port,protocol,failover-address,failover-port) (any position in the comma separated list can also be either silent_fail or uuid=<uuid>)
+  --net                                                          Enable networking
+  --net-only                                                     Legacy Option, Enable networking, use --net instead
+  --net-bind-address=<ip>                                        IP address to bind to (default: Any; Use 127.0.0.1 for private)
+  --net-bo-port=<ports>                                          TCP Beast output listen ports (default: 0)
+  --net-bi-port=<ports>                                          TCP Beast input listen ports  (default: 0)
+  --net-ro-port=<ports>                                          TCP raw output listen ports (default: 0)
+  --net-ri-port=<ports>                                          TCP raw input listen ports  (default: 0)
+  --net-uat-replay-port=<ports>                                  UAT replay output listen ports (default: 0)
+  --net-uat-in-port=<ports>                                      UAT input listen ports (default: 0)
+  --net-sbs-port=<ports>                                         TCP BaseStation output listen ports (default: 0)
+  --net-sbs-in-port=<ports>                                      TCP BaseStation input listen ports (default: 0)
+  --net-sbs-jaero-port=<ports>                                   TCP SBS Jaero output listen ports (default: 0)
+  --net-sbs-jaero-in-port=<ports>                                TCP SBS Jaero input listen ports (default: 0)
+  --net-asterix-out-port=<ports>                                 TCP Asterix output listen ports (default: 0)
+  --net-asterix-in-port=<ports>                                  TCP Asterix input listen ports (default: 0)
+  --net-asterix-reduce                                           Apply beast reduce logic and interval to ASTERIX outputs
+  --net-vrs-port=<ports>                                         TCP VRS json output listen ports (default: 0)
+  --net-vrs-interval=<seconds>                                   TCP VRS json output interval (default: 5.0)
+  --net-json-port=<ports>                                        TCP json position output listen ports, sends one line with a json object containing aircraft details for every position received (default: 0) (consider raising --net-ro-size to 8192 for less fragmentation if this is a concern)
+  --net-json-port-interval=<seconds>                             Set minimum interval between outputs per aircraft for TCP json output, default: 0.0 (every position)
+  --net-json-port-include-noposition                             TCP json position output: include aircraft without position (state is sent for aircraft for every DF11 with CRC if the aircraft hasn't sent a position in the last 10 seconds and interval allowing)
+  --net-api-port=<port>                                          TCP API listen port (in contrast to other listeners, only a single port is allowed) (update frequency controlled by write-json-every parameter) (default: 0)
+  --api-shutdown-delay=<seconds>                                 Shutdown delay to server remaining API queries, new queries get a 503 response (default: 0)
+  --tar1090-use-api                                              when running with globe-index, signal tar1090 use the readsb API to get data, requires webserver mapping of /tar1090/re-api to proxy_pass the requests to the --net-api-port, see nginx-readsb-api.conf in the tar1090 repository for details
+  --net-beast-reduce-out-port=<ports>                            TCP BeastReduce output listen ports (default: 0)
+  --net-beast-reduce-interval=<seconds>                          BeastReduce data update interval, longer means less data (default: 0.250, valid range: 0.000 - 14.999)
+  --net-beast-reduce-optimize-for-mlat                           BeastReduce output: keep all messages relevant to mlat-client
+  --net-beast-reduce-filter-dist=<distance in nmi>               beast-reduce: remove aircraft which are further than distance from the receiver
+  --net-beast-reduce-filter-alt=<pressure altitude in ft>        beast-reduce: remove aircraft which are above altitude
+  --net-sbs-reduce                                               Apply beast reduce logic and interval to SBS outputs
+  --net-receiver-id                                              forward receiver ID
+  --net-ingest                                                   primary ingest node
+  --net-garbage=<ports>                                          timeout receivers, output messages from timed out receivers as beast on <ports>
+  --decode-threads=<n>                                           Number of decode threads, either 1 or 2 (default: 1). Only use 2 when you have beast traffic > 200 MBit/s, expect 1.4x speedup for 2x CPU
+  --uuid-file=<path>                                             path to UUID file
+  --net-ro-size=<size>                                           TCP output flush size (maximum amount of internally buffered data before writing to network) (default: 1280)
+  --net-ro-interval=<seconds>                                    TCP output flush interval in seconds (maximum delay between placing data in the output buffer and sending)(default: 0.05, valid values 0.0 - 1.0)
+  --net-ro-interval-beast-reduce=<seconds>                       TCP output flush interval in seconds for beast-reduce outputs (default: value from --net-ro-interval, valid values 0.0 - 1.0)
+  --net-connector-delay=<seconds>                                Outbound re-connection delay (default: 15)
+  --net-heartbeat=<rate>                                         TCP heartbeat rate in seconds (default: 60 sec; 0 to disable)
+  --net-buffer=<n>                                               control some buffer sizes: 8KB * (2^n) (default: n=1, 16KB)
+  --net-verbatim                                                 Forward messages unchanged
+  --sdr-buffer-size=<KiB>                                        SDR buffer / USB transfer size in kibibytes (default: 256 which is equivalent to around 54 ms using rtl-sdr, option might be ignored in future versions)
 
- ifile-specific options, use with --ifile:
-      --ifile=<path>         Read samples from given file ('-' for stdin)
-      --iformat=<type>       Set sample format (UC8, SC16, SC16Q11)
-      --throttle             Process samples at the original capture speed
+RTL-SDR options:
 
- Help options:
+use with --device-type rtlsdr
+  --device=<index|serial>                                        Select device by index or serial number
+  --enable-agc                                                   Enable digital AGC (not tuner AGC!)
+  --ppm=<correction>                                             Set oscillator frequency correction in PPM
 
-  -?, --help                 Give this help list
-      --usage                Give a short usage message
-  -V, --version              Print program version
+Modes-S Beast options, use with --device-type modesbeast:
+  --beast-serial=<path>                                          Path to Beast serial device (default /dev/ttyUSB0)
+  --beast-df1117-on                                              Turn ON DF11/17-only filter
+  --beast-mlat-off                                               Turn OFF MLAT time stamps
+  --beast-crc-off                                                Turn OFF CRC checking
+  --beast-df045-on                                               Turn ON DF0/4/5 filter
+  --beast-fec-off                                                Turn OFF forward error correction
+  --beast-modeac                                                 Turn ON mode A/C
+  --beast-baudrate=<baud>                                        Override Baudrate (default rate 3000000 baud)
+
+GNS HULC options, use with --device-type gnshulc:
+
+Beast binary and HULC protocol input with hardware handshake enabled.
+  --beast-serial=<path>                                          Path to GNS HULC serial device (default /dev/ttyUSB0)
+
+ifile-specific options, use with --device-type ifile:
+  --ifile=<path>                                                 Read samples from given file ('-' for stdin)
+  --iformat=<type>                                               Set sample format (UC8, SC16, SC16Q11)
+  --throttle                                                     Process samples at the original capture speed
+
+Help options:
+  --help                                                         Give this help list
+  --usage                                                        Give a short usage message
+
+Report bugs to Matthias Wirth <matthias.wirth@gmail.com>
 ```
