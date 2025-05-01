@@ -401,6 +401,17 @@ int globe_index(double lat_in, double lon_in) {
     // first 1000 are reserved for special use
 }
 
+// fiftyfive_ago changes day 55 min after midnight: stop writing the previous days traces
+struct tm fiftyfiveTime(int64_t now) {
+    // this is in seconds, not milliseconds
+    time_t fiftyfive_time = now / 1000 - 55 * 60;
+
+    struct tm fiftyfive;
+    gmtime_r(&fiftyfive_time, &fiftyfive);
+
+    return fiftyfive;
+}
+
 int globe_index_index(int index) {
     double lat = ((index - GLOBE_MIN_INDEX) /  GLOBE_LAT_MULT) * GLOBE_INDEX_GRID - 90;
     double lon = ((index - GLOBE_MIN_INDEX) % GLOBE_LAT_MULT) * GLOBE_INDEX_GRID - 180;
@@ -539,12 +550,7 @@ int writePerm(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_
     int64_t endStamp = 0;
 
     // fiftyfive_ago changes day 55 min after midnight: stop writing the previous days traces
-    // fiftysix_ago changes day 56 min after midnight: allow webserver to read the previous days traces (see checkNewDay function)
-    // this is in seconds, not milliseconds
-    time_t fiftyfive_time = now / 1000 - 55 * 60;
-
-    struct tm fiftyfive;
-    gmtime_r(&fiftyfive_time, &fiftyfive);
+    struct tm fiftyfive = fiftyfiveTime(now);
 
     if (!Modes.globe_history_dir) {
         // push timer back in perm_done
@@ -2409,9 +2415,18 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
     if (Modes.writeTraces) {
         int64_t permCheckIval = 10 * MINUTES;
         if (now > a->trace_next_perm) {
+            // fiftyfive_ago changes day 55 min after midnight
+            struct tm fiftyfive = fiftyfiveTime(now);
+            // tm_hour == 23 starts at 23:55 and will soften then IOPS spike
+            // not that this really requires high IOPS but might as well
+
             // wait until aircraft is inactive to write permanent trace
             // unless it's the end of the day, then the permanent trace needs to be written
-            if (now - a->seenPosReliable > 4 * HOURS || a->traceWrittenForYesterday != Modes.triggerPermWriteDay) {
+            if (
+                    now - a->seenPosReliable > 4 * HOURS
+                    || (fiftyfive.tm_hour == 23 && now - a->seenPosReliable > 1 * HOURS)
+                    || a->traceWrittenForYesterday != Modes.triggerPermWriteDay
+               ) {
                 a->trace_write |= WPERM;
             } else {
                 // reschedule
@@ -3591,27 +3606,22 @@ void checkNewDay(int64_t now) {
                 mkdir_error(filename, 0755, stderr);
             }
         }
-    }
 
-    // fiftyfive_ago changes day 55 min after midnight: stop writing the previous days traces
-    // fiftysix_ago changes day 56 min after midnight: allow webserver to read the previous days traces (see checkNewDay function)
-    // this is in seconds, not milliseconds
-    time_t fiftysix_ago = now / 1000 - 56 * 60;
-    struct tm utcFiftySixAgo;
-    gmtime_r(&fiftysix_ago, &utcFiftySixAgo);
-
-    if (utcFiftySixAgo.tm_mday != Modes.traceDay) {
-        Modes.traceDay = utcFiftySixAgo.tm_mday;
         time_t yesterday = now / 1000 - 24 * 3600;
         struct tm tm_yesterday;
         gmtime_r(&yesterday, &tm_yesterday);
 
-        createDateDir(Modes.globe_history_dir, &tm_yesterday, dateDir); // doesn't usually create a directory ... but use the function anyhow worst that can happen is an empty directory for yesterday
+        // this is just to change dateDir because, it usually doesn't create any directories as they
+        // already exist
+        createDateDir(Modes.globe_history_dir, &tm_yesterday, dateDir);
 
+        // compress ACAS those files which switched over to new directory at midnight
         compressACAS(dateDir);
     }
 }
 
+// this blocks other stuff, so the compression is done a bit later in the checkNewDay function which
+// does not block other stuff
 void checkNewDayAcas(int64_t now) {
     if (!Modes.globe_history_dir || !Modes.writeTraces)
         return;
@@ -3846,12 +3856,7 @@ void unlinkPerm(struct aircraft *a) {
     a->trace_perm_last_timestamp = 0;
 
     // fiftyfive_ago changes day 55 min after midnight: stop writing the previous days traces
-    // fiftysix_ago changes day 56 min after midnight: allow webserver to read the previous days traces (see checkNewDay function)
-    // this is in seconds, not milliseconds
-    time_t fiftyfive_time = now / 1000 - 55 * 60;
-
-    struct tm fiftyfive;
-    gmtime_r(&fiftyfive_time, &fiftyfive);
+    struct tm fiftyfive = fiftyfiveTime(now);
 
     // we just use the day of the struct tm in the next lines
     fiftyfive.tm_sec = 0;
