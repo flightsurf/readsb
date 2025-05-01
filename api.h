@@ -68,11 +68,11 @@ struct apiOptions {
     int hexCount;
     uint32_t hexList[API_REQ_LIST_MAX];
     int callsignCount;
-    char callsignList[API_REQ_LIST_MAX * 8 + 1];
+    char callsignList[API_REQ_LIST_MAX * memberSize(struct binCraft, callsign) + 1];
     int regCount;
-    char regList[API_REQ_LIST_MAX * 12 + 1];
+    char regList[API_REQ_LIST_MAX * memberSize(struct binCraft, registration) + 1];
     int typeCount;
-    char typeList[API_REQ_LIST_MAX * 4 + 1];
+    char typeList[API_REQ_LIST_MAX * memberSize(struct binCraft, typeCode) + 1];
 };
 
 struct offset {

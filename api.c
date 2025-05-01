@@ -9,7 +9,7 @@ static inline uint32_t hexHash(uint32_t addr, struct apiBuffer *buffer) {
 
 static inline uint32_t regHash(char *reg, struct apiBuffer *buffer) {
     const uint64_t seed = 0x30732349f7810465ULL;
-    uint64_t h = fasthash64(reg, 12, seed);
+    uint64_t h = fasthash64(reg, memberSize(struct binCraft, registration), seed);
 
     uint32_t bits = buffer->hashBits;
     uint64_t res = h ^ (h >> 32);
@@ -22,6 +22,7 @@ static inline uint32_t regHash(char *reg, struct apiBuffer *buffer) {
     // mask to fit the requested bit width
     res &= (((uint64_t) 1) << bits) - 1;
 
+    //fprintf(stderr, "%s -> %06u\n", reg, (uint32_t) res);
     return (uint32_t) res;
 }
 
@@ -175,6 +176,10 @@ static int filterSquawk(struct apiEntry *haystack, int haylen, struct apiEntry *
 static int filterCallsignPrefix(struct apiEntry *haystack, int haylen, struct apiEntry *matches, size_t *alloc, char *callsign_prefix) {
     int count = 0;
     int prefix_len = strlen(callsign_prefix);
+    for (int i = 0; i < prefix_len; i++) {
+        // upper case callsign prefix
+        callsign_prefix[i] = toupper(callsign_prefix[i]);
+    }
     for (int j = 0; j < haylen; j++) {
         struct apiEntry *e = &haystack[j];
         if (e->bin.callsign_valid && strncmp(e->bin.callsign, callsign_prefix, prefix_len) == 0) {
@@ -186,18 +191,24 @@ static int filterCallsignPrefix(struct apiEntry *haystack, int haylen, struct ap
 }
 
 static int filterCallsignExact(struct apiEntry *haystack, int haylen, struct apiEntry *matches, size_t *alloc, char *callsign) {
-    // replace null padding with space padding
-    for (int i = 0; i < 8; i++) {
+    int callLen = memberSize(struct binCraft, callsign);
+    for (int i = 0; i < callLen; i++) {
+        // replace null padding with space padding
         if (callsign[i] == '\0') {
             callsign[i] = ' ';
         }
+        // upper case callsign
+        callsign[i] = toupper(callsign[i]);
     }
     int count = 0;
     for (int j = 0; j < haylen; j++) {
         struct apiEntry *e = &haystack[j];
-        if (e->bin.callsign_valid && strncmp(e->bin.callsign, callsign, 8) == 0) {
-            matches[count++] = *e;
-            *alloc += e->jsonOffset.len;
+        if (e->bin.callsign_valid) {
+            //fprintf(stderr, "%s %s\n", callsign, e->bin.callsign);
+            if (strncmp(e->bin.callsign, callsign, callLen) == 0) {
+                matches[count++] = *e;
+                *alloc += e->jsonOffset.len;
+            }
         }
     }
     return count;
@@ -205,18 +216,19 @@ static int filterCallsignExact(struct apiEntry *haystack, int haylen, struct api
 
 static int filterTypeList(struct apiEntry *haystack, int haylen, char *typeList, int typeCount, struct apiEntry *matches, size_t *alloc) {
     int count = 0;
+    int typeLen = memberSize(struct binCraft, typeCode);
     for (int k = 0; k < typeCount; k++) {
-        char *typeCode = typeList + 4 * k;
+        char *typeCode = typeList + typeLen * k;
         // upper case typeCode
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < typeLen; i++) {
             typeCode[i] = toupper(typeCode[i]);
         }
     }
     for (int j = 0; j < haylen; j++) {
         struct apiEntry *e = &haystack[j];
         for (int k = 0; k < typeCount; k++) {
-            char *typeCode = typeList + 4 * k;
-            if (strncmp(e->bin.typeCode, typeCode, 4) == 0) {
+            char *typeCode = typeList + typeLen * k;
+            if (strncmp(e->bin.typeCode, typeCode, typeLen) == 0) {
                 //fprintf(stderr, "typeCode: %.4s %.4s alloc increase by %d\n", e->bin.typeCode, typeCode, e->jsonOffset.len);
                 matches[count++] = *e;
                 *alloc += e->jsonOffset.len;
@@ -266,17 +278,18 @@ static int findInBox(struct apiEntry *haystack, int haylen, struct apiOptions *o
 static int findRegList(struct apiBuffer *buffer, char *regList, int regCount, struct apiEntry *matches, size_t *alloc) {
     struct apiEntry **hashList = buffer->regHash;
     int count = 0;
+    int regLen = memberSize(struct binCraft, registration);
     for (int k = 0; k < regCount; k++) {
-        char *reg = &regList[k * 12];
+        char *reg = &regList[k * regLen];
         // upper case reg
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < regLen; i++) {
             reg[i] = toupper(reg[i]);
         }
         //fprintf(stderr, "reg: %s\n", reg);
         uint32_t hash = regHash(reg, buffer);
         struct apiEntry *e = hashList[hash];
         while (e) {
-            if (strncmp(e->bin.registration, reg, 12) == 0) {
+            if (strncmp(e->bin.registration, reg, regLen) == 0) {
                 matches[count++] = *e;
                 *alloc += e->jsonOffset.len;
                 break;
@@ -289,10 +302,11 @@ static int findRegList(struct apiBuffer *buffer, char *regList, int regCount, st
 static int findCallsignList(struct apiBuffer *buffer, char *callsignList, int callsignCount, struct apiEntry *matches, size_t *alloc) {
     struct apiEntry **hashList = buffer->callsignHash;
     int count = 0;
+    int callLen = memberSize(struct binCraft, callsign);
     for (int k = 0; k < callsignCount; k++) {
-        char *callsign = &callsignList[k * 8];
+        char *callsign = &callsignList[k * callLen];
         // replace null padding with space padding, upper case input
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < callLen; i++) {
             callsign[i] = toupper(callsign[i]);
             if (callsign[i] == '\0') {
                 callsign[i] = ' ';
@@ -303,7 +317,7 @@ static int findCallsignList(struct apiBuffer *buffer, char *callsignList, int ca
         struct apiEntry *e = hashList[hash];
         while (e) {
             //fprintf(stderr, "callsign: %8s\n", e->bin.callsign);
-            if (strncmp(e->bin.callsign, callsign, 8) == 0) {
+            if (strncmp(e->bin.callsign, callsign, callLen) == 0) {
                 matches[count++] = *e;
                 *alloc += e->jsonOffset.len;
                 break;
@@ -836,13 +850,17 @@ static inline void apiGenerateJson(struct apiBuffer *buffer, int64_t now) {
         entry->nextHex = buffer->hexHash[hash];
         buffer->hexHash[hash] = entry;
 
-        hash = regHash(entry->bin.registration, buffer);
-        entry->nextReg = buffer->regHash[hash];
-        buffer->regHash[hash] = entry;
+        if (strlen(entry->bin.registration) > 0) {
+            hash = regHash(entry->bin.registration, buffer);
+            entry->nextReg = buffer->regHash[hash];
+            buffer->regHash[hash] = entry;
+        }
 
-        hash = callsignHash(entry->bin.callsign, buffer);
-        entry->nextCallsign = buffer->callsignHash[hash];
-        buffer->callsignHash[hash] = entry;
+        if (strlen(entry->bin.callsign) > 0) {
+            hash = callsignHash(entry->bin.callsign, buffer);
+            entry->nextCallsign = buffer->callsignHash[hash];
+            buffer->callsignHash[hash] = entry;
+        }
         //fprintf(stderr, "callsign: %8s hash: %u\n", entry->bin.callsign, hash);
 
         char *start = p;
@@ -1250,8 +1268,10 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                 char *saveptr = NULL;
                 char *endptr = NULL;
                 char *tok = strtok_r(value, ",", &saveptr);
+
+                int regLen = memberSize(struct binCraft, registration);
                 while (tok && regCount < maxCount) {
-                    strncpy(regList + regCount * 12, tok, 12);
+                    strncpy(regList + regCount * regLen, tok, regLen);
                     if (tok != endptr)
                         regCount++;
                     tok = strtok_r(NULL, ",", &saveptr);
@@ -1268,6 +1288,7 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                 }
 
                 int typeCount = 0;
+                int typeLen = memberSize(struct binCraft, typeCode);
                 int maxCount = API_REQ_LIST_MAX;
                 char *typeList = options->typeList;
 
@@ -1275,7 +1296,7 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                 char *endptr = NULL;
                 char *tok = strtok_r(value, ",", &saveptr);
                 while (tok && typeCount < maxCount) {
-                    strncpy(typeList + typeCount * 4, tok, 4);
+                    strncpy(typeList + typeCount * typeLen, tok, typeLen);
                     if (tok != endptr)
                         typeCount++;
                     tok = strtok_r(NULL, ",", &saveptr);
@@ -1289,14 +1310,14 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                 options->filter_callsign_exact = 1;
 
                 memset(options->callsign_exact, 0x0, sizeof(options->callsign_exact));
-                strncpy(options->callsign_exact, value, 8);
+                strncpy(options->callsign_exact, value, memberSize(struct binCraft, callsign));
 
             } else if (byteMatchStrict(option, "filter_callsign_prefix")) {
 
                 options->filter_callsign_prefix = 1;
 
                 memset(options->callsign_prefix, 0x0, sizeof(options->callsign_prefix));
-                strncpy(options->callsign_prefix, value, 8);
+                strncpy(options->callsign_prefix, value, memberSize(struct binCraft, callsign));
 
             } else if (byteMatchStrict(option, "above_alt_baro")) {
                 options->filter_alt_baro = 1;

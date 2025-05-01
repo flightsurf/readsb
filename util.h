@@ -37,6 +37,7 @@
 #define SECONDS (1000LL)
 #define MS (1LL)
 
+#define memberSize(type, member) (sizeof( ((type *)0)->member ))
 
 #define litLen(literal) (sizeof(literal) - 1)
 // return true for byte match between string and string literal. string IS allowed to be longer than literal
