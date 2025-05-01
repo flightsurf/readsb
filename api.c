@@ -874,11 +874,11 @@ static int apiUpdate() {
     buffer->len_flag = 0;
 
     int acCount = ca->len;
-    if (buffer->alloc < acCount) {
+    if (buffer->alloc < acCount + 32) {
         if (acCount > 100000) {
             fprintf(stderr, "<3> this is strange, too many aircraft!\n");
         }
-        buffer->alloc = acCount + 128;
+        buffer->alloc = acCount + 64;
         sfree(buffer->list);
         sfree(buffer->list_flag);
         buffer->list = cmalloc(buffer->alloc * sizeof(struct apiEntry));
