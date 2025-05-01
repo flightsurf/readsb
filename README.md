@@ -261,7 +261,7 @@ Example command line:
 --lat -33.874 --lon 151.206
 # add --interactive for testing, it will show a list of planes in the terminal
 # optional output of json and other regularly updated files:
---write-json-every 0.5 --write-json=/tmp/readsb_run
+--write-json-every 0.5 --write-json=~/tar1090/html/data/
 # optional database info
 --db-file ~/tar1090/aircraft.csv.gz
 # optional listen ports:
@@ -276,15 +276,21 @@ The install script won't work so i'd recommend the following basic webserver con
 - serve the write-json directory as /tar1090/data
 
 ```
-git clone https://github.com/wiedehopf/tar1090 ~/tar1090
+git clone --depth 1 https://github.com/wiedehopf/tar1090 ~/tar1090
 wget -O ~/tar1090/aircraft.csv.gz https://github.com/wiedehopf/tar1090-db/raw/csv/aircraft.csv.gz
 ```
 
+Simple http server using python reachable using http://localhost:8081
+```
+cd ~/tar1090/html
+python3 -m http.server 8081
+```
 
-For nginx this would look something like this (replace USER appropriately):
+
+Using nginx this would look something like this (replace USER appropriately):
 ```
 location /tar1090/data/ {
-    alias /tmp/readsb_run/;
+    alias /home/USER/tar1090/data/;
     add_header Cache-Control "no-cache";
     location /tar1090/data/traces/ {
         gzip off;
@@ -304,7 +310,7 @@ location /tar1090 {
 }
 ```
 
-An easy way to add some traces when selecting a plane:
+An easy way to add some traces when selecting a plane (with nginx):
 Add `--write-globe-history=/home/USER/readsb_history` to the readsb command line.
 You can also serve this folder as /tar1090/globe_history but that's only required for the history going back further
 than 24h.
