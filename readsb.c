@@ -258,12 +258,20 @@ static void configSetDefaults(void) {
 //=========================================================================
 //
 static void modesInit(void) {
-
     int64_t now = mstime();
     Modes.next_stats_update = roundSeconds(10, 5, now + 10 * SECONDS);
     Modes.next_stats_display = now + Modes.stats_display_interval;
 
-    Modes.aircraft = cmCalloc(Modes.acBuckets * sizeof(struct aircraft *));
+    if (Modes.acHashBits >= 18) {
+        Modes.thp = 1;
+    }
+
+    if (Modes.thp) {
+        Modes.aircraft = cmMmap(Modes.acBuckets * sizeof(struct aircraft *));
+        memset(Modes.aircraft, 0x0, Modes.acBuckets * sizeof(struct aircraft *));
+    } else {
+        Modes.aircraft = cmCalloc(Modes.acBuckets * sizeof(struct aircraft *));
+    }
 
     pthread_mutex_init(&Modes.traceDebugMutex, NULL);
     pthread_mutex_init(&Modes.hungTimerMutex, NULL);
@@ -278,7 +286,7 @@ static void modesInit(void) {
     threadInit(&Threads.misc, "misc");
     threadInit(&Threads.apiUpdate, "apiUpdate");
 
-    if (Modes.json_globe_index || Modes.netReceiverId || Modes.acHashBits > 16) {
+    if (Modes.json_globe_index || Modes.netReceiverId || Modes.acHashBits >= 16) {
         // to keep decoding and the other threads working well, don't use all available processors
         Modes.allPoolSize = imax(1, Modes.num_procs);
     } else {
@@ -1427,7 +1435,12 @@ static void cleanup_and_exit(int code) {
     quickDestroy();
 
     sfree(Modes.globeLists);
-    sfree(Modes.aircraft);
+
+    if (Modes.thp) {
+        munmap(Modes.aircraft, Modes.acBuckets * sizeof(struct aircraft *));
+    } else {
+        sfree(Modes.aircraft);
+    }
 
     exit(code);
 }

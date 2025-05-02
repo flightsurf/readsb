@@ -420,6 +420,22 @@ static inline void *calloc_or_exit(size_t alignment, size_t size, const char *fi
     return buf;
 }
 
+static inline void *mmap_or_exit(size_t size, const char *file, int line) {
+    void *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (buf == MAP_FAILED) {
+        fprintf(stderr, "FATAL: cmMmap() of size %lld failed: %s:%d (insufficient memory?)\n", (long long) size, file, line);
+        #ifdef CRCDEBUG
+        exit(1);
+        #else
+        setExit(2); // irregular exit ... soon
+        #endif
+        buf = NULL;
+    }
+    return buf;
+}
+
+#define cmMmap(size) mmap_or_exit(size, __FILE__, __LINE__)
+
 // disable this ... maybe it test in the future if it makes a diff if i'm bored
 #if 0
 #define cmalloc(size) malloc_or_exit(MemoryAlignment, size, __FILE__, __LINE__)
@@ -749,6 +765,8 @@ struct _Modes
     int8_t sbsReduce; // apply beast reduce logic to SBS messages
     int8_t asterixReduce; // apply beast reduce logic to SBS messages
     int8_t beast_reduce_optimize_mlat; // keep all messages relevant to mlat-client (best-effort)
+    // use mmap for certain allocations to try and take advantage of transparent hugepages
+    int8_t thp;
 
     int ingestLimitRate;
     int position_persistence; // Maximum number of consecutive implausible positions from global CPR to invalidate a known position
