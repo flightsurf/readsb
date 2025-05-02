@@ -118,7 +118,10 @@ int64_t mono_milli_seconds() {
 }
 
 int64_t getUptime() {
-    return mono_milli_seconds() - Modes.startup_time_mono;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    int64_t milli = ((int64_t) ts.tv_sec) * 1000 + ((int64_t) ts.tv_nsec) / (1000 * 1000);
+    return milli - Modes.startup_time_mono;
 }
 
 int snprintHMS(char *buf, size_t bufsize, int64_t now) {
