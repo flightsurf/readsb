@@ -762,7 +762,6 @@ struct char_buffer generatePromFile(int64_t now) {
     for (int i = 0; i < NUM_TYPES; i++) {
         p = safe_snprintf(p, end, "readsb_aircraft_%s %u\n", addrtype_enum_string(i), sC->type_counts[i]);
     }
-
     p = safe_snprintf(p, end, "readsb_cpr_airborne %u\n", st->cpr_airborne);
     p = safe_snprintf(p, end, "readsb_cpr_surface %u\n", st->cpr_surface);
 
@@ -890,10 +889,15 @@ struct char_buffer generatePromFile(int64_t now) {
             p = safe_snprintf(p, end, "readsb_demod_preambles %"PRIu32"\n", st->demod_preambles);
         }
     }
+
+
+    p = safe_snprintf(p, end, "readsb_mem_aircraft_count %d\n", Modes.total_aircraft_count);
+    p = safe_snprintf(p, end, "readsb_mem_aircraft_alloc %"PRIu64"\n", Modes.aircraft_data_size);
     if (Modes.keep_traces) {
         p = safe_snprintf(p, end, "readsb_trace_current_memory %"PRIu64"\n", Modes.trace_current_size);
         p = safe_snprintf(p, end, "readsb_trace_chunk_memory %"PRIu64"\n", Modes.trace_chunk_size);
         p = safe_snprintf(p, end, "readsb_trace_cache_memory %"PRIu64"\n", Modes.trace_cache_size);
+        p = safe_snprintf(p, end, "readsb_trace_last_memory %"PRIu64"\n", Modes.trace_last_size);
     }
     p = safe_snprintf(p, end, "readsb_uptime %"PRIu64"\n", getUptime());
 
@@ -932,13 +936,15 @@ void statsCountAircraft(int64_t now) {
     uint64_t trace_chunk_size = 0;
     uint64_t trace_cache_size = 0;
     uint64_t trace_current_size = 0;
+    uint64_t trace_last_size = 0;
     for (int j = 0; j < Modes.acBuckets; j++) {
         for (struct aircraft *a = Modes.aircraft[j]; a; a = a->next) {
             total_aircraft_count++;
 
-            if (Modes.keep_traces) {
+            if (Modes.keep_traces && a->trace_current_len > 0) {
                 trace_current_size += stateBytes(a->trace_current_max);
                 trace_chunk_size += a->trace_chunk_overall_bytes;
+                trace_last_size += stateBytes(Modes.traceLastMax);
                 struct traceCache *tCache = &a->traceCache;
                 if (tCache->entries) {
                     trace_cache_size += tCache->totalAlloc;
@@ -995,6 +1001,7 @@ void statsCountAircraft(int64_t now) {
     Modes.trace_chunk_size = trace_chunk_size;
     Modes.trace_cache_size = trace_cache_size;
     Modes.trace_current_size = trace_current_size;
+    Modes.trace_last_size = trace_last_size;
 
     static int64_t antiSpam2;
     if (total_aircraft_count > 2 * Modes.acBuckets && now > antiSpam2 + 12 * HOURS) {

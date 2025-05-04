@@ -616,6 +616,8 @@ struct _Modes
     uint64_t trace_chunk_size;
     uint64_t trace_cache_size;
     uint64_t trace_current_size;
+    uint64_t trace_last_size;
+    uint64_t aircraft_data_size;
 
     ssize_t volatile state_chunk_size;
     ssize_t volatile state_chunk_size_read;

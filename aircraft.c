@@ -10,6 +10,7 @@ void freeAircraftBack() {
 
 static struct aircraft *allocAircraft() {
     if (!Modes.thp) {
+        Modes.aircraft_data_size += sizeof (struct aircraft);
         return cmalloc(sizeof(struct aircraft));
     }
     struct aircraft *a = NULL;
@@ -32,6 +33,7 @@ static struct aircraft *allocAircraft() {
     }
     if (Modes.aircraftBack->used >= aircraftBackCap) {
         struct aircraftBack *prev = Modes.aircraftBack;
+        Modes.aircraft_data_size += aircraftBackAlloc;
         Modes.aircraftBack = cmMmap(aircraftBackAlloc);
         Modes.aircraftBack->used = 0;
         Modes.aircraftBack->prev = prev;
@@ -55,6 +57,7 @@ static struct aircraft *allocAircraft() {
 }
 static void deallocAircraft(struct aircraft *a) {
     if (!Modes.thp) {
+        Modes.aircraft_data_size -= sizeof (struct aircraft);
         free(a);
         return;
     }
