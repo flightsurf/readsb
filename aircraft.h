@@ -1,6 +1,8 @@
 #ifndef AIRCRAFT_H
 #define AIRCRAFT_H
 
+void freeAircraftBack();
+
 static inline uint32_t addrHash(uint32_t addr, uint32_t bits) {
     const uint64_t m = 0x880355f21e6d1965ULL;
     const uint64_t seed = 0x30732349f7810465ULL;

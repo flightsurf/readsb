@@ -258,11 +258,13 @@ static void configSetDefaults(void) {
 //=========================================================================
 //
 static void modesInit(void) {
+    //fprintf(stderr, "sizeof aircraftBack %ld\n", sizeof(struct aircraftBack));
+
     int64_t now = mstime();
     Modes.next_stats_update = roundSeconds(10, 5, now + 10 * SECONDS);
     Modes.next_stats_display = now + Modes.stats_display_interval;
 
-    if (Modes.acHashBits >= 18) {
+    if (Modes.keep_traces || Modes.netReceiverId || Modes.acHashBits > 14) {
         Modes.thp = 1;
     }
 
@@ -276,6 +278,8 @@ static void modesInit(void) {
     pthread_mutex_init(&Modes.traceDebugMutex, NULL);
     pthread_mutex_init(&Modes.hungTimerMutex, NULL);
     pthread_mutex_init(&Modes.sdrControlMutex, NULL);
+    pthread_mutex_init(&Modes.aircraftBackMutex, NULL);
+
 
     threadInit(&Threads.reader, "reader");
     threadInit(&Threads.upkeep, "upkeep");
@@ -1437,10 +1441,12 @@ static void cleanup_and_exit(int code) {
     sfree(Modes.globeLists);
 
     if (Modes.thp) {
-        munmap(Modes.aircraft, Modes.acBuckets * sizeof(struct aircraft *));
+        cmMunmap(Modes.aircraft, Modes.acBuckets * sizeof(struct aircraft *));
     } else {
         sfree(Modes.aircraft);
     }
+
+    freeAircraftBack();
 
     exit(code);
 }
@@ -3259,6 +3265,7 @@ int main(int argc, char **argv) {
     pthread_mutex_destroy(&Modes.traceDebugMutex);
     pthread_mutex_destroy(&Modes.hungTimerMutex);
     pthread_mutex_destroy(&Modes.sdrControlMutex);
+    pthread_mutex_destroy(&Modes.aircraftBackMutex);
 
     if (Modes.debug_bogus) {
         display_total_short_range_stats();
@@ -3284,8 +3291,8 @@ int main(int argc, char **argv) {
         Modes.state_dir = NULL;
     }
 
-    Modes.free_aircraft = 1;
-    // frees aircraft when Modes.free_aircraft is set
+    Modes.quickFree = 1; // certain shortcuts, only used on exit when the state matters not
+    // frees aircraft when Modes.quickFree is set
     // writes state if Modes.state_dir is set
     writeInternalState();
 

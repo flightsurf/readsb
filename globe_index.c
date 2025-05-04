@@ -6,7 +6,6 @@
 static const char zstd_magic[] = { 0x28, 0xb5, 0x2f, 0xfd };
 
 static void mark_legs(traceBuffer tb, struct aircraft *a, int start, int recent);
-static void traceCleanupNoUnlink(struct aircraft *a);
 static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t after_timestamp, threadpool_buffer_t *buffer);
 static void resizeTraceCurrent(struct aircraft *a, int64_t now);
 
@@ -854,8 +853,7 @@ static void free_aircraft_range(int start, int end) {
         while (a) {
             na = a->next;
             if (a) {
-                traceCleanupNoUnlink(a);
-                free(a);
+                freeAircraft(a);
             }
             a = na;
         }
@@ -869,7 +867,7 @@ static void save_blobs(void *arg, threadpool_threadbuffers_t *threadbuffers) {
 
         save_blob(j, &threadbuffers->buffers[0], &threadbuffers->buffers[1], Modes.state_dir);
 
-        if (Modes.free_aircraft) {
+        if (Modes.quickFree) {
             int stride = Modes.acBuckets / STATE_BLOBS;
             int start = stride * j;
             int end = start + stride;
@@ -1847,7 +1845,7 @@ static void destroyTraceCache(struct traceCache *cache) {
 }
 
 
-static void traceCleanupNoUnlink(struct aircraft *a) {
+void traceCleanupNoUnlink(struct aircraft *a) {
     if (a->trace_chunks) {
         for (int k = 0; k < a->trace_chunk_len; k++) {
             sfree(a->trace_chunks[k].compressed);

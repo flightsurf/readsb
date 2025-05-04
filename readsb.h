@@ -423,7 +423,7 @@ static inline void *calloc_or_exit(size_t alignment, size_t size, const char *fi
 static inline void *mmap_or_exit(size_t size, const char *file, int line) {
     void *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (buf == MAP_FAILED) {
-        fprintf(stderr, "FATAL: cmMmap() of size %lld failed: %s:%d (insufficient memory?)\n", (long long) size, file, line);
+        fprintf(stderr, "FATAL: cmMmap() of size %lld failed: %s:%d (%s)\n", (long long) size, file, line, strerror(errno));
         #ifdef CRCDEBUG
         exit(1);
         #else
@@ -433,8 +433,17 @@ static inline void *mmap_or_exit(size_t size, const char *file, int line) {
     }
     return buf;
 }
+static inline void munmap_or_exit(void *ptr, size_t size, const char *file, int line) {
+    int res = munmap(ptr, size);
+    if (res < 0) {
+        fprintf(stderr, "FATAL: cmMunmap() failed: %s:%d (%s)\n", file, line, strerror(errno));
+        abort();
+    }
+    return;
+}
 
 #define cmMmap(size) mmap_or_exit(size, __FILE__, __LINE__)
+#define cmMunmap(ptr, size) munmap_or_exit(ptr, size, __FILE__, __LINE__)
 
 // disable this ... maybe it test in the future if it makes a diff if i'm bored
 #if 0
@@ -615,6 +624,9 @@ struct _Modes
     int acHashBits;
     int acBuckets;
     struct aircraft **aircraft;
+    struct aircraftBack *aircraftBack;
+    struct aircraft *aircraftBackFree;
+    pthread_mutex_t aircraftBackMutex;
 
     struct craftArray *globeLists;
 
@@ -862,7 +874,7 @@ struct _Modes
     int8_t writeTraces;
     int8_t dump_reduce; // only dump beast that would be sent out according to reduce_interval
     int8_t state_only_on_exit;
-    int8_t free_aircraft;
+    int8_t quickFree;
     int64_t state_write_interval;
     char *prom_file;
     int64_t heatmap_current_interval;

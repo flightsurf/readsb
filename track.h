@@ -602,6 +602,15 @@ struct aircraft
   char zeroEnd;
 };
 
+#define aircraftBackAlloc (2 * 1024 * 1024)
+#define aircraftBackCap (int64_t) ((aircraftBackAlloc - 3 * sizeof(void*)) / sizeof(struct aircraft))
+struct aircraftBack {
+    struct aircraftBack *prev;
+    struct aircraftBack *next;
+    int64_t used;
+    struct aircraft store[aircraftBackCap];
+};
+
 /* Mode A/C tracking is done separately, not via the aircraft list,
  * and via a flat array rather than a list since there are only 4k possible values
  * (nb: we ignore the ident/SPI bit when tracking)

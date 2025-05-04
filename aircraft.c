@@ -1,5 +1,78 @@
 #include "readsb.h"
 
+void freeAircraftBack() {
+    while (Modes.aircraftBack) {
+        struct aircraftBack *prev = Modes.aircraftBack->prev;
+        cmMunmap(Modes.aircraftBack, aircraftBackAlloc);
+        Modes.aircraftBack = prev;
+    }
+}
+
+static struct aircraft *allocAircraft() {
+    if (!Modes.thp) {
+        return cmalloc(sizeof(struct aircraft));
+    }
+    struct aircraft *a = NULL;
+
+    pthread_mutex_lock(&Modes.aircraftBackMutex);
+
+    if (Modes.aircraftBackFree) {
+        //fprintf(stderr, "alloc from freelist\n");
+        a = Modes.aircraftBackFree;
+        Modes.aircraftBackFree = a->next;
+
+        pthread_mutex_unlock(&Modes.aircraftBackMutex);
+        return a;
+    }
+    if (!Modes.aircraftBack) {
+        Modes.aircraftBack = cmMmap(aircraftBackAlloc);
+        Modes.aircraftBack->used = 0;
+        Modes.aircraftBack->prev = NULL;
+        Modes.aircraftBack->next = NULL;
+    }
+    if (Modes.aircraftBack->used >= aircraftBackCap) {
+        struct aircraftBack *prev = Modes.aircraftBack;
+        Modes.aircraftBack = cmMmap(aircraftBackAlloc);
+        Modes.aircraftBack->used = 0;
+        Modes.aircraftBack->prev = prev;
+        prev->next = Modes.aircraftBack;
+        Modes.aircraftBack->next = NULL;
+    }
+
+    if (!Modes.aircraftBack || Modes.aircraftBack->used >= aircraftBackCap) {
+        fprintf(stderr, "FATAL allocAircraft\n");
+        abort();
+    }
+
+    //fprintf(stderr, "alloc fresh\n");
+
+    a = &(Modes.aircraftBack->store[Modes.aircraftBack->used]);
+    Modes.aircraftBack->used++;
+
+    pthread_mutex_unlock(&Modes.aircraftBackMutex);
+
+    return a;
+}
+static void deallocAircraft(struct aircraft *a) {
+    if (!Modes.thp) {
+        free(a);
+        return;
+    }
+
+    if (Modes.quickFree) {
+        return;
+    }
+
+    pthread_mutex_lock(&Modes.aircraftBackMutex);
+
+
+    a->next = Modes.aircraftBackFree;
+    Modes.aircraftBackFree = a;
+
+
+    pthread_mutex_unlock(&Modes.aircraftBackMutex);
+}
+
 static int isMilRange(uint32_t i);
 static void updateDetails(struct aircraft *curr, struct char_buffer cb, uint32_t offset);
 
@@ -117,6 +190,12 @@ struct aircraft *aircraftGet(uint32_t addr) {
 }
 
 void freeAircraft(struct aircraft *a) {
+    if (Modes.quickFree) {
+        traceCleanupNoUnlink(a);
+        deallocAircraft(a);
+        return;
+    }
+
     quickRemove(a);
 
     // remove from the globeList
@@ -127,8 +206,8 @@ void freeAircraft(struct aircraft *a) {
     }
     traceCleanup(a);
 
-    memset(a, 0xff, sizeof (struct aircraft));
-    free(a);
+    memset(a, 0x0, sizeof (struct aircraft));
+    deallocAircraft(a);
 }
 
 void aircraftZeroTail(struct aircraft *a) {
@@ -140,7 +219,7 @@ struct aircraft *aircraftCreate(uint32_t addr) {
     if (a) {
         return a;
     }
-    a = cmalloc(sizeof(struct aircraft));
+    a = allocAircraft();
 
     // Default everything to zero/NULL
     memset(a, 0, sizeof (struct aircraft));
