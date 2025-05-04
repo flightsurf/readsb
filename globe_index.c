@@ -401,6 +401,14 @@ int globe_index(double lat_in, double lon_in) {
     // first 1000 are reserved for special use
 }
 
+struct tm fifteenTime(int64_t now) {
+    time_t fifteen_time = (now - 15 * MINUTES) / 1000; // in seconds
+    struct tm fifteenAgo;
+    gmtime_r(&fifteen_time, &fifteenAgo);
+    return fifteenAgo;
+}
+
+
 // fiftyfive_ago changes day 55 min after midnight: stop writing the previous days traces
 struct tm fiftyfiveTime(int64_t now) {
     // this is in seconds, not milliseconds
@@ -628,16 +636,13 @@ int writePerm(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_
         snprintf(filename, TRACE_PMAX, "%s/traces/%02x/trace_full_%s%06x.json", tstring, a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
         writeJsonToGzip(Modes.globe_history_dir, filename, hist, 9);
 
+        //fprintf(stderr, "perm write %06x\n", a->addr);
+
         //if (Modes.debug_traceCount && ++count4 % 100 == 0)
         //    fprintf(stderr, "perm trace writes: %u\n", count4);
     }
 
 perm_done:
-    if (fiftyfive.tm_hour == 23) {
-        a->trace_next_perm = now + GLOBE_PERM_IVAL / 8 + random() % (GLOBE_PERM_IVAL / 1);
-    } else {
-        a->trace_next_perm = now + GLOBE_PERM_IVAL / 1 + random() % (GLOBE_PERM_IVAL / 8);
-    }
     // note what we have written to disk
     a->trace_perm_last_timestamp = endStamp;
     a->traceWrittenForYesterday = Modes.triggerPermWriteDay;
@@ -705,6 +710,17 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
 
         trace_write &= hist_only_mask;
     }
+
+    if ((trace_write & WPERM) && a->trace_perm_last_timestamp == getState(a->trace_current, a->trace_current_len - 1)->timestamp) {
+        trace_write &= ~WPERM;
+        a->traceWrittenForYesterday = Modes.triggerPermWriteDay;
+    }
+
+    if (!trace_write) {
+        // no need to go any further
+        return;
+    }
+
     traceBuffer tb = { 0 };
 
     if (buffer_group->buffer_count < 2) {
@@ -743,8 +759,9 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
     }
 
     if (startFull >= tb.len) {
-        //do not write trace if all data is older than keep_traces
-        trace_write = 0;
+        // do not write recent / mem trace if all data is older than keep_traces
+        // perm write checks the boundaries itself
+        trace_write &= ~(WMEM | WRECENT);
     }
 
     if ((trace_write & WRECENT)) {
@@ -951,9 +968,7 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
     if (a->addrtype_updated > now)
         a->addrtype_updated = now;
 
-    if (a->trace_next_perm < now) {
-        a->trace_next_perm = now + 1 * MINUTES + random() % (5 * MINUTES);
-    } else if (a->trace_next_perm - now > GLOBE_PERM_IVAL) {
+    if (a->trace_next_perm - now > GLOBE_PERM_IVAL) {
         a->trace_next_perm = now + 5 * MINUTES + random() % GLOBE_PERM_IVAL;
     }
 
@@ -2413,38 +2428,52 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
     }
 
     if (Modes.writeTraces) {
-        int64_t permCheckIval = 10 * MINUTES;
+        // (Modes.traceDay != Modes.triggerPermWriteDay) -> true for the window of 0:15 to 0:55
+        int triggerActive = (
+                Modes.traceDay != Modes.triggerPermWriteDay
+                && a->traceWrittenForYesterday != Modes.triggerPermWriteDay
+                );
+        int64_t permCheckIval = GLOBE_PERM_IVAL;
         if (now > a->trace_next_perm) {
-            // fiftyfive_ago changes day 55 min after midnight
-            struct tm fiftyfive = fiftyfiveTime(now);
-            // tm_hour == 23 starts at 23:55 and will soften then IOPS spike
-            // not that this really requires high IOPS but might as well
+            // wait until end of the day and aircraft is inactive to write permanent trace
+            // then once the day is over make sure it's written out
 
-            // wait until aircraft is inactive to write permanent trace
-            // unless it's the end of the day, then the permanent trace needs to be written
-            if (
-                    now - a->seenPosReliable > 4 * HOURS
-                    || (fiftyfive.tm_hour == 23 && now - a->seenPosReliable > 1 * HOURS)
-                    || a->traceWrittenForYesterday != Modes.triggerPermWriteDay
-               ) {
+            // soften IOPS spike by writing out data for inactive aircraft
+            // less inactive time is required the closer we get to the trigger that will write the
+            // remaining (active) aircraft
+            struct tm fifteenAgo = fifteenTime(now);
+            int64_t toTrigger = 24 * HOURS - (fifteenAgo.tm_hour * HOURS + fifteenAgo.tm_min * MINUTES + fifteenAgo.tm_sec * SECONDS);
+            int64_t posElapsed = now - a->seenPosReliable;
+            int condition = 0;
+            if (triggerActive) {
                 a->trace_write |= WPERM;
+                a->trace_next_perm = now + 18 * HOURS + random() % permCheckIval;
+                condition = 1;
+            } else if (posElapsed > 15 * MINUTES && posElapsed > 6 * (toTrigger - 10 * MINUTES)) {
+                a->trace_write |= WPERM;
+                a->trace_next_perm = now + 1 * HOURS;
+                condition = 2;
             } else {
                 // reschedule
                 a->trace_next_perm = now + permCheckIval;
             }
+            if (0 && condition) {
+                fprintf(stderr, "|= WPERM %d %06x posElapsed %4.1fh toTrigger %4.1fh %d %d %d\n",
+                        condition, a->addr, (double) posElapsed / HOURS, (double) toTrigger / HOURS,
+                        a->traceWrittenForYesterday, Modes.triggerPermWriteDay, a->trace_len);
+            }
+
         }
         if (now > a->trace_next_mw) {
             a->trace_write |= WMEM;
         }
         // on day change write out the traces for yesterday
         // for which day and which time span is written is determined by traceday
-        if (a->traceWrittenForYesterday != Modes.triggerPermWriteDay) {
-            if (a->trace_next_perm > now + permCheckIval) {
-                if (a->addr == TRACE_FOCUS) {
-                    fprintf(stderr, "schedule_perm\n");
-                }
-                a->trace_next_perm = now + random() % permCheckIval;
+        if (triggerActive && a->trace_next_perm > now + permCheckIval) {
+            if (a->addr == TRACE_FOCUS) {
+                fprintf(stderr, "schedule_perm\n");
             }
+            a->trace_next_perm = now + random() % permCheckIval;
         }
     }
 
@@ -3586,14 +3615,12 @@ void checkNewDay(int64_t now) {
 
     // at 15 min past midnight, start a permanent write of all traces
     // create the new directory for writing traces
-    time_t fifteenAgo = (now - 15 * MINUTES) / 1000; // in seconds
-    struct tm utcFifteenAgo;
-    gmtime_r(&fifteenAgo, &utcFifteenAgo);
+    struct tm fifteenAgo = fifteenTime(now);
 
-    if (utcFifteenAgo.tm_mday != Modes.triggerPermWriteDay) {
-        Modes.triggerPermWriteDay = utcFifteenAgo.tm_mday;
+    if (fifteenAgo.tm_mday != Modes.triggerPermWriteDay) {
+        Modes.triggerPermWriteDay = fifteenAgo.tm_mday;
 
-        createDateDir(Modes.globe_history_dir, &utcFifteenAgo, dateDir);
+        createDateDir(Modes.globe_history_dir, &fifteenAgo, dateDir);
 
         snprintf(filename, PATH_MAX, "%s/traces", dateDir);
         int err = mkdir_error(filename, 0755, stderr);
@@ -3617,6 +3644,14 @@ void checkNewDay(int64_t now) {
 
         // compress ACAS those files which switched over to new directory at midnight
         compressACAS(dateDir);
+    }
+
+
+    // fiftyfiveAgo changes day 55 min after midnight: stop writing the previous days traces
+    struct tm fiftyfiveAgo = fiftyfiveTime(now);
+
+    if (Modes.traceDay != fiftyfiveAgo.tm_mday) {
+        Modes.traceDay = fiftyfiveAgo.tm_mday;
     }
 }
 

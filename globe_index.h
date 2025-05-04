@@ -7,8 +7,8 @@
 #define WMEM (1<<11)
 #define WPERM (1<<12)
 
-// this setting is mostly meaningless now
-// permanent traces are only written after 4h of inactivity or at the end of the UTC day
+// this setting is no longer an interval how often this is written, rather the interval to check if
+// it should be written
 #define GLOBE_PERM_IVAL (10 * MINUTES)
 
 #define GLOBE_MEM_IVAL (60 * MINUTES)
