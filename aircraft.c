@@ -8,20 +8,30 @@ void freeAircraftBack() {
     }
 }
 
+static inline void lockBack() {
+    pthread_mutex_lock(&Modes.aircraftBackMutex);
+    //spinLock(&Modes.aircraftBackSpinlock);
+}
+static inline void unlockBack() {
+    pthread_mutex_unlock(&Modes.aircraftBackMutex);
+    //spinRelease(&Modes.aircraftBackSpinlock);
+}
+
 static struct aircraft *allocAircraft() {
     if (!Modes.thp) {
         Modes.aircraft_data_size += sizeof (struct aircraft);
         return cmalloc(sizeof(struct aircraft));
     }
     struct aircraft *a = NULL;
-    pthread_mutex_lock(&Modes.aircraftBackMutex);
+
+    lockBack();
 
     if (Modes.aircraftBackFree) {
         //fprintf(stderr, "alloc from freelist\n");
         a = Modes.aircraftBackFree;
         Modes.aircraftBackFree = a->next;
 
-        pthread_mutex_unlock(&Modes.aircraftBackMutex);
+        unlockBack();
         return a;
     }
     if (!Modes.aircraftBack) {
@@ -50,7 +60,7 @@ static struct aircraft *allocAircraft() {
     a = &(Modes.aircraftBack->store[Modes.aircraftBack->used]);
     Modes.aircraftBack->used++;
 
-    pthread_mutex_unlock(&Modes.aircraftBackMutex);
+    unlockBack();
 
     return a;
 }
@@ -65,14 +75,12 @@ static void deallocAircraft(struct aircraft *a) {
         return;
     }
 
-    pthread_mutex_lock(&Modes.aircraftBackMutex);
-
+    lockBack();
 
     a->next = Modes.aircraftBackFree;
     Modes.aircraftBackFree = a;
 
-
-    pthread_mutex_unlock(&Modes.aircraftBackMutex);
+    unlockBack();
 }
 
 static int isMilRange(uint32_t i);

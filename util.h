@@ -29,6 +29,7 @@
 #define GZBUFFER_BIG (512 * 1024)
 
 #include <stdint.h>
+#include <stdatomic.h>
 
 #define sfree(x) do { free(x); x = NULL; } while (0)
 
@@ -286,5 +287,8 @@ void zstdFwPutData(zstd_fw_t *fw, const uint8_t *data, size_t len);
 void dump_beast_check(int64_t now);
 
 int32_t tokenize(char **restrict stringp, char *restrict delim, char **restrict tokens, int maxTokens);
+
+void spinLock(volatile atomic_int *lock);
+void spinRelease(volatile atomic_int *lock);
 
 #endif

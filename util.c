@@ -1164,3 +1164,18 @@ int32_t tokenize(char **restrict stringp, char *restrict delim, char **restrict 
     }
     return k;
 }
+
+void spinLock(volatile atomic_int *lock) {
+    atomic_int expected;
+    int calls = 0;
+    do {
+        expected = 0;
+        calls++;
+    } while (!atomic_compare_exchange_weak(lock, &expected, 1));
+    if (0 && calls > 1000) {
+        fprintf(stderr, "cas_weak calls %5d %8ld\n", calls, (long) pthread_self());
+    }
+}
+void spinRelease(volatile atomic_int *lock) {
+    atomic_store(lock, 0);
+}

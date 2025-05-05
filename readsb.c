@@ -927,6 +927,7 @@ static void timingStatistics(struct mag_buf *buf) {
 }
 
 static void *decodeEntryPoint(void *arg) {
+
     MODES_NOTUSED(arg);
     srandom(get_seed());
 
@@ -2975,6 +2976,15 @@ static void configureSignals() {
 //
 
 int main(int argc, char **argv) {
+
+    if (0) {
+        // basic spinlock test
+        volatile atomic_int lock = 0;
+
+        spinLock(&lock);
+        spinLock(&lock);
+        exit(0);
+    }
 
     configureSignals();
 
