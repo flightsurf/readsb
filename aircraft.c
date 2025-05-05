@@ -14,7 +14,6 @@ static struct aircraft *allocAircraft() {
         return cmalloc(sizeof(struct aircraft));
     }
     struct aircraft *a = NULL;
-
     pthread_mutex_lock(&Modes.aircraftBackMutex);
 
     if (Modes.aircraftBackFree) {
@@ -246,8 +245,15 @@ struct aircraft *aircraftCreate(uint32_t addr) {
     updateTypeReg(a);
 
     uint32_t hash = aircraftHash(addr);
+
+    // this isn't needed as this happens on separate areas of the hashtable when it's called in
+    // parallel
+    //pthread_mutex_lock(&Modes.aircraftCreateMutex);
+
     a->next = Modes.aircraft[hash];
     Modes.aircraft[hash] = a;
+
+    //pthread_mutex_unlock(&Modes.aircraftCreateMutex);
 
     return a;
 }
