@@ -368,7 +368,7 @@ General options:
   --trace-focus=<hex>                                            show traceAdd details for this hex
   --quiet                                                        Disable output (default)
   --write-json=<dir>                                             Periodically write json output to <dir>
-  --write-prom=<filepath>                                        Periodically write prometheus output to <filepath>
+  --write-prom=<file>                                            Periodically write prometheus output to <file>
   --write-globe-history=<dir>                                    Write traces to this directory, 1 gz compressed json per day and airframe
   --write-state=<dir>                                            Write state to disk to have traces after a restart
   --write-state-every=<seconds>                                  Continuously write state to disk every X seconds (default: 3600)
