@@ -3004,6 +3004,8 @@ static void activeUpdate(int64_t now) {
         if (!includeAircraftJson(now, a) && now - a->seen > TRACK_EXPIRE_LONG + 1 * MINUTES) {
             a->onActiveList = 0;
 
+            quickRemove(a);
+
             if (a->globe_index >= 0) {
                 set_globe_index(a, -5);
             }

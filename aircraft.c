@@ -106,7 +106,7 @@ static void quickResize(int bits) {
     quickBuckets = (1LL << bits) + quickStride;
     quickSize = sizeof(struct ap) * quickBuckets;
 
-    if (quickBuckets > 256000)
+    if (quickBuckets > 64000)
         fprintf(stderr, "quickLookup: changing size to %d!\n", (int) quickBuckets);
 
     sfree(quick);
@@ -124,6 +124,19 @@ static struct ap *quickGet(uint32_t addr) {
     }
     return NULL;
 }
+
+static void quickMaintenance() {
+    for (int i = 0; i < quickBuckets; i++) {
+        struct ap *q = &(quick[i]);
+        if (q->addr != EMPTY) {
+            if (!q->ptr->onActiveList) {
+                q->addr = EMPTY;
+                q->ptr = NULL;
+            }
+        }
+    }
+}
+
 void quickRemove(struct aircraft *a) {
     struct ap *q = quickGet(a->addr);
     if (q) {
@@ -156,6 +169,14 @@ void quickInit() {
         quickResize(quickMinBits);
     } else if (quickBits < quickMaxBits && Modes.aircraftActive.len > quickBuckets * 5 / 8) {
         quickResize(quickBits + 1);
+    }
+
+    static int64_t nextMaintenance;
+    int64_t mono = mono_milli_seconds();
+
+    if (mono > nextMaintenance) {
+        quickMaintenance();
+        nextMaintenance = mono + 1 * MINUTES;
     }
 
     /*
