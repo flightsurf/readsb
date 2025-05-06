@@ -8,6 +8,7 @@ void freeAircraftBack() {
         } else {
             sfree(Modes.aircraftBack);
         }
+        Modes.aircraft_data_size -= aircraftBackAlloc;
         Modes.aircraftBack = prev;
     }
 }
@@ -35,6 +36,7 @@ static struct aircraft *allocAircraft() {
         return a;
     }
     if (!Modes.aircraftBack) {
+        Modes.aircraft_data_size += aircraftBackAlloc;
         if (Modes.thp) {
             Modes.aircraftBack = cmMmap(aircraftBackAlloc);
         } else {
