@@ -315,7 +315,7 @@ typedef enum {
 
 #define MODES_ICAO_FILTER_TTL 60000
 
-#define DB_HASH_BITS 20
+#define DB_HASH_BITS 19
 #define DB_BUCKETS (1 << DB_HASH_BITS) // this is critical for hashing purposes
 
 #define STATE_BLOBS 256 // change naming scheme if increasing this
