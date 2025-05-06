@@ -765,9 +765,9 @@ int dbFinishUpdate() {
     startWatch(&watch);
 
 
-    free(Modes.dbIndex);
-    free(Modes.dbRaw.buffer);
-    free(Modes.db);
+    sfree(Modes.dbIndex);
+    sfree(Modes.dbRaw.buffer);
+    sfree(Modes.db);
 
     Modes.dbIndex = Modes.db2Index;
     Modes.dbRaw = Modes.db2Raw;

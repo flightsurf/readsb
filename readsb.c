@@ -1415,6 +1415,7 @@ static void cleanup_and_exit(int code) {
     sfree(Modes.beast_serial);
     sfree(Modes.uuidFile);
     sfree(Modes.dbIndex);
+    sfree(Modes.dbRaw.buffer);
     sfree(Modes.db);
     sfree(Modes.latString);
     sfree(Modes.lonString);
