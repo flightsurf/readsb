@@ -3,7 +3,11 @@
 void freeAircraftBack() {
     while (Modes.aircraftBack) {
         struct aircraftBack *prev = Modes.aircraftBack->prev;
-        cmMunmap(Modes.aircraftBack, aircraftBackAlloc);
+        if (Modes.thp) {
+            cmMunmap(Modes.aircraftBack, aircraftBackAlloc);
+        } else {
+            sfree(Modes.aircraftBack);
+        }
         Modes.aircraftBack = prev;
     }
 }
@@ -18,10 +22,6 @@ static inline void unlockBack() {
 }
 
 static struct aircraft *allocAircraft() {
-    if (!Modes.thp) {
-        Modes.aircraft_data_size += sizeof (struct aircraft);
-        return cmalloc(sizeof(struct aircraft));
-    }
     struct aircraft *a = NULL;
 
     lockBack();
@@ -35,7 +35,11 @@ static struct aircraft *allocAircraft() {
         return a;
     }
     if (!Modes.aircraftBack) {
-        Modes.aircraftBack = cmMmap(aircraftBackAlloc);
+        if (Modes.thp) {
+            Modes.aircraftBack = cmMmap(aircraftBackAlloc);
+        } else {
+            Modes.aircraftBack = cmalloc(aircraftBackAlloc);
+        }
         Modes.aircraftBack->used = 0;
         Modes.aircraftBack->prev = NULL;
         Modes.aircraftBack->next = NULL;
@@ -43,7 +47,11 @@ static struct aircraft *allocAircraft() {
     if (Modes.aircraftBack->used >= aircraftBackCap) {
         struct aircraftBack *prev = Modes.aircraftBack;
         Modes.aircraft_data_size += aircraftBackAlloc;
-        Modes.aircraftBack = cmMmap(aircraftBackAlloc);
+        if (Modes.thp) {
+            Modes.aircraftBack = cmMmap(aircraftBackAlloc);
+        } else {
+            Modes.aircraftBack = cmalloc(aircraftBackAlloc);
+        }
         Modes.aircraftBack->used = 0;
         Modes.aircraftBack->prev = prev;
         prev->next = Modes.aircraftBack;
@@ -65,12 +73,6 @@ static struct aircraft *allocAircraft() {
     return a;
 }
 static void deallocAircraft(struct aircraft *a) {
-    if (!Modes.thp) {
-        Modes.aircraft_data_size -= sizeof (struct aircraft);
-        free(a);
-        return;
-    }
-
     if (Modes.quickFree) {
         return;
     }
