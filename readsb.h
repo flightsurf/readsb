@@ -916,6 +916,7 @@ struct _Modes
     float messageRateMult;
     uint32_t binCraftVersion; // never change the type for this variable
     int8_t userLocationValid;
+    int8_t userLocationRef;
     int8_t biastee;
     int8_t triggerPermWriteDay;
     int8_t acasDay;

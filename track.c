@@ -444,7 +444,7 @@ static int speed_check(struct aircraft *a, datasource_t source, double lat, doub
         // don't use duplicate positions
         mm->pos_ignore = 1;
         // but count it as a received position towards receiver heuristics
-        if (!Modes.userLocationValid) {
+        if (!Modes.userLocationRef) {
             receiverPositionReceived(a, mm, lat, lon, now);
         }
         if (elapsed > 200 && a->receiverId == mm->receiverId && (Modes.debug_cpr || Modes.debug_speed_check || a->addr == Modes.cpr_focus)) {
@@ -636,14 +636,14 @@ static int speed_check(struct aircraft *a, datasource_t source, double lat, doub
         backInTimeSeconds = distance / (a->gs * (1852.0f / 3600.0f));
     }
 
-    if (!Modes.userLocationValid && (inrange || override)) {
+    if (!Modes.userLocationRef && (inrange || override)) {
         if (receiverPositionReceived(a, mm, lat, lon, now) == RECEIVER_RANGE_BAD) {
             // far outside receiver area
             receiverRangeExceeded = 1;
         }
     }
 
-    if (!Modes.userLocationValid && !override && mm->source == SOURCE_ADSB) {
+    if (!Modes.userLocationRef && !override && mm->source == SOURCE_ADSB) {
         if (!receiverRangeExceeded && !inrange
                 && (distance - range > 800 || backInTimeSeconds > 3) && track_diff > 45
                 && a->pos_reliable_odd >= Modes.position_persistence * 3 / 4
@@ -771,7 +771,7 @@ static int doGlobalCPR(struct aircraft *a, struct modesMessage *mm, double *lat,
         // find reference location
 
         int ref = 0;
-        if (Modes.userLocationValid) {
+        if (Modes.userLocationRef) {
             reflat = Modes.fUserLat;
             reflon = Modes.fUserLon;
             ref = 1;
@@ -895,7 +895,7 @@ static int doLocalCPR(struct aircraft *a, struct modesMessage *mm, double *lat, 
         // validity should not provide bad positions (1 cell away).
 
         relative_to = 1;
-    } else if (!surface && Modes.userLocationValid) {
+    } else if (!surface && Modes.userLocationRef) {
         reflat = Modes.fUserLat;
         reflon = Modes.fUserLon;
 
@@ -2924,7 +2924,7 @@ static void removeStaleRange(void *arg, threadpool_threadbuffers_t * buffer_grou
         posTimeout = now - 26 * HOURS;
         nonIcaoPosTimeout = now - 26 * HOURS;
     }
-    if (Modes.state_dir && !Modes.userLocationValid) {
+    if (Modes.state_dir && !Modes.userLocationRef) {
         posTimeout = now - 6 * 28 * 24 * HOURS; // 6 months
         nonIcaoPosTimeout = now - 26 * HOURS;
     }

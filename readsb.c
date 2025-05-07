@@ -2566,6 +2566,10 @@ static void configAfterParse() {
     }
     //fprintf(stderr, "json_reliable: %d\n", Modes.json_reliable);
 
+    // check if we can use the user location as a reference
+    Modes.userLocationRef = Modes.userLocationValid && Modes.maxRange != 0 && Modes.maxRange < 1852 * 800;
+    //fprintf(stderr, "userLocationRef %d\n", Modes.userLocationRef);
+
     if (Modes.position_persistence < Modes.json_reliable) {
         Modes.position_persistence = imax(0, Modes.json_reliable);
         fprintf(stderr, "position-persistence must be >= json-reliable! setting position-persistence: %d\n",
