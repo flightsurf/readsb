@@ -4578,6 +4578,15 @@ static int readClient(struct client *c, int64_t now) {
             fprintTimePrecise(stderr, mstime());
             fprintf(stderr, " serial read return value: %d\n", nread);
         }
+        static int64_t lastData;
+        if (nread > 0 || !lastData) {
+            lastData = now;
+        }
+        if (now - lastData > 5 * MINUTES) {
+            fprintTimePrecise(stderr, mstime());
+            fprintf(stderr, " no data from device for 5 minutes\n");
+            lastData = now; // reset this so we don't keep printing it
+        }
     }
     int err = errno;
 
@@ -5563,7 +5572,7 @@ void modesNetPeriodicWork(void) {
         wait_ms = imax(0, check_flush - now); // modify wait for next flush timer
         wait_ms = imin(wait_ms, Modes.next_reconnect_callback - now); // modify wait for reconnect callback timer
         wait_ms = imax(wait_ms, 0); // don't allow negative values
-        if (Modes.debug_serial) {
+        if (0 && Modes.debug_serial) {
             wait_ms = 1000;
         }
     }
@@ -5581,7 +5590,7 @@ void modesNetPeriodicWork(void) {
     Modes.services_in.event_progress = 0;
     Modes.services_out.event_progress = 0;
 
-    if (Modes.debug_serial && Modes.net_event_count > 0) {
+    if (0 && Modes.debug_serial && Modes.net_event_count > 0) {
         fprintTimePrecise(stderr, mstime()); fprintf(stderr, " event count %d wait_ms %d\n", Modes.net_event_count, (int) wait_ms);
     }
 
@@ -5626,13 +5635,13 @@ void modesNetPeriodicWork(void) {
     /* Beast input from local Modes-S Beast via USB */
     if (Modes.sdrInitialized && (Modes.sdr_type == SDR_MODESBEAST || Modes.sdr_type == SDR_GNS)) {
         if (!Modes.serial_client) {
-            if (Modes.debug_serial) {
+            if (1 || Modes.debug_serial) {
                 fprintTimePrecise(stderr, mstime());
                 fprintf(stderr, " serial: creating socket client ... \n");
             }
 
             Modes.serial_client = createSocketClient(Modes.beast_in_service, Modes.beast_fd, NULL);
-            if (Modes.debug_serial) {
+            if (1 || Modes.debug_serial) {
                 fprintTimePrecise(stderr, mstime());
                 fprintf(stderr, " serial: creating socket client ... done\n");
             }
