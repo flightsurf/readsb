@@ -94,7 +94,7 @@ static void calculateMessageRateGlobal(int64_t now) {
     Modes.messageRate = sum / multSum * Modes.messageRateMult;
     Modes.nextMessageRateCalc = now + REMOVE_STALE_INTERVAL;
 
-    memmove(&Modes.messageRateAcc[1], &Modes.messageRateAcc[0], sizeof(uint16_t) * (MESSAGE_RATE_CALC_POINTS - 1));
+    memmove(&Modes.messageRateAcc[1], &Modes.messageRateAcc[0], sizeof(uint32_t) * (MESSAGE_RATE_CALC_POINTS - 1));
     Modes.messageRateAcc[0] = 0;
 
     //fprintf(stderr, "%.3f\n", Modes.messageRate);
