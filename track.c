@@ -1969,10 +1969,17 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
 
     // only count the aircraft as "seen" for reliable messages with CRC
     if (mm->address_reliable) {
-        if (now - a->seen > 300 * SECONDS) {
-            Modes.stats_current.unique_aircraft++;
-        }
         int64_t elapsed_seen = now - a->seen;
+        if (elapsed_seen > 5 * MINUTES) {
+            Modes.stats_current.unique_aircraft++;
+            if (
+                    (elapsed_seen > 15 * MINUTES && a->addrtype != ADDR_JAERO)
+                    || (elapsed_seen > Modes.trackExpireJaero && a->addrtype == ADDR_JAERO)
+               ) {
+                // if an aircraft hasn't been active in a bit, reset its message count
+                a->messages = 0;
+            }
+        }
 
         a->seen = now;
 
