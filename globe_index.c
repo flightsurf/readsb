@@ -1,7 +1,6 @@
 #include "readsb.h"
 #define STATE_SAVE_MAGIC (0x7ba09e63757314ceULL)
 #define STATE_SAVE_MAGIC_END (STATE_SAVE_MAGIC + 1)
-#define LZO_MAGIC (0xf7413cc6eaf227dbULL)
 
 static const char zstd_magic[] = { 0x28, 0xb5, 0x2f, 0xfd };
 
@@ -1920,38 +1919,17 @@ static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t af
         actual_len += chunk->numStates;
         if (actual_len > allocLen) { fprintf(stderr, "remakeTrace buffer overflow, bailing eex5ioBu\n"); exit(1); }
 
-        lzo_uint uncompressed_len = stateBytes(chunk->numStates);
+        uint64_t uncompressed_len = stateBytes(chunk->numStates);
 
-        if (memcmp(zstd_magic, chunk->compressed, sizeof(zstd_magic)) == 0) {
-            if (!buffer->dctx) {
-                buffer->dctx = ZSTD_createDCtx();
-            }
-            size_t res = ZSTD_decompressDCtx(buffer->dctx, tp, uncompressed_len, chunk->compressed, chunk->compressed_size);
-            if (ZSTD_isError(res)) {
-                fprintf(stderr, "reassembleTrace() zstd error: %s\n", ZSTD_getErrorName(res));
-                tb.len = 0;
-                traceCleanup(a);
-                return tb;
-            }
-        } else {
-            //fprintf(stderr, "reassembleTrace(%06x %d %ld): chunk %d trace_chunk_len %d compressed_size %d uncompressed_size %d outAlloc %d allocLen %d numStates %d trace_current_len %d\n",
-            //        a->addr, numPoints, (long) after_timestamp, k, a->trace_chunk_len,
-            //        chunk->compressed_size, (int) uncompressed_len, (int) stateBytes(allocLen), allocLen, (int) chunk->numStates, currentLen);
-
-            int res = lzo1x_decompress_safe(chunk->compressed, chunk->compressed_size, (unsigned char*) tp, &uncompressed_len, NULL);
-
-            //fprintf(stderr, "reassembleTrace(%06x %d %ld): chunk %d trace_chunk_len %d compressed_size %d uncompressed_size %d outAlloc %d allocLen %d numStates %d trace_current_len %d\n",
-            //        a->addr, numPoints, (long) after_timestamp, k, a->trace_chunk_len,
-            //        chunk->compressed_size, (int) uncompressed_len, (int) stateBytes(allocLen), allocLen, (int) chunk->numStates, currentLen);
-
-            if (res != LZO_E_OK) {
-                fprintf(stderr, "reassembleTrace(%06x %d %ld): decompress failure chunk %d trace_chunk_len %d compressed_size %d uncompressed_size %d\n",
-                        a->addr, numPoints, (long) after_timestamp, k, a->trace_chunk_len,
-                        chunk->compressed_size, (int) uncompressed_len);
-                tb.len = 0;
-                traceCleanup(a);
-                return tb;
-            }
+        if (!buffer->dctx) {
+            buffer->dctx = ZSTD_createDCtx();
+        }
+        size_t res = ZSTD_decompressDCtx(buffer->dctx, tp, uncompressed_len, chunk->compressed, chunk->compressed_size);
+        if (ZSTD_isError(res)) {
+            fprintf(stderr, "reassembleTrace() zstd error: %s\n", ZSTD_getErrorName(res));
+            tb.len = 0;
+            traceCleanup(a);
+            return tb;
         }
 
         tp += getFourStates(chunk->numStates);
@@ -2243,19 +2221,6 @@ static int compressChunk(fourState *source, int pointCount, threadpool_buffer_t 
             fprintf(stderr, "compressChunk() zstd error: %s\n", ZSTD_getErrorName(compressedSize));
             exit(1);
         }
-    } else {
-        int temp_alloc = newBytes + newBytes / 16 + 64 + 3; // from mini lzo example: upper bound of compressed size
-        unsigned char lzo_work[LZO1X_1_MEM_COMPRESS];
-        check_grow_threadpool_buffer_t(passbuffer, temp_alloc);
-
-        lzo_uint compressed_len = 0;
-        //lzo1x_1_compress        ( const lzo_bytep src, lzo_uint  src_len, lzo_bytep dst, lzo_uintp dst_len, lzo_voidp wrkmem );
-        int res = lzo1x_1_compress((unsigned char *) source, newBytes, passbuffer->buf, &compressed_len, lzo_work);
-
-        if (res != LZO_E_OK) { fprintf(stderr, "lzo1x_1_compress error Theij8ah\n"); exit(1); }
-        if (compressed_len < 1) { fprintf(stderr, "compressChunk len < 1\n"); exit(1); }
-
-        compressedSize = compressed_len;
     }
 
     if (extending) {
@@ -2905,18 +2870,12 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
         return;
     }
 
-    int gzip = 0;
-    int lzo = 0;
     int zst = 1;
 
     char filename[PATH_MAX];
     char tmppath[PATH_MAX];
     if (zst) {
         snprintf(filename, 1024, "%s/blob_%02x.zstl", stateDir, blob);
-    } else if (lzo) {
-        snprintf(filename, 1024, "%s/blob_%02x.lzol", stateDir, blob);
-    } else if (gzip) {
-        snprintf(filename, 1024, "%s/blob_%02x.gz", stateDir, blob);
     } else {
         snprintf(filename, 1024, "%s/blob_%02x", stateDir, blob);
     }
@@ -2927,22 +2886,6 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
         fprintf(stderr, "open failed:");
         perror(tmppath);
         return;
-    }
-    gzFile gzfp = NULL;
-    if (gzip) {
-        int res;
-        gzfp = gzdopen(fd, "wb");
-        if (!gzfp) {
-            fprintf(stderr, "gzdopen failed:");
-            perror(tmppath);
-            close(fd);
-            return;
-        }
-        if (gzbuffer(gzfp, GZBUFFER_BIG) < 0)
-            fprintf(stderr, "gzbuffer fail");
-        res = gzsetparams(gzfp, 1, Z_FILTERED);
-        if (res < 0)
-            fprintf(stderr, "gzsetparams fail: %d", res);
     }
 
     int stride = Modes.acBuckets / STATE_BLOBS;
@@ -2955,16 +2898,6 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
     unsigned char *p = buf;
 
     //fprintf(stderr, "buf %p p %p \n", buf, p);
-
-    lzo_uint compressed_len = 0;
-    unsigned char *lzo_out = NULL;
-    unsigned char lzo_work[LZO1X_1_MEM_COMPRESS];
-    int lzo_out_alloc;
-    int lzo_header_len = 2 * sizeof(uint64_t);
-    if (lzo) {
-        lzo_out_alloc = lzo_header_len + alloc + alloc / 16 + 64 + 3; // from mini lzo example
-        lzo_out = check_grow_threadpool_buffer_t(pbuffer2, lzo_out_alloc);
-    }
 
     char *zst_out = NULL;
     int zst_out_alloc;
@@ -3053,26 +2986,6 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
                     // end header
 
                     check_write(fd, zst_out, compressed_len + zst_header_len, tmppath);
-                } else if (lzo) {
-                    int res = lzo1x_1_compress(buf, p - buf, lzo_out + lzo_header_len, &compressed_len, lzo_work);
-
-                    //fprintf(stderr, "%d %08lld\n", blob, (long long) compressed_len);
-
-                    if (res != LZO_E_OK) {
-                        fprintf(stderr, "lzo1x_1_compress error, couldn't save state blob: %s\n", filename);
-                        goto error;
-                    }
-
-                    // write header
-                    uint64_t lzo_magic = LZO_MAGIC;
-                    memcpy(lzo_out, &lzo_magic, sizeof(uint64_t));
-                    uint64_t compressed_len_64 = compressed_len;
-                    memcpy(lzo_out + sizeof(uint64_t), &compressed_len_64, sizeof(uint64_t));
-                    // end header
-
-                    check_write(fd, lzo_out, compressed_len + lzo_header_len, tmppath);
-                } else if (gzip) {
-                    writeGz(gzfp, buf, p - buf, tmppath);
                 } else {
                     check_write(fd, buf, p - buf, tmppath);
                 }
@@ -3089,11 +3002,6 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
 
                     buf = check_grow_threadpool_buffer_t(pbuffer1, alloc);
                     p = buf;
-
-                    if (lzo) {
-                        lzo_out_alloc = lzo_header_len + alloc + alloc / 16 + 64 + 3; // from mini lzo example
-                        lzo_out = check_grow_threadpool_buffer_t(pbuffer2, lzo_out_alloc);
-                    }
                 }
 
                 p = buf;
@@ -3147,10 +3055,9 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
         }
     }
 
-    if (gzfp)
-        gzclose(gzfp);
-    else if (fd != -1)
+    if (fd != -1) {
         close(fd);
+    }
 
     if (rename(tmppath, filename) == -1) {
         fprintf(stderr, "save_blob rename(): %s -> %s", tmppath, filename);
@@ -3159,10 +3066,9 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
     }
     goto out;
 error:
-    if (gzfp)
-        gzclose(gzfp);
-    else if (fd != -1)
+    if (fd != -1) {
         close(fd);
+    }
     unlink(tmppath);
 out:
     ;
@@ -3195,7 +3101,6 @@ void load_blob(char *blob, threadpool_threadbuffers_t * buffer_group) {
     struct char_buffer cb;
     char *p;
     char *end;
-    int lzo = 0;
     int zst = 0;
     char filename[1024];
 
@@ -3207,33 +3112,17 @@ void load_blob(char *blob, threadpool_threadbuffers_t * buffer_group) {
         close(fd);
     } else {
         Modes.writeInternalState = 1; // not the primary load method, immediately write state
-        snprintf(filename, 1024, "%s.lzol", blob);
-        fd = open(filename, O_RDONLY);
-        if (fd != -1) {
-            lzo = 1;
-            cb = readWholeFile(fd, filename);
-            close(fd);
-            unlink(filename); // moving to zst
-        } else {
-            snprintf(filename, 1024, "%s.gz", blob);
-            gzFile gzfp = gzopen(filename, "r");
-            if (gzfp) {
-                cb = readWholeGz(gzfp, filename);
-                gzclose(gzfp);
-                unlink(filename); // moving to lzo
-            } else {
-                fd = open(blob, O_RDONLY);
-                if (fd == -1) {
-                    fprintf(stderr, "missing state blob:");
-                    snprintf(filename, 1024, "%s[.gz/.lzol/.zstl]", blob);
-                    perror(filename);
-                    return;
-                }
-                cb = readWholeFile(fd, filename);
-                close(fd);
-                unlink(filename); // moving to lzo
-            }
+        snprintf(filename, 1024, "%s", blob);
+        fd = open(blob, O_RDONLY);
+        if (fd == -1) {
+            fprintf(stderr, "missing state blob:");
+            snprintf(filename, 1024, "%s.zstl", blob);
+            perror(filename);
+            return;
         }
+        cb = readWholeFile(fd, filename);
+        close(fd);
+        unlink(filename);
     }
     if (!cb.buffer)
         return;
@@ -3274,52 +3163,6 @@ void load_blob(char *blob, threadpool_threadbuffers_t * buffer_group) {
             }
 
             if (load_aircrafts(uncompressed, uncompressed + uncompressed_len, filename, now, pb2) < 0) {
-                goto out;
-            }
-            p += compressed_len;
-        }
-    } else if (lzo) {
-        int lzo_out_alloc = Modes.state_chunk_size_read;
-
-        char *lzo_out = check_grow_threadpool_buffer_t(pb1, lzo_out_alloc);
-
-        lzo_uint uncompressed_len = 0;
-        int res = 0;
-        while (end - p > 0) {
-            uint64_t value = 0;
-            uint64_t compressed_len = 0;
-            if (end - p >= (long) (sizeof(value) + sizeof(compressed_len))) {
-                p += memcpySize(&value, p, sizeof(value));
-
-                p += memcpySize(&compressed_len, p, sizeof(compressed_len));
-            }
-            //fprintf(stderr, "%d %08lld\n", blob, (long long) compressed_len);
-
-            if (value != LZO_MAGIC) {
-                fprintf(stderr, "Corrupt state file (LZO_MAGIC wrong): %s\n", filename);
-                goto out;
-            }
-
-decompress:
-            uncompressed_len = lzo_out_alloc;
-            res = lzo1x_decompress_safe((unsigned char*) p, compressed_len, (unsigned char*) lzo_out, &uncompressed_len, NULL);
-            if (res != LZO_E_OK) {
-                lzo_out_alloc = imax(2 * lzo_out_alloc, Modes.state_chunk_size_read);
-                lzo_out_alloc = imax(lzo_out_alloc, 2 * compressed_len);
-                if (lzo_out_alloc > Modes.state_chunk_size_read) {
-                    Modes.state_chunk_size_read = lzo_out_alloc; // also increase chunk size for later invocations
-                    fprintf(stderr, "decompression failed, trying larger buffer (%d): %s\n", lzo_out_alloc, filename);
-                }
-                if (lzo_out_alloc > 256 * 1024 * 1024 || !lzo_out) {
-                    fprintf(stderr, "Corrupt state file (decompression failure): %s\n", filename);
-                    goto out;
-                }
-
-                lzo_out = check_grow_threadpool_buffer_t(pb1, lzo_out_alloc);
-                goto decompress;
-            }
-
-            if (load_aircrafts(lzo_out, lzo_out + uncompressed_len, filename, now, pb2) < 0) {
                 goto out;
             }
             p += compressed_len;

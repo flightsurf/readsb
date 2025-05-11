@@ -95,7 +95,6 @@
 #include <zlib.h>
 #include <inttypes.h>
 #include <sched.h>
-#include "minilzo/minilzo.h"
 #include "threadpool.h"
 #include <stdatomic.h>
 #include <zstd.h>

@@ -172,13 +172,10 @@ readsb.o: readsb.c *.h .version
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-minilzo.o: minilzo/minilzo.c minilzo/minilzo.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
 readsb: readsb.o argp.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o json_out.o net_io.o crc.o demod_2400.o \
 	uat2esnt/uat2esnt.o uat2esnt/uat_decode.o \
 	stats.o cpr.o icao_filter.o track.o util.o fasthash.o convert.o sdr_ifile.o sdr_beast.o sdr.o ais_charset.o \
-	globe_index.o geomag.o receiver.o aircraft.o api.o minilzo.o threadpool.o \
+	globe_index.o geomag.o receiver.o aircraft.o api.o threadpool.o \
 	$(SDR_OBJ) $(COMPAT)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_SDR) $(OPTIMIZE)
 
