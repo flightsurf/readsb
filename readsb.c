@@ -415,6 +415,17 @@ void priorityTasksRun() {
 
     Modes.currentTask = "priorityTasks_start";
 
+    {
+        int64_t mono = mono_milli_seconds();
+
+        // reset allocated buffers every minute
+        static int64_t next_buffer_reset;
+        if (mono > next_buffer_reset) {
+            next_buffer_reset = mono + 1 * MINUTES;
+            threadpool_reset_buffers(Modes.allPool);
+        }
+    }
+
     // stop all threads so we can remove aircraft from the list.
     // adding aircraft does not need to be done with locking:
     // the worst case is that the newly added aircraft is skipped as it's not yet
@@ -1225,10 +1236,10 @@ static void writeTraces(int64_t mono) {
 
     //fprintf(stderr, "n_parts %4d part %4d lastRunFinished %d\n", n_parts, part, lastRunFinished);
 
-    // reset allocated buffers every 5 minutes
+    // reset allocated buffers every minute
     static int64_t next_buffer_reset;
     if (mono > next_buffer_reset) {
-        next_buffer_reset = mono + 5 * MINUTES;
+        next_buffer_reset = mono + 1 * MINUTES;
         threadpool_reset_buffers(Modes.tracePool);
     }
 }

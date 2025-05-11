@@ -123,9 +123,7 @@ void threadpool_reset_buffers(threadpool_t *pool)
     {
         thread_t *thread = &pool->threads[i];
         for (uint32_t k = 0; k < thread->user_buffers.buffer_count; k++) {
-            free(thread->user_buffers.buffers[k].buf);
-            thread->user_buffers.buffers[k].buf = NULL;
-            thread->user_buffers.buffers[k].size = 0;
+            free_threadpool_buffer(&thread->user_buffers.buffers[k]);
         }
     }
 }

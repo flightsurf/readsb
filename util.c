@@ -866,7 +866,6 @@ void *check_grow_threadpool_buffer_t(threadpool_buffer_t *buffer, ssize_t newSiz
     if (buffer->size < newSize || !buffer->buf) {
         //fprintf(stderr, "check_grow_threadpool_buffer: buffer->size %ld requested size %ld\n", (long) buffer->size, (long) newSize);
         sfree(buffer->buf);
-        newSize = newSize * 9 / 8; // avoid super many mallocs when the size of something grows slowly
         buffer->buf = cmalloc(newSize);
         if (!buffer->buf) {
             fprintf(stderr, "<3>FATAL: check_grow_threadpool_buffer_t no enough memory allocating %ld bytes!\n", (long) newSize);
