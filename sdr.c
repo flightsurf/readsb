@@ -177,10 +177,10 @@ static sdr_handler *current_handler() {
 bool sdrOpen() {
     pthread_mutex_lock(&Modes.sdrControlMutex);
     bool success = current_handler()->open();
-    pthread_mutex_unlock(&Modes.sdrControlMutex);
     if (success) {
         Modes.sdrInitialized = 1;
     }
+    pthread_mutex_unlock(&Modes.sdrControlMutex);
     return success;
 }
 

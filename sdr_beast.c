@@ -75,6 +75,9 @@ static speed_t get_baud(int baud)
             return B576000;
         case 921600:
             return B921600;
+        case 921800:
+            // close enough
+            return B921600;
         case 1000000:
             return B1000000;
         case 1152000:
@@ -179,10 +182,11 @@ bool beastOpen(void) {
     }
 
 #ifdef __APPLE__
-    if (set_beast_custom_baud(Modes.beast_fd, baud, &term) < 0) {
+    if (set_beast_custom_baud(Modes.beast_fd, baud, &term) < 0)
 #else
-    if (cfsetispeed(&term, baud) < 0 || cfsetospeed(&term, baud) < 0) {
+    if (cfsetispeed(&term, baud) < 0 || cfsetospeed(&term, baud) < 0)
 #endif
+    {
         fprintf(stderr, "Beast set speed(%s, %lu): %s\n",
                 Modes.beast_serial, (unsigned long)baud, strerror(errno));
         return -1;
