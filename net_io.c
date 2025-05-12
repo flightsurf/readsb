@@ -5648,6 +5648,7 @@ void modesNetPeriodicWork(void) {
         }
         if (Modes.serial_client->service) {
             modesReadFromClient(Modes.serial_client, mb);
+            drainMessageBuffer(mb);
         }
         if (!Modes.serial_client->service) {
             fprintf(stderr, "Serial client closed unexpectedly, exiting!\n");
@@ -6199,7 +6200,7 @@ void netUseMessage(struct modesMessage *mm) {
 
 void netDrainMessageBuffers() {
     for (int kt = 0; kt < Modes.decodeThreads; kt++) {
-        struct messageBuffer *mb = &Modes.netMessageBuffer[0];
+        struct messageBuffer *mb = &Modes.netMessageBuffer[kt];
         drainMessageBuffer(mb);
     }
 }
