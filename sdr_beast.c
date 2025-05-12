@@ -174,23 +174,23 @@ bool beastOpen(void) {
         }
     }
 
-    struct termios term;
-    if (tcgetattr(Modes.beast_fd, &term) < 0) {
-        fprintf(stderr, "Beast tcgetattr(%s): %s\n", 
-                Modes.beast_serial, strerror(errno));
-        return -1;
-    }
-
 #ifdef __APPLE__
-    if (set_beast_custom_baud(Modes.beast_fd, baud, &term) < 0)
+    if (cfsetspeed(&tios, baud) < 0) {
+
+        /* If standard rate setting fails, try IOKit's special baudrate setting */
+        if (ioctl(Modes.beast_fd, IOSSIOSPEED, &baud) < 0) {
+            fprintf(stderr, "Beast set speed(%s, %lu): %s\n",
+                    Modes.beast_serial, (unsigned long)baud, strerror(errno));
+            return false;
+        }
+    }
 #else
-    if (cfsetispeed(&term, baud) < 0 || cfsetospeed(&term, baud) < 0)
-#endif
-    {
+    if (cfsetispeed(&tios, baud) < 0 || cfsetospeed(&tios, baud) < 0) {
         fprintf(stderr, "Beast set speed(%s, %lu): %s\n",
                 Modes.beast_serial, (unsigned long)baud, strerror(errno));
-        return -1;
+        return false;
     }
+#endif
 
     tcflush(Modes.beast_fd, TCIFLUSH);
 
@@ -247,12 +247,16 @@ bool beastOpen(void) {
 
     /* Kick on handshake and start reception */
     int RTSDTR_flag = TIOCM_RTS | TIOCM_DTR;
-    ioctl(Modes.beast_fd, TIOCMBIS, &RTSDTR_flag); //Set RTS&DTR pin
+    int res = ioctl(Modes.beast_fd, TIOCMBIS, &RTSDTR_flag); //Set RTS&DTR pin
+    if (res == -1) {
+        fprintf(stderr, "Serial device, reception start failed: %s\n", strerror(errno));
+        return false;
+    }
 
     if (Modes.sdr_type == SDR_MODESBEAST) {
-        fprintf(stderr, "Running Mode-S Beast via USB.\n");
+        fprintf(stderr, "Running Mode-S Beast via serial (over USB).\n");
     } else {
-        fprintf(stderr, "Running GNS HULC via USB.\n");
+        fprintf(stderr, "Running GNS HULC via serial (over USB).\n");
     }
     return true;
 }

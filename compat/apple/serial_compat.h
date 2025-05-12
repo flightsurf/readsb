@@ -60,16 +60,6 @@
 extern "C" {
 #endif
 
-/* Helper function to set non-standard baud rates on macOS */
-static inline int set_beast_custom_baud(int fd, speed_t baud, struct termios *term) {
-    if (cfsetspeed(term, baud) == 0) {
-        return tcsetattr(fd, TCSANOW, term);
-    }
-
-    /* If standard rate setting fails, try IOKit's special baudrate setting */
-    return ioctl(fd, IOSSIOSPEED, &baud);
-}
-
 #ifdef __cplusplus
 }
 #endif
