@@ -1909,6 +1909,36 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         calculateMessageRateGlobal(now);
     }
 
+    if (0) {
+        static int64_t lastPrint;
+        static int msgAcc;
+        int64_t printIval = 50;
+
+        msgAcc++;
+
+        if (now > lastPrint + printIval) {
+            int64_t elapsed = now - lastPrint;
+            double rate = msgAcc / (elapsed * 0.001);
+            int width = rate / 20;
+
+            unsigned char bar[1024];
+            for (int i = 0; i < (int) sizeof(bar); i++) {
+                bar[i] = 219; // ascii block
+            }
+
+            if (width >= (int) sizeof(bar)) {
+                width = (int) sizeof(bar) - 1;
+            }
+            bar[width] = '\0';
+
+            fprintTimePrecise(stderr, now);
+            fprintf(stderr, " %4d %s\n", (int) rate, bar);
+            //fprintf(stderr, "%5.0f\n", rate / 100);
+            lastPrint = now;
+            msgAcc = 0;
+        }
+    }
+
     if (mm->msgtype == DFTYPE_MODEAC) {
         // Mode A/C, just count it (we ignore SPI)
         modeAC_count[modeAToIndex(mm->squawkHex)]++;
