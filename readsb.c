@@ -1893,6 +1893,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case OptJsonTraceHistOnly:
             Modes.trace_hist_only = (int8_t) atoi(arg);
             break;
+        case OptFullTraceDir:
+            sfree(Modes.fullTraceDir);
+            Modes.fullTraceDir = strdup(arg);
+            break;
         case OptJsonTraceInt:
             Modes.json_trace_interval = (int64_t)(1000 * atof(arg));
             break;
@@ -3086,6 +3090,15 @@ int main(int argc, char **argv) {
         for (int i = 0; i < 256; i++) {
             snprintf(pathbuf, PATH_MAX, "%s/traces/%02x", Modes.json_dir, i);
             mkdir_error(pathbuf, 0755, stderr);
+        }
+
+        if (Modes.fullTraceDir) {
+            snprintf(pathbuf, PATH_MAX, "%s/traces", Modes.fullTraceDir);
+            mkdir_error(pathbuf, 0755, stderr);
+            for (int i = 0; i < 256; i++) {
+                snprintf(pathbuf, PATH_MAX, "%s/traces/%02x", Modes.fullTraceDir, i);
+                mkdir_error(pathbuf, 0755, stderr);
+            }
         }
     }
 

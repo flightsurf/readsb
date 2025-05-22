@@ -110,6 +110,7 @@ static struct argp_option optionsReadsb[] = {
     {"write-receiver-id-json", OptNetReceiverIdJson, 0, 0, "Write receivers.json", 1},
     {"json-trace-interval", OptJsonTraceInt, "<seconds>", 0, "Interval after which a new position will guaranteed to be written to the trace and the json position output (default: 30)", 1},
     {"json-trace-hist-only", OptJsonTraceHistOnly, "1,2,3,8", 0, "Don't write recent(1), full(2), either(3) traces to /run, only archive via write-globe-history (8: irregularly write limited traces to run, subject to change)", 1},
+    {"full-trace-dir", OptFullTraceDir, "<dir>", 0, "when using globe-index, write full traces to this directory instead of --write-json dir (typically /run/readsb), this can be used to reduce memory usage at the cost of roughly 100 IOPS for global traffic", 1},
     {"write-json-gzip", OptJsonGzip, 0, 0, "Write aircraft.json also as aircraft.json.gz", 1},
     {"write-json-binCraft-only", OptJsonOnlyBin, "<n>", 0, "Use only binary binCraft format for globe files (1), for aircraft.json as well (2)", 1},
     {"write-binCraft-old", OptEnableBinGz, 0, 0, "write old gzipped binCraft files\n", 1},

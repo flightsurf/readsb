@@ -531,7 +531,18 @@ int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_
     if (full.len > 0) {
         char filename[TRACE_PMAX];
         snprintf(filename, TRACE_PMAX, "traces/%02x/trace_full_%s%06x.json", a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
-        writeJsonToGzip(Modes.json_dir, filename, full, 5);
+        if (Modes.fullTraceDir) {
+            writeJsonToGzip(Modes.fullTraceDir, filename, full, 5);
+            char target[TRACE_PMAX];
+            snprintf(filename, TRACE_PMAX, "%s/traces/%02x/trace_full_%s%06x.json", Modes.json_dir, a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
+            snprintf(target, TRACE_PMAX, "%s/traces/%02x/trace_full_%s%06x.json", Modes.fullTraceDir, a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
+            int res = symlink(target, filename);
+            if (res < 0 && errno != EEXIST) {
+                fprintf(stderr, "%s -> %s errno: %s\n", target, filename, strerror(errno));
+            }
+        } else {
+            writeJsonToGzip(Modes.json_dir, filename, full, 5);
+        }
     }
 
     if (a->trace_writeCounter >= 0xc0ffee) {
@@ -1696,6 +1707,11 @@ static void traceUnlink(struct aircraft *a) {
 
     snprintf(filename, 1024, "%s/traces/%02x/trace_full_%s%06x.json", Modes.json_dir, a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
     unlink(filename);
+
+    if (Modes.fullTraceDir) {
+        snprintf(filename, 1024, "%s/traces/%02x/trace_full_%s%06x.json", Modes.fullTraceDir, a->addr % 256, (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
+        unlink(filename);
+    }
 
     //fprintf(stderr, "unlink %06x: %s\n", a->addr, filename);
 }

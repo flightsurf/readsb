@@ -865,6 +865,7 @@ struct _Modes
     char *net_bind_address; // Bind address
     char *json_dir; // Path to json base directory, or NULL not to write json.
     char *globe_history_dir;
+    char *fullTraceDir; // reduce memory usage in /run tmpfs by writing full traces to this directory
     char *state_dir;
     char *state_parent_dir;
     char *dump_beast_dir; // write raw beast with a timestamp every millisecond for low level replay
@@ -1282,6 +1283,7 @@ enum {
     OptAcHashBits,
     OptJsonTraceInt,
     OptJsonTraceHistOnly,
+    OptFullTraceDir,
     OptDcFilter,
     OptBiasTee,
     OptNet,
