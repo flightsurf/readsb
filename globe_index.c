@@ -976,10 +976,6 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
     if (a->addrtype_updated > now)
         a->addrtype_updated = now;
 
-    if (a->trace_next_perm - now > GLOBE_PERM_IVAL) {
-        a->trace_next_perm = now + 5 * MINUTES + random() % GLOBE_PERM_IVAL;
-    }
-
     int new_index = a->globe_index;
     a->globe_index = -5;
     if (a->pos_reliable_valid.source != SOURCE_INVALID) {
