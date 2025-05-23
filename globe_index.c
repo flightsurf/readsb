@@ -2430,7 +2430,7 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
                 condition = 2;
             } else {
                 // reschedule
-                a->trace_next_perm = now + permCheckIval;
+                a->trace_next_perm = now + permCheckIval / 2 + (random() % permCheckIval / 2);
             }
             if (0 && condition) {
                 fprintf(stderr, "|= WPERM %d %06x posElapsed %4.1fh toTrigger %4.1fh %d %d %d\n",
