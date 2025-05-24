@@ -14,6 +14,8 @@ PRINT_UUIDS ?= no
 DIALECT = -std=c11
 CFLAGS = $(DIALECT) -W -Wall -Werror -fno-common -O2
 CFLAGS += -DMODES_READSB_VERSION=\"$(READSB_VERSION)\"
+CFLAGS += -DREADSB_SHORT_VERSION=\"$(shell cat version)\"
+CFLAGS += -DREADSB_SHORT_COMMIT=\"$(shell git describe --abbrev --dirty --always || echo nogit)\"
 CFLAGS += -Wdate-time -fstack-protector-strong -Wformat -Werror=format-security
 
 # Platform-specific settings

@@ -1784,6 +1784,8 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
         }
     }
 
+    p = safe_snprintf(p, end, ",\n\"version\": \"readsb "READSB_SHORT_VERSION" "READSB_SHORT_COMMIT"\"");
+
     p = safe_snprintf(p, end, ",\n\"timestamp\": %.3f", referenceTs / 1000.0);
 
     p = safe_snprintf(p, end, ",\n\"trace\":[ ");
