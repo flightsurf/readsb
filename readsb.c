@@ -1094,14 +1094,6 @@ static void traceWriteTask(void *arg, threadpool_threadbuffers_t *buffer_group) 
 }
 
 
-static void setLowPriorityTask(void *arg, threadpool_threadbuffers_t *buffer_group) {
-    MODES_NOTUSED(arg);
-    MODES_NOTUSED(buffer_group);
-
-    setLowestPriorityPthread();
-}
-
-
 static void writeTraces(int64_t mono) {
     static int lastRunFinished;
     static int part;
@@ -1110,25 +1102,18 @@ static void writeTraces(int64_t mono) {
     static int firstRunDone;
 
     if (!Modes.tracePool) {
+        // reduce priority
+        int oldPrio = getpriority(PRIO_PROCESS, 0);
+        setpriority(PRIO_PROCESS, 0, oldPrio + 10);
+
         Modes.tracePoolSize = imin(8, imax(1, Modes.num_procs * 3 / 4));
         Modes.tracePool = threadpool_create(Modes.tracePoolSize, 4);
         Modes.traceTasks = allocate_task_group(8 * Modes.tracePoolSize);
         lastRunFinished = 1;
         lastCompletion = mono;
 
-
-        // set low priority for this trace pool
-        if (1) {
-            int taskCount = Modes.tracePoolSize;
-            threadpool_task_t *tasks = Modes.traceTasks->tasks;
-            for (int i = 0; i < taskCount; i++) {
-                threadpool_task_t *task = &tasks[i];
-
-                task->function = setLowPriorityTask;
-                task->argument = NULL;
-            }
-            threadpool_run(Modes.tracePool, tasks, taskCount);
-        }
+        // restore previous priority
+        setpriority(PRIO_PROCESS, 0, oldPrio);
     }
 
     int taskCount = Modes.traceTasks->task_count;
