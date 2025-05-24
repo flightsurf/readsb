@@ -2745,6 +2745,17 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
 
     if (haveScratch && (mm->garbage || mm->pos_bad || mm->duplicate)) {
         memcpy(a, &scratch, offsetof(struct aircraft, traceCache));
+        // for duplicate positions:
+        // put receivers into the receiver list if their data is less than
+        // 75 ms after the first receiver to send this position
+        if (
+                mm->duplicate
+                && now - a->seen_pos < 75
+                && a->lat == mm->decoded_lat
+                && a->lon == mm->decoded_lon
+           ) {
+            addReceiverId(a, mm, 0);
+        }
     }
 
     if (!(mm->source < a->position_valid.source || mm->in_disc_cache || mm->garbage || mm->pos_ignore || mm->pos_receiver_range_exceeded)) {
