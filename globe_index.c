@@ -3616,7 +3616,7 @@ void writeInternalState() {
     int parts = STATE_BLOBS;
     int stride = 1;
 
-    threadpool_t *pool = threadpool_create(imax(1, Modes.num_procs), 4);
+    threadpool_t *pool = threadpool_create(Modes.num_procs, 4);
     task_group_t *group = allocate_task_group(parts + 1);
     threadpool_task_t *tasks = group->tasks;
     readsb_task_t *infos = group->infos;
@@ -3683,7 +3683,7 @@ void readInternalState() {
     int parts = STATE_BLOBS;
     int stride = 1;
 
-    threadpool_t *pool = threadpool_create(imax(1, Modes.num_procs), 4);
+    threadpool_t *pool = threadpool_create(Modes.num_procs, 4);
     task_group_t *group = allocate_task_group(parts + 1);
     threadpool_task_t *tasks = group->tasks;
     readsb_task_t *infos = group->infos;

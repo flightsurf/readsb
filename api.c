@@ -1793,6 +1793,8 @@ static void *apiThreadEntryPoint(void *arg) {
     //fprintf(stderr, "%d\n", core);
     threadAffinity(core);
 
+    // set this thread low priority
+    setLowestPriorityPthread();
 
     thread->cons = cmalloc(Modes.api_fds_per_thread * sizeof(struct apiCon));
     memset(thread->cons, 0x0, Modes.api_fds_per_thread * sizeof(struct apiCon));
@@ -1973,9 +1975,10 @@ static void *apiUpdateEntryPoint(void *arg) {
 }
 
 void apiBufferInit() {
-    // if --devel=apiThreads,<n> isn't given, use nproc - 1 api threads (nproc - 2 for nproc > 6)
     if (Modes.apiThreadCount <= 0) {
-        Modes.apiThreadCount = imax(1, Modes.num_procs - (Modes.num_procs > 6 ? 2 : 1));
+        // if --devel=apiThreads,<n> isn't given, use nproc - 1 api threads
+        // don't use more than 8 threads unless explicit count is given
+        Modes.apiThreadCount = imin(8, imax(1, Modes.num_procs - 1));
     }
 
     size_t size = sizeof(struct apiThread) * Modes.apiThreadCount;

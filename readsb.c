@@ -292,8 +292,7 @@ static void modesInit(void) {
     threadInit(&Threads.apiUpdate, "apiUpdate");
 
     if (Modes.json_globe_index || Modes.netReceiverId || Modes.acHashBits >= 16) {
-        // to keep decoding and the other threads working well, don't use all available processors
-        Modes.allPoolSize = imax(1, Modes.num_procs);
+        Modes.allPoolSize = imin(8, Modes.num_procs);
     } else {
         Modes.allPoolSize = 1;
     }
@@ -1111,13 +1110,7 @@ static void writeTraces(int64_t mono) {
     static int firstRunDone;
 
     if (!Modes.tracePool) {
-        if (Modes.num_procs <= 1) {
-            Modes.tracePoolSize = 1;
-        } else if (Modes.num_procs <= 4) {
-            Modes.tracePoolSize = Modes.num_procs - 1;
-        } else {
-            Modes.tracePoolSize = Modes.num_procs - 2;
-        }
+        Modes.tracePoolSize = imin(8, imax(1, Modes.num_procs * 3 / 4));
         Modes.tracePool = threadpool_create(Modes.tracePoolSize, 4);
         Modes.traceTasks = allocate_task_group(8 * Modes.tracePoolSize);
         lastRunFinished = 1;
@@ -2530,7 +2523,8 @@ static void configAfterParse() {
 #endif
     }
     if (Modes.num_procs < 1) {
-        Modes.num_procs = 1; // sanity check
+        // there is at least 1 processor
+        Modes.num_procs = 1;
     }
     if (!Modes.preambleThreshold) {
         Modes.preambleThreshold = PREAMBLE_THRESHOLD_DEFAULT;
