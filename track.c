@@ -1736,6 +1736,9 @@ static int addressReliable(struct modesMessage *mm) {
 }
 
 static inline void focusGroundstateChange(struct aircraft *a, struct modesMessage *mm, int arg, int64_t now, airground_t airground) {
+    if (a->airground != mm->airground) {
+        a->lastAirGroundChange = now;
+    }
     //if (a->airground != mm->airground) {
     if (a->addr == Modes.cpr_focus && a->airground != airground) {
         fprintf(stderr, "%02d:%04.1f %06x Ground state change %d: Source: %s, %s -> %s\n",

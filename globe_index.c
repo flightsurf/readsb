@@ -2654,6 +2654,11 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
         goto save_state;
     }
 
+    if (now - a->lastAirGroundChange < 45 * SECONDS && elapsed > 750) {
+        // record one point every second for 45 seconds after ground state change
+        save_state_no_buf = 1;
+    }
+
     // record non moving targets every 5 minutes
     if (elapsed > 10 * max_elapsed) {
         goto save_state;

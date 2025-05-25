@@ -514,7 +514,7 @@ struct aircraft
   data_validity alert_valid;
   data_validity spi_valid;
 
-  int64_t unused4345345;
+  int64_t lastAirGroundChange;
   double latReliable; // last reliable position based on json_reliable threshold
   double lonReliable; // last reliable position based on json_reliable threshold
   char typeCode[4];
