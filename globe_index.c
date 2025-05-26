@@ -2749,10 +2749,11 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
             goto save_state;
         }
 
-        if (distance > 50)
+        if (distance > 40)
             goto save_state;
 
-        if (speed_diff > 2.5f) {
+        // the distance change above is good enough for high resolution traces on the ground
+        if (0 && speed_diff > 2.5f) {
             save_state_no_buf = 1;
         }
     }
