@@ -2635,12 +2635,7 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
         if (traceDebug) {
             fprintf(stderr, "speed_change: %0.1f %0.1f -> %0.1f", speed_diff, last->gs / _gs_factor, a->gs);
         }
-
-        if (buffered && last->gs == buffered->gs) {
-            save_state_no_buf = 1;
-        } else {
-            goto save_state;
-        }
+        save_state_no_buf = 1;
     }
 
     if (baro_rate_diff >= 200) {
@@ -2748,6 +2743,10 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
 
         if (distance > 50)
             goto save_state;
+
+        if (speed_diff > 2.5f) {
+            save_state_no_buf = 1;
+        }
     }
 
     if (track_diff > 0.5
