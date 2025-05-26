@@ -6,7 +6,7 @@ static const char zstd_magic[] = { 0x28, 0xb5, 0x2f, 0xfd };
 
 static void mark_legs(traceBuffer tb, struct aircraft *a, int start, int recent);
 static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t after_timestamp, threadpool_buffer_t *buffer);
-static void resizeTraceCurrent(struct aircraft *a, int64_t now);
+static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra);
 
 void init_globe_index() {
     struct tile *s_tiles = Modes.json_globe_special_tiles = cmalloc(GLOBE_SPECIAL_INDEX * sizeof(struct tile));
@@ -1045,7 +1045,7 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
                 discard_trace = 1;
             }
         }
-        resizeTraceCurrent(a, now);
+        resizeTraceCurrent(a, now, 0);
         if (a->trace_current_len) {
             checkSize(stateBytes(a->trace_current_len));
             *p += memcpySize(a->trace_current, *p, stateBytes(a->trace_current_len));
@@ -2302,7 +2302,7 @@ static void setTrace(struct aircraft *a, fourState *source, int len, threadpool_
     }
 
     a->trace_current_len = len;
-    resizeTraceCurrent(a, now);
+    resizeTraceCurrent(a, now, 0);
     if (a->trace_current_max < a->trace_current_len) {
         fprintf(stderr, "%06x setTrace error, insufficient current trace, discarding some data\n", a->addr);
         a->trace_current_len = 0;
@@ -2322,8 +2322,11 @@ static int get_nominal_trace_current_points(struct aircraft *a, int64_t now) {
     }
 }
 
-static void resizeTraceCurrent(struct aircraft *a, int64_t now) {
+static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra) {
     int newPoints = get_nominal_trace_current_points(a, now);
+    if (extra) {
+        newPoints = alignSFOUR(newPoints + extra);
+    }
     int minPoints = alignSFOUR(a->trace_current_len + Modes.traceReserve);
     if (newPoints < minPoints) {
         newPoints = minPoints;
@@ -2458,7 +2461,7 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
             if (a->trace_current_max > get_nominal_trace_current_points(a, now)) {
                 compressCurrent(a, passbuffer);
             }
-            resizeTraceCurrent(a, now);
+            resizeTraceCurrent(a, now, 0);
         }
 
 
@@ -2803,7 +2806,7 @@ no_save_state:
     }
 
     if (!a->trace_current) {
-        resizeTraceCurrent(a, now);
+        resizeTraceCurrent(a, now, 0);
         scheduleMemBothWrite(a, now); // rewrite full history file
         a->trace_next_perm = now + GLOBE_PERM_IVAL / 2; // schedule perm write
 
@@ -2826,6 +2829,99 @@ no_save_state:
         }
         return 0;
     }
+
+    // add points before landing
+    if (
+            last
+            && on_ground != last->on_ground
+            && on_ground
+            && a->traceLast
+            && getState(a->traceLast, a->traceLastNext)->timestamp != 0
+       ) {
+        int64_t replaceBeforeTimestamp = -1;
+        {
+            int maxAdd = 64;
+            for (int k = 0; k < imin(maxAdd, Modes.traceLastMax); k++) {
+                int i = a->traceLastNext - k - 1;
+                if (i < 0) {
+                    i += Modes.traceLastMax;
+                }
+                struct state *state = getState(a->traceLast, i);
+                replaceBeforeTimestamp = state->timestamp;
+            }
+        }
+        int replaceAfter = -1;
+        int64_t replaceAfterTimestamp = -1;
+        for (int k = a->trace_current_len - 1; k >= 0; k--) {
+            struct state *state = getState(a->trace_current, k);
+            if (state->timestamp < replaceBeforeTimestamp) {
+                replaceAfter = k;
+                replaceAfterTimestamp = state->timestamp;
+                break;
+            }
+        }
+        if (a->trace_current_max - replaceAfter <= Modes.traceLastMax + SFOUR) {
+            resizeTraceCurrent(a, now, Modes.traceLastMax);
+        }
+        if (a->trace_current_max - replaceAfter <= Modes.traceLastMax + SFOUR) {
+            fprintf(stderr, "error phe8EiQu\n");
+            replaceAfter = -1;
+        }
+        if (replaceAfter > -1) {
+            int debug = 0;
+            if (debug) { fprintf(stderr, "%06x ", a->addr); }
+            a->tracePosBuffered = 0;
+
+            int replace = replaceAfter + 1;
+            int i = a->traceLastNext;
+            for (int k = 0; k < Modes.traceLastMax; k++, i = (i + 1) % Modes.traceLastMax) {
+                struct state *state = getState(a->traceLast, i);
+                if (state->timestamp > replaceAfterTimestamp) {
+                    if (replace % SFOUR != i % SFOUR) {
+                        continue;
+                    }
+                    replace++;
+                }
+            }
+            if (replace > a->trace_current_len + SFOUR) {
+                // only do this if we actually add multiple points
+                // to line up the state_all we can be missing up to 3 points
+                // which is of course undesirable
+                int replace = replaceAfter + 1;
+                int i = a->traceLastNext;
+                for (int k = 0; k < Modes.traceLastMax; k++, i = (i + 1) % Modes.traceLastMax) {
+                    struct state *state = getState(a->traceLast, i);
+                    struct state_all *stateAll = getStateAll(a->traceLast, i);
+                    if (state->timestamp > replaceAfterTimestamp) {
+                        if (replace % SFOUR != i % SFOUR) {
+                            if (debug) { fprintf(stderr, ","); }
+                            continue;
+                        }
+                        if (a->trace_current_max - replace <= SFOUR) {
+                            fprintf(stderr, "error lahN8quu\n");
+                            break;
+                        }
+                        struct state *r = getState(a->trace_current, replace);
+                        struct state_all *rAll = getStateAll(a->trace_current, replace);
+                        memcpy(r, state, sizeof(struct state));
+                        if (rAll && stateAll) {
+                            memcpy(rAll, stateAll, sizeof(struct state_all));
+                        }
+                        replace++;
+                        if (debug) { fprintf(stderr, "."); }
+                    }
+                }
+
+                int added = replace - a->trace_current_len;
+                if (debug) { fprintf(stderr, " %d ", added); }
+
+                a->trace_current_len = replace;
+                a->trace_writeCounter += added;
+            }
+            if (debug) { fprintf(stderr, "\n"); }
+        }
+    }
+
 
     if (Modes.traceLastMax && !a->traceLast) {
         a->traceLast = cmCalloc(stateBytes(Modes.traceLastMax));
