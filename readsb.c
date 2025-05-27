@@ -809,8 +809,8 @@ static void gainStatistics(struct mag_buf *buf) {
     noiseHighSamples += buf->noiseHighSamples;
     totalSamples += buf->length;
 
-    double interval = 0.5;
-    double riseTime = 15;
+    float interval = 0.5;
+    float riseTime = 1;
 
     if (totalSamples < interval * Modes.sample_rate) {
         return;
@@ -836,7 +836,7 @@ static void gainStatistics(struct mag_buf *buf) {
             Modes.lowerGain = 2;
         }
     } else if (noiseLow) {
-        if (Modes.gainStartup || slowRise > riseTime / interval) {
+        if (Modes.gainStartup || (float) slowRise >= riseTime / interval) {
             slowRise = 0;
             Modes.increaseGain = 1;
         } else {
