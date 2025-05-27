@@ -172,6 +172,11 @@ static inline int will_accept_data(data_validity *d, datasource_t source, struct
         if (!found) {
             return 0;
         }
+        if (Modes.netIngest) {
+            // ingest: forward all nonposition messages from receivers on the receiverIds list
+            // receivers on the receiverIds list are the receivers with the lowest latency
+            mm->reduce_forward = 1;
+        }
     }
 
     if (0 && is_pos && a->addr == Modes.cpr_focus) {
