@@ -2326,12 +2326,12 @@ static int get_nominal_trace_current_points(struct aircraft *a, int64_t now) {
 
 static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra, int force) {
     int newPoints = get_nominal_trace_current_points(a, now);
-    if (extra) {
-        newPoints = alignSFOUR(newPoints + extra);
-    }
     int minPoints = alignSFOUR(a->trace_current_len + Modes.traceReserve);
     if (newPoints < minPoints) {
         newPoints = minPoints;
+    }
+    if (extra) {
+        newPoints = alignSFOUR(newPoints + extra);
     }
     if (newPoints == a->trace_current_max && a->trace_current && !force) {
         if (0 && Modes.verbose) {
@@ -2469,12 +2469,12 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
 
         // multiple passes in case compressCurrent() isn't making enough room in trace_current
         int passes = 0;
-        while (passes < 4 && a->trace_current_len >= a->trace_current_max - Modes.traceReserve) {
+        while (passes < 8 && a->trace_current_len >= a->trace_current_max - Modes.traceReserve) {
             compressCurrent(a, passbuffer);
             passes++;
         }
         if (passes > 2) {
-            fprintf(stderr, "compressCurrent: why so many passes? %d\n", passes);
+            fprintf(stderr, "%06x compressCurrent: why so many passes? %d\n", a->addr, passes);
         }
         if (passes > 0) {
             // regularly reallocate certain buffers to reduce fragmentation due to very long lived
