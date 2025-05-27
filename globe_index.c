@@ -6,7 +6,7 @@ static const char zstd_magic[] = { 0x28, 0xb5, 0x2f, 0xfd };
 
 static void mark_legs(traceBuffer tb, struct aircraft *a, int start, int recent);
 static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t after_timestamp, threadpool_buffer_t *buffer);
-static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra);
+static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra, int force);
 
 void init_globe_index() {
     struct tile *s_tiles = Modes.json_globe_special_tiles = cmalloc(GLOBE_SPECIAL_INDEX * sizeof(struct tile));
@@ -1045,7 +1045,7 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
                 discard_trace = 1;
             }
         }
-        resizeTraceCurrent(a, now, 0);
+        resizeTraceCurrent(a, now, 0, 0);
         if (a->trace_current_len) {
             checkSize(stateBytes(a->trace_current_len));
             *p += memcpySize(a->trace_current, *p, stateBytes(a->trace_current_len));
@@ -1730,7 +1730,7 @@ static stateChunk *resizeTraceChunks(struct aircraft *a, int newLen) {
         return NULL;
     }
     if (oldLen == newLen) {
-        fprintf(stderr, "resizeTraceChunks: oldLen == newLen ... this is weird but shouldn't be an issue\n");
+        //fprintf(stderr, "resizeTraceChunks: oldLen == newLen ... this is weird but shouldn't be an issue\n");
     }
 
     int maxLen = INT_MAX / sizeof(stateChunk);
@@ -1763,7 +1763,9 @@ static stateChunk *resizeTraceChunks(struct aircraft *a, int newLen) {
         }
 
         memcpy(new, a->trace_chunks, oldBytes);
-        memset(new + oldLen, 0x0, growByBytes);
+        if (growByBytes > 0) {
+            memset(new + oldLen, 0x0, growByBytes);
+        }
     }
 
     sfree(a->trace_chunks);
@@ -2302,7 +2304,7 @@ static void setTrace(struct aircraft *a, fourState *source, int len, threadpool_
     }
 
     a->trace_current_len = len;
-    resizeTraceCurrent(a, now, 0);
+    resizeTraceCurrent(a, now, 0, 0);
     if (a->trace_current_max < a->trace_current_len) {
         fprintf(stderr, "%06x setTrace error, insufficient current trace, discarding some data\n", a->addr);
         a->trace_current_len = 0;
@@ -2322,7 +2324,7 @@ static int get_nominal_trace_current_points(struct aircraft *a, int64_t now) {
     }
 }
 
-static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra) {
+static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra, int force) {
     int newPoints = get_nominal_trace_current_points(a, now);
     if (extra) {
         newPoints = alignSFOUR(newPoints + extra);
@@ -2331,7 +2333,7 @@ static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra) {
     if (newPoints < minPoints) {
         newPoints = minPoints;
     }
-    if (newPoints == a->trace_current_max && a->trace_current) {
+    if (newPoints == a->trace_current_max && a->trace_current && !force) {
         if (0 && Modes.verbose) {
             fprintf(stderr, "len %d max %d\n", a->trace_current_len, a->trace_current_max);
         }
@@ -2461,7 +2463,7 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
             if (a->trace_current_max > get_nominal_trace_current_points(a, now)) {
                 compressCurrent(a, passbuffer);
             }
-            resizeTraceCurrent(a, now, 0);
+            resizeTraceCurrent(a, now, 0, 0);
         }
 
 
@@ -2473,6 +2475,15 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
         }
         if (passes > 2) {
             fprintf(stderr, "compressCurrent: why so many passes? %d\n", passes);
+        }
+        if (passes > 0) {
+            // regularly reallocate certain buffers to reduce fragmentation due to very long lived
+            // allocations
+            resizeTraceCurrent(a, now, 0, 1);
+            if (a->trace_chunk_len > 0) {
+                resizeTraceChunks(a, a->trace_chunk_len);
+            }
+            destroyTraceCache(&a->traceCache);
         }
 
         // not so sure this is a good approach
@@ -2812,7 +2823,7 @@ no_save_state:
     }
 
     if (!a->trace_current) {
-        resizeTraceCurrent(a, now, 0);
+        resizeTraceCurrent(a, now, 0, 0);
         scheduleMemBothWrite(a, now); // rewrite full history file
         a->trace_next_perm = now + GLOBE_PERM_IVAL / 2; // schedule perm write
 
@@ -2867,7 +2878,7 @@ no_save_state:
             }
         }
         if (a->trace_current_max - replaceAfter <= Modes.traceLastMax + SFOUR) {
-            resizeTraceCurrent(a, now, Modes.traceLastMax);
+            resizeTraceCurrent(a, now, Modes.traceLastMax, 0);
         }
         if (a->trace_current_max - replaceAfter <= Modes.traceLastMax + SFOUR) {
             fprintf(stderr, "error phe8EiQu\n");
