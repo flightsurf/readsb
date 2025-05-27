@@ -512,15 +512,13 @@ int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_
     if (a->addr == TRACE_FOCUS)
         fprintf(stderr, "full\n");
 
-    if (a->trace_writeCounter > 0) {
-        int64_t before = mono_milli_seconds();
+    int64_t before = mono_milli_seconds();
 
-        mark_legs(tb, a, 0, 0);
+    mark_legs(tb, a, 0, 0);
 
-        int64_t elapsed = mono_milli_seconds() - before;
-        if (elapsed > 2 * SECONDS || (a->addr == Modes.leg_focus)) {
-            fprintf(stderr, "%06x mark_legs() took %.1f s!\n", a->addr, elapsed / 1000.0);
-        }
+    int64_t elapsed = mono_milli_seconds() - before;
+    if (elapsed > 2 * SECONDS || (a->addr == Modes.leg_focus)) {
+        fprintf(stderr, "%06x mark_legs() took %.1f s!\n", a->addr, elapsed / 1000.0);
     }
 
     // statistics
