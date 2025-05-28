@@ -2588,11 +2588,13 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
     if (mm->sbs_in && mm->sbs_pos_valid) {
         int old_jaero = 0;
         if (mm->source == SOURCE_JAERO && a->trace_len > 0) {
+            spinLock(&a->traceLock);
             for (int i = imax(0, a->trace_current_len - 10); i < a->trace_current_len; i++) {
                 if ( (int32_t) (mm->decoded_lat * 1E6) == getState(a->trace_current, i)->lat
                         && (int32_t) (mm->decoded_lon * 1E6) == getState(a->trace_current, i)->lon )
                     old_jaero = 1;
             }
+            spinRelease(&a->traceLock);
         }
         if (Modes.maxRange > 0 && Modes.userLocationValid) {
             mm->receiver_distance = greatcircle(Modes.fUserLat, Modes.fUserLon, mm->decoded_lat, mm->decoded_lon, 0);
