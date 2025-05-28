@@ -3013,7 +3013,9 @@ static void removeStaleRange(void *arg, threadpool_threadbuffers_t * buffer_grou
                 freeAircraft(a);
 
             } else {
-                traceMaintenance(a, now, &buffer_group->buffers[0]);
+                if (Modes.keep_traces) {
+                    traceMaintenance(a, now, &buffer_group->buffers[0]);
+                }
 
                 nextPointer = &(a->next);
             }
@@ -3032,7 +3034,9 @@ static void activeUpdateRange(void *arg, threadpool_threadbuffers_t * buffer_gro
             continue;
         }
         updateValidities(a, now);
-        traceMaintenance(a, now, &buffer_group->buffers[0]);
+        if (Modes.keep_traces) {
+            traceMaintenance(a, now, &buffer_group->buffers[0]);
+        }
     }
     //fprintf(stderr, "%9d %9d %9d\n", info->from, info->to, ca->len);
 }
