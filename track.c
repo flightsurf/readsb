@@ -3083,6 +3083,9 @@ static void activeUpdate(int64_t now) {
 // run activeUpdate and remove stale aircraft for a fraction of the entire hashtable
 void trackRemoveStale(int64_t now) {
 
+    struct timespec watch;
+    startWatch(&watch);
+
     if (now > Modes.nextMessageRateCalc) {
         calculateMessageRateGlobal(now);
     }
@@ -3090,6 +3093,9 @@ void trackRemoveStale(int64_t now) {
     // update the active aircraft list
     //fprintf(stderr, "activeUpdate\n");
     activeUpdate(now);
+
+
+    int64_t elapsed1 = lapWatch(&watch);
 
     int taskCount;
     threadpool_task_t *tasks;
@@ -3128,6 +3134,7 @@ void trackRemoveStale(int64_t now) {
     threadpool_run(Modes.allPool, tasks, taskCount);
     ca_unlock_read(ca);
 
+    int64_t elapsed2 = lapWatch(&watch);
 
     // don't mix tasks above and below
     // don't mix tasks above and below
@@ -3178,6 +3185,12 @@ void trackRemoveStale(int64_t now) {
     threadpool_run(Modes.allPool, tasks, taskCount);
 
     //fprintf(stderr, "removeStaleRange done\n");
+
+    int64_t elapsed3 = lapWatch(&watch);
+
+    if (elapsed1 + elapsed2 + elapsed3 > 25) {
+        fprintf(stderr, "trackRemoveStale elapsed: %4ld %4ld %4ld\n", (long) elapsed1, (long) elapsed2, (long) elapsed3);
+    }
 }
 
 /*
