@@ -1888,6 +1888,9 @@ void traceCleanup(struct aircraft *a) {
 // reconstruct at least the last numPoints points from trace chunks / current_trace
 // numPoints < 0 => all data / whole trace
 static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t after_timestamp, threadpool_buffer_t *buffer) {
+
+    spinLock(&a->traceLock);
+
     int firstChunk = 0;
 
     int currentLen = a->trace_current_len;
@@ -1941,7 +1944,7 @@ static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t af
             fprintf(stderr, "reassembleTrace() zstd error: %s\n", ZSTD_getErrorName(res));
             tb.len = 0;
             traceCleanup(a);
-            return tb;
+            goto exit;
         }
 
         tp += getFourStates(chunk->numStates);
@@ -1956,6 +1959,9 @@ static traceBuffer reassembleTrace(struct aircraft *a, int numPoints, int64_t af
     }
     // tp is not incremented here as it's not used anymore after this.
     tb.len = actual_len;
+exit:
+
+    spinRelease(&a->traceLock);
     return tb;
 }
 
@@ -2496,11 +2502,7 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
     }
 }
 
-
-int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale) {
-    if (!Modes.keep_traces)
-        return 0;
-
+static int traceAddInternal(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale) {
     int traceDebug = (a->addr == Modes.trace_focus);
 
     int save_state_no_buf = 0;
@@ -2802,7 +2804,7 @@ save_state:
             if (traceDebug) fprintf(stderr, " buffer\n");
             // in some cases we want to add the current point as well
             // if not, the current point will be put in the buffer
-            traceAdd(a, mm, now, stale);
+            traceAddInternal(a, mm, now, stale);
             // return so the point isn't used a second time or put in the buffer
             return 1;
         }
@@ -2981,6 +2983,18 @@ no_save_state:
 
     return posUsed || bufferedPosUsed;
 }
+
+int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale) {
+    if (!Modes.keep_traces)
+        return 0;
+
+    spinLock(&a->traceLock);
+    int res = traceAddInternal(a, mm, now, stale);
+    spinRelease(&a->traceLock);
+
+    return res;
+}
+
 
 void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbuffer2, char *stateDir) {
     if (!stateDir)

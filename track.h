@@ -572,27 +572,27 @@ struct aircraft
 
   char zeroStart;
 
-  char ownOp[64];
-  char year[4];
-  uint16_t dbFlags;
-
-  float messageRate;
-  uint16_t messageRateAcc[MESSAGE_RATE_CALC_POINTS];
-  int64_t nextMessageRateCalc;
-
   uint32_t disc_cache_index;
   uint32_t cpr_cache_index;
   struct cpr_cache disc_cache[DISCARD_CACHE];
   struct cpr_cache cpr_cache[CPR_CACHE];
 
-  // keep trace cache after cpr / disc cache
-  // stuff above is put into
+  // DANGER, everything above this section is possibly rolled back in trackUpdateFromMessage using
+  // the scratch mechanism
 
   struct traceCache traceCache;
 
-  uint32_t trace_chunk_overall_bytes;
+  char ownOp[64];
+  char year[4];
+  uint16_t dbFlags;
 
   int8_t initialTraceWriteDone;
+  atomic_int traceLock;
+  uint32_t trace_chunk_overall_bytes;
+
+  float messageRate;
+  uint16_t messageRateAcc[MESSAGE_RATE_CALC_POINTS];
+  int64_t nextMessageRateCalc;
 
 #if defined(PRINT_UUIDS)
   int recentReceiverIdsNext;
