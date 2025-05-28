@@ -3097,7 +3097,6 @@ void trackRemoveStale(int64_t now) {
 
     // tasks to maintain validities / traces in active list
     struct craftArray *ca = &Modes.aircraftActive;
-    // we must not lock ca here as aircraft freeing locks it
 
     int section_len = ca->len / taskCount;
     int extra = ca->len % taskCount;
