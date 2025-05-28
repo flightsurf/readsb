@@ -3133,7 +3133,9 @@ void trackRemoveStale(int64_t now) {
     // tasks to maintain aircraft in list of all aircraft
 
     static int part = 0;
-    int n_parts = 32 * taskCount;
+    // iterate entire list of aircraft roughly every minute
+    // (assuming this runs every second which it should)
+    int n_parts = 64 * taskCount;
 
     section_len = Modes.acBuckets / n_parts;
     extra = Modes.acBuckets % n_parts;
@@ -3162,6 +3164,7 @@ void trackRemoveStale(int64_t now) {
         //fprintf(stderr, "%d %d\n", range->from, range->to);
 
         if (++part >= n_parts) {
+            //fprintf(stderr, "removestaleRange finished\n");
             part = 0;
         }
     }
