@@ -163,7 +163,7 @@ static void configSetDefaults(void) {
     Modes.netIngest = 0;
     Modes.ingestLimitRate = 5420;
     Modes.json_trace_interval = 20 * 1000;
-    Modes.traceLastMax = 64;
+    Modes.traceLastMax = 96;
     Modes.beforeLandHighRes = 128;
     Modes.state_write_interval = 1 * HOURS;
     Modes.heatmap_current_interval = -15;
