@@ -2668,9 +2668,8 @@ static int traceAddInternal(struct aircraft *a, struct modesMessage *mm, int64_t
         traceUsePosBuffered(a); // save the previous position as well if it's not already saved
         goto save_state;
     }
-
-    if (now - a->lastAirGroundChange < 45 * SECONDS && elapsed > 750) {
-        // record one point every second for 45 seconds after ground state change
+    if (now - a->lastAirGroundChange < Modes.afterGroundTransitionHighRes && elapsed > 750) {
+        // record one point every second for configured time after ground state change
         save_state_no_buf = 1;
     }
 

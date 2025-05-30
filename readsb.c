@@ -165,6 +165,7 @@ static void configSetDefaults(void) {
     Modes.json_trace_interval = 20 * 1000;
     Modes.traceLastMax = 96;
     Modes.beforeLandHighRes = 128;
+    Modes.afterGroundTransitionHighRes = 60 * SECONDS;
     Modes.state_write_interval = 1 * HOURS;
     Modes.heatmap_current_interval = -15;
     Modes.heatmap_interval = 60 * SECONDS;
@@ -2173,6 +2174,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 // default 128 right now
                 if (strcasecmp(token[0], "beforeLandHighRes") == 0 && token[1]) {
                     Modes.beforeLandHighRes = atoi(token[1]);
+                }
+                // record one point every second for configured time after ground state change
+                if (strcasecmp(token[0], "afterGroundTransitionHighRes") == 0 && token[1]) {
+                    Modes.afterGroundTransitionHighRes = atoi(token[1]) * SECONDS;
                 }
                 if (strcasecmp(token[0], "ingestLimitRate") == 0 && token[1]) {
                     Modes.ingestLimitRate = atoi(token[1]);

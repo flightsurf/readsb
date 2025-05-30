@@ -811,6 +811,7 @@ struct _Modes
     int32_t devel_log_ppm;
     int32_t traceLastMax;
     int32_t beforeLandHighRes;
+    int32_t afterGroundTransitionHighRes;
     float beast_reduce_filter_distance;
     float beast_reduce_filter_altitude;
     int64_t net_connector_delay;
