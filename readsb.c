@@ -164,6 +164,7 @@ static void configSetDefaults(void) {
     Modes.ingestLimitRate = 5420;
     Modes.json_trace_interval = 20 * 1000;
     Modes.traceLastMax = 64;
+    Modes.beforeLandHighRes = 128;
     Modes.state_write_interval = 1 * HOURS;
     Modes.heatmap_current_interval = -15;
     Modes.heatmap_interval = 60 * SECONDS;
@@ -2160,8 +2161,18 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     // if (Modes.devel_log_ppm && fabs(ppm) > Modes.devel_log_ppm) {
                 }
 
+                // use traceLast to add granular data to full and history traces
+                // this is useful for accidents in which the transponder suddenly stops transmitting
+                // it provides high granularity data for by default for 64 data points before end of
+                // transmission --devel=traceLast,128 would double this to 128
                 if (strcasecmp(token[0], "traceLast") == 0 && token[1]) {
                     Modes.traceLastMax = atoi(token[1]);
+                }
+                // maximum high resolution points to be used to show before landing
+                // can't use more points than are present due to traceLast
+                // default 128 right now
+                if (strcasecmp(token[0], "beforeLandHighRes") == 0 && token[1]) {
+                    Modes.beforeLandHighRes = atoi(token[1]);
                 }
                 if (strcasecmp(token[0], "ingestLimitRate") == 0 && token[1]) {
                     Modes.ingestLimitRate = atoi(token[1]);

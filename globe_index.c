@@ -2061,8 +2061,12 @@ static float recompressStateChunk(struct aircraft *a, struct stateChunk *chunk, 
 
 
 
-static int minCurrentPoints() {
-    return alignSFOUR(8);
+static int minCurrentPoints(struct aircraft *a, int64_t now) {
+    if (now - a->seenPosReliable > 15 * MINUTES) {
+        return alignSFOUR(8);
+    } else {
+        return alignSFOUR(16);
+    }
 }
 static int64_t traceChunkDuration() {
     return 60 * MINUTES;
@@ -2299,7 +2303,7 @@ static void setTrace(struct aircraft *a, fourState *source, int len, threadpool_
 
     fourState *p = source;
     int chunkSize = alignSFOUR(Modes.traceChunkPoints);
-    while (len > chunkSize + minCurrentPoints()) {
+    while (len > chunkSize + minCurrentPoints(a, mstime())) {
         int res = compressChunk(p, chunkSize, passbuffer, a);
 
         len -= res;
@@ -2322,9 +2326,9 @@ static void setTrace(struct aircraft *a, fourState *source, int len, threadpool_
 
 static int get_nominal_trace_current_points(struct aircraft *a, int64_t now) {
     if (now - a->seenPosReliable > 15 * MINUTES) {
-        return alignSFOUR(Modes.traceReserve + minCurrentPoints() + SFOUR);
+        return alignSFOUR(Modes.traceReserve + minCurrentPoints(a, now) + SFOUR);
     } else {
-        return minCurrentPoints() + imax(alignSFOUR(Modes.traceRecentPoints), alignSFOUR(Modes.traceReserve + Modes.traceChunkPoints));
+        return minCurrentPoints(a, now) + imax(alignSFOUR(Modes.traceRecentPoints), alignSFOUR(Modes.traceReserve + Modes.traceChunkPoints));
     }
 }
 
@@ -2357,8 +2361,8 @@ static void resizeTraceCurrent(struct aircraft *a, int64_t now, int extra, int f
     a->trace_current_max = newPoints;
 }
 
-static void compressCurrent(struct aircraft *a, threadpool_buffer_t *passbuffer) {
-    int keep = minCurrentPoints();
+static void compressCurrent(struct aircraft *a, threadpool_buffer_t *passbuffer, int64_t now) {
+    int keep = minCurrentPoints(a, now);
     int chunkPoints = ((a->trace_current_len - keep) / SFOUR) * SFOUR;
     int newLen = a->trace_current_len - chunkPoints;
     if (chunkPoints < SFOUR || newLen < keep) {
@@ -2465,7 +2469,7 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
         // reset trace_current allocation to nominal size if possible / necessary
         if (a->trace_current_max != get_nominal_trace_current_points(a, now)) {
             if (a->trace_current_max > get_nominal_trace_current_points(a, now)) {
-                compressCurrent(a, passbuffer);
+                compressCurrent(a, passbuffer, now);
             }
             resizeTraceCurrent(a, now, 0, 0);
         }
@@ -2473,8 +2477,8 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
 
         // multiple passes in case compressCurrent() isn't making enough room in trace_current
         int passes = 0;
-        while (passes < 8 && a->trace_current_len >= a->trace_current_max - Modes.traceReserve) {
-            compressCurrent(a, passbuffer);
+        while (passes < 8 && a->trace_current_len + Modes.traceReserve >= a->trace_current_max) {
+            compressCurrent(a, passbuffer, now);
             passes++;
         }
         if (passes > 2) {
@@ -2494,7 +2498,7 @@ void traceMaintenance(struct aircraft *a, int64_t now, threadpool_buffer_t *pass
         // maybe just do the recompress once the next chunk is created
         if (now - a->seenPosReliable > traceChunkDuration() && !a->chunkRecompressed && a->trace_chunk_len > 0) {
             stateChunk *lastChunk = &a->trace_chunks[a->trace_chunk_len - 1];
-            compressCurrent(a, passbuffer);
+            compressCurrent(a, passbuffer, now);
             if (lastChunk == &a->trace_chunks[a->trace_chunk_len - 1]) {
                 recompressStateChunk(a, lastChunk, passbuffer);
             }
@@ -2857,7 +2861,7 @@ no_save_state:
        ) {
         int64_t replaceBeforeTimestamp = -1;
         {
-            int maxAdd = 64;
+            int maxAdd = Modes.beforeLandHighRes;
             for (int k = 0; k < imin(maxAdd, Modes.traceLastMax); k++) {
                 int i = a->traceLastNext - k - 1;
                 if (i < 0) {
@@ -2877,12 +2881,14 @@ no_save_state:
                 break;
             }
         }
-        if (a->trace_current_max - replaceAfter <= Modes.traceLastMax + SFOUR) {
-            resizeTraceCurrent(a, now, Modes.traceLastMax, 0);
-        }
-        if (a->trace_current_max - replaceAfter <= Modes.traceLastMax + SFOUR) {
-            fprintf(stderr, "error phe8EiQu\n");
-            replaceAfter = -1;
+        if (replaceAfter > -1) {
+            if (replaceAfter + Modes.traceLastMax + Modes.traceReserve >= a->trace_current_max) {
+                resizeTraceCurrent(a, now, Modes.traceLastMax, 0);
+            }
+            if (replaceAfter + Modes.traceLastMax + Modes.traceReserve > a->trace_current_max) {
+                fprintf(stderr, "error phe8EiQu\n");
+                replaceAfter = -1;
+            }
         }
         if (replaceAfter > -1) {
             int debug = 0;
