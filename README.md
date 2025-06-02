@@ -33,7 +33,7 @@ Or check here for more build instructions and other useful stuff:
 - https://github.com/wiedehopf/adsb-wiki/wiki/Building-readsb-from-source
 - https://github.com/wiedehopf/adsb-wiki/wiki/Raspbian-Lite:-ADS-B-receiver
 
-For macOS / OS X check build and general info, check further down
+For macOS build and general info, check further down
 
 ### aircraft.json format:
 
@@ -232,20 +232,24 @@ oh if you want that display:
 you'll have to update, just disabled the MLAT speed check from displayign stuff ... because usually it's not interesting
 
 
-## Apple / macOS / OS X
+## macOS
 
 Thank you to https://github.com/ind006/readsb_macos/ for all the shims needed to make this work.
 
 readsb should be (largely) compatible with macOS, on both Intel and ARM architectures.
+
+There is a recipe for homebrew avalailable: https://formulae.brew.sh/formula/readsb
+Run `brew install readsb` to install readsb using homebrew.
+
+Or compile manually roughly like this:
 You may need to modify the Makefile to point at where on your mac you have the standard libs and includes installed.
 This in turn depends on whether you're using macports or homebrew for those libs and includes. The Makefile has paths
 pre-set for homebrew.
 
 These packages are needed, possibly more:
 ```
-brew install git librtlsdr libusb ncurses
+git librtlsdr libusb ncurses
 ```
-
 Build using:
 ```
 make -j4 RTLSDR=yes
