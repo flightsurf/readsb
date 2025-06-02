@@ -669,6 +669,12 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
         uint32_t messageRate = nearbyint(Modes.messageRate * 10);
         memWrite(p, messageRate);
 
+        uint32_t flags = 0;
+        if (Modes.json_globe_index || Modes.apiShutdownDelay) {
+            flags |= (1 << 0);
+        }
+        memWrite(p, flags);
+
 #undef memWrite
         if (p - payload > (int) elementSize) {
             fprintf(stderr, "apiBin: too many details in first element\n");
