@@ -1054,6 +1054,12 @@ struct char_buffer generateAircraftBin(threadpool_buffer_t *pbuffer) {
 
     memWrite(p, Modes.binCraftVersion);
 
+    uint32_t flags = 0;
+    if (Modes.json_globe_index || Modes.apiShutdownDelay) {
+        flags |= (1 << 0);
+    }
+    memWrite(p, flags);
+
     if (p - buf > (int) elementSize)
         fprintf(stderr, "aircraftBin: header too large oos4tooT\n");
 
@@ -1163,6 +1169,12 @@ struct char_buffer generateGlobeBin(int globe_index, int mil, threadpool_buffer_
     memWrite(p, dummy2);
 
     memWrite(p, Modes.binCraftVersion);
+
+    uint32_t flags = 0;
+    if (Modes.json_globe_index || Modes.apiShutdownDelay) {
+        flags |= (1 << 0);
+    }
+    memWrite(p, flags);
 
     if (p - buf > (int) elementSize)
         fprintf(stderr, "buffer overrun globeBin\n");

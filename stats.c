@@ -933,6 +933,7 @@ void statsResetCount() {
 void statsCountAircraft(int64_t now) {
     struct statsCount *s = &(Modes.globalStatsCount);
     int32_t total_aircraft_count = 0;
+    int32_t json_aircraft_count = 0;
     uint64_t trace_chunk_size = 0;
     uint64_t trace_cache_size = 0;
     uint64_t trace_current_size = 0;
@@ -950,9 +951,11 @@ void statsCountAircraft(int64_t now) {
                     trace_cache_size += tCache->totalAlloc;
                 }
             }
-
-            if (!(a->messages >= 2 && (now < a->seen + TRACK_EXPIRE || trackDataValid(&a->position_valid))))
+            if (!includeAircraftJson(now, a)) {
                 continue;
+            }
+
+            json_aircraft_count++;
 
             if (trackDataValid(&a->position_valid))
                 s->readsb_aircraft_with_position++;
@@ -998,6 +1001,7 @@ void statsCountAircraft(int64_t now) {
     }
 
     Modes.total_aircraft_count = total_aircraft_count;
+    Modes.json_aircraft_count = json_aircraft_count;
     Modes.trace_chunk_size = trace_chunk_size;
     Modes.trace_cache_size = trace_cache_size;
     Modes.trace_current_size = trace_current_size;

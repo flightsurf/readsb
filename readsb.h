@@ -611,6 +611,7 @@ struct _Modes
     int modesClientCount;
     int api_fds_per_thread;
     int total_aircraft_count;
+    int json_aircraft_count;
     float estimated_ppm;
     uint64_t trace_chunk_size;
     uint64_t trace_cache_size;
