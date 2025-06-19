@@ -155,8 +155,10 @@ static inline int will_accept_data(data_validity *d, datasource_t source, struct
     }
 
     // prevent JAERO from disrupting other data sources too quickly
-    if (source == SOURCE_JAERO && a->pos_reliable_valid.last_source != SOURCE_JAERO && now < d->updated + 7 * MINUTES) {
-        return 0;
+    if (source == SOURCE_JAERO && a->pos_reliable_valid.last_source != SOURCE_JAERO) {
+        if (Modes.trackExpireJaero >= 10 * MINUTES && now < d->updated + 5 * MINUTES) {
+            return 0;
+        }
     }
 
     // if we have recent data and a recent position, only accept data from the last couple receivers that contributed a position
