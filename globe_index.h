@@ -11,7 +11,7 @@
 // it should be written
 #define GLOBE_PERM_IVAL (10 * MINUTES)
 
-#define GLOBE_MEM_IVAL (60 * MINUTES)
+#define GLOBE_MEM_IVAL (30 * MINUTES)
 
 #define GLOBE_INDEX_GRID 3
 #define GLOBE_SPECIAL_INDEX 70

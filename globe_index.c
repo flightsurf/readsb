@@ -479,7 +479,7 @@ static int first_index_ge_timestamp(traceBuffer tb, int64_t timestamp) {
 }
 
 #define TRACE_PMAX 2048
-void writeRecent(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_buffer, int64_t now, int recent_points) {
+static void writeRecent(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_buffer, int64_t now, int recent_points) {
     MODES_NOTUSED(now);
     struct char_buffer recent = { 0 };
 
@@ -502,7 +502,18 @@ void writeRecent(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *genera
         writeJsonToGzip(Modes.json_dir, filename, recent, 1);
     }
 }
-int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_buffer, int64_t now, int startFull) {
+
+static int64_t fullIvalAdjust(int64_t age, int64_t ival) {
+    if (age > 1 * HOURS) {
+        ival *= 2;
+        if (Modes.fullTraceDir) {
+            ival *= 3;
+        }
+    }
+    return ival;
+}
+
+static int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_buffer, int64_t now, int startFull) {
     struct char_buffer full = { 0 } ;
     int memThreshold = Modes.traceRecentPoints - 2;
 
@@ -545,7 +556,8 @@ int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_
 
     if (a->trace_writeCounter >= 0xc0ffee) {
         // avoid CPU spikes by randomizing next full trace writes on startup
-        a->trace_next_mw = now + random() % (GLOBE_MEM_IVAL * 9 / 8);
+        int64_t ival = random() % (GLOBE_MEM_IVAL * 9 / 8);
+        a->trace_next_mw = now + fullIvalAdjust(now - a->seenPosReliable, ival);
         if (now - a->seenPosReliable < 5 * MINUTES) {
             // only set this for active aircraft, not necessary for inactive ones
             a->trace_writeCounter = random() % memThreshold;
@@ -553,13 +565,14 @@ int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_
             a->trace_writeCounter = 0;
         }
     } else {
-        a->trace_next_mw = now + GLOBE_MEM_IVAL + random() % (GLOBE_MEM_IVAL / 8);
+        int64_t ival = GLOBE_MEM_IVAL + random() % (GLOBE_MEM_IVAL / 8);
+        a->trace_next_mw = now + fullIvalAdjust(now - a->seenPosReliable, ival);
         a->trace_writeCounter = 0;
     }
 
     return memWritten;
 }
-int writePerm(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_buffer, int64_t now) {
+static int writePerm(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *generate_buffer, int64_t now) {
     struct char_buffer hist = { 0 };
     int permWritten = 0;
     int64_t endStamp = 0;
@@ -760,7 +773,7 @@ void traceWrite(struct aircraft *a, threadpool_threadbuffers_t *buffer_group) {
 
     int startFull = 0;
     if ((Modes.trace_hist_only & 8) && (trace_write & WMEM)) {
-        startFull = first_index_ge_timestamp(tb, now - GLOBE_MEM_IVAL);
+        startFull = first_index_ge_timestamp(tb, now - 30 * MINUTES);
     } else {
         startFull = first_index_ge_timestamp(tb, now - Modes.keep_traces);
     }
