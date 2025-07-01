@@ -832,7 +832,7 @@ static void gainStatistics(struct mag_buf *buf) {
 
     int noiseLow = noiseLowPercent > 5; // too many samples < noiseLowThreshold
     int noiseHigh = noiseHighPercent < 1; // too few samples < noiseHighThreshold
-    int loud = loudEvents > 1;
+    int loud = loudEvents > 0;
     int veryLoud = loudEvents > 5;
     if (loud || noiseHigh) {
         Modes.lowerGain = 1;
