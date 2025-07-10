@@ -1896,6 +1896,9 @@ accept_alt:
     }
     return;
 discard_alt:
+    if (!will_accept_data(&a->baro_alt_valid, mm->source, mm, a)) {
+        return;
+    }
     a->alt_reliable = a->alt_reliable - (good_crc+1);
     if (Modes.debug_bogus
             && trackDataAge(now, &a->baro_rate_valid) < 20 * SECONDS
