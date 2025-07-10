@@ -1805,7 +1805,7 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
 
     // just trust messages with this source implicitely and rate the altitude as max reliable
     // if we get the occasional altitude excursion that's acceptable and preferable to not capturing implausible altitude changes for example before a crash
-    if (mm->crc == 0 && mm->source > SOURCE_JAERO) {
+    if (mm->crc == 0 && mm->source > SOURCE_MODE_S_CHECKED) {
         // only trust implicitely if we are getting quick updates
         if (baroAge < 2 * SECONDS) {
             good_crc = ALTITUDE_BARO_RELIABLE_MAX;
