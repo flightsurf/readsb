@@ -1813,7 +1813,7 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
     if (mm->source == SOURCE_JAERO || mm->source == SOURCE_SBS) {
         // trust those data sources they are often slow to update and we want to show an altitude
         // for those
-    good_crc = ALTITUDE_BARO_RELIABLE_MAX;
+        good_crc = ALTITUDE_BARO_RELIABLE_MAX;
     }
     if (mm->source == SOURCE_MLAT) {
         if (mm->receiverCountMlat > 2) {
@@ -1824,7 +1824,13 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
             // this is typically mlat results from mlat-client
             // this is a terrible altitude source, ignore it completely
             // better to show "no altitude"
-            goto discard_alt;
+            // exception: anonymous FA mlat results look a bit stupid without altitude
+            if ((a->addr & MODES_NON_ICAO_ADDRESS)) {
+                good_crc = 0;
+            } else {
+                // ignore altitude from this message completely
+                return;
+            }
         }
     }
 
