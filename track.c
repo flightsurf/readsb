@@ -1825,7 +1825,9 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
             // this is a terrible altitude source, ignore it completely
             // better to show "no altitude"
             // exception: anonymous FA mlat results look a bit stupid without altitude
-            if ((a->addr & MODES_NON_ICAO_ADDRESS)) {
+            // exception: when trying to visualize local MLAT results, make that work by using the
+            // MLAT sbs input instead of the MLAT results as beast
+            if (mm->sbs_in || (a->addr & MODES_NON_ICAO_ADDRESS)) {
                 good_crc = 0;
             } else {
                 // ignore altitude from this message completely
