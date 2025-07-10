@@ -1781,6 +1781,7 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
     //int wasReliable = altBaroReliable(a);
     //
     int64_t baroAge = trackDataAge(now, &a->baro_alt_valid);
+    datasource_t baroSource = a->baro_alt_valid.source;
 
     if (abs(delta) >= lowDelta) {
         fpm = delta*60*10/(abs((int)baroAge/100)+10);
@@ -1891,7 +1892,7 @@ accept_alt:
         if (0 && baroAge < 60 * SECONDS && (abs(delta) > 5000 || alt > 50000)) {
             fprintf(stderr, "Alt check S: %06x: %2d -> %2d %6d ->%6d, %s->%s, min %5.1f kfpm, max %5.1f kfpm, actual %7.1f kfpm, reason %1d, reliable %1d\n",
                     a->addr, old_reliable, a->alt_reliable, a->baro_alt, alt,
-                    source_string(a->baro_alt_valid.source),
+                    source_string(baroSource),
                     source_string(mm->source),
                     min_fpm/1000.0, max_fpm/1000.0, fpm/1000.0,
                     reason, altBaroReliable(a));
@@ -1919,8 +1920,9 @@ discard_alt:
     if (a->alt_reliable <= 0) {
         //fprintf(stdout, "Altitude INVALIDATED: %06x\n", a->addr);
         a->alt_reliable = 0;
-        if (a->pos_reliable_valid.source != SOURCE_JAERO)
+        if (a->pos_reliable_valid.source != SOURCE_JAERO) {
             a->baro_alt_valid.source = SOURCE_INVALID;
+        }
     }
     if (Modes.garbage_ports)
         mm->source = SOURCE_INVALID;
