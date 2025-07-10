@@ -1779,9 +1779,11 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
     int lowDelta = 300;
     int old_reliable = a->alt_reliable;
     //int wasReliable = altBaroReliable(a);
+    //
+    int64_t baroAge = trackDataAge(now, &a->baro_alt_valid);
 
     if (abs(delta) >= lowDelta) {
-        fpm = delta*60*10/(abs((int)trackDataAge(now, &a->baro_alt_valid)/100)+10);
+        fpm = delta*60*10/(abs((int)baroAge/100)+10);
         if (trackDataValid(&a->geom_rate_valid) && trackDataAge(now, &a->geom_rate_valid) < trackDataAge(now, &a->baro_rate_valid)) {
             min_fpm = a->geom_rate - 1500 - imin(11000, ((int)trackDataAge(now, &a->geom_rate_valid)/2));
             max_fpm = a->geom_rate + 1500 + imin(11000, ((int)trackDataAge(now, &a->geom_rate_valid)/2));
@@ -1789,9 +1791,9 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
             min_fpm = a->baro_rate - 1500 - imin(11000, ((int)trackDataAge(now, &a->baro_rate_valid)/2));
             max_fpm = a->baro_rate + 1500 + imin(11000, ((int)trackDataAge(now, &a->baro_rate_valid)/2));
         }
-        if (trackDataValid(&a->baro_alt_valid) && trackDataAge(now, &a->baro_alt_valid) < 30 * SECONDS) {
+        if (trackDataValid(&a->baro_alt_valid) && baroAge < 30 * SECONDS) {
             a->alt_reliable = imin(
-                    ALTITUDE_BARO_RELIABLE_MAX - (ALTITUDE_BARO_RELIABLE_MAX*trackDataAge(now, &a->baro_alt_valid)/(30 * SECONDS)),
+                    ALTITUDE_BARO_RELIABLE_MAX - (ALTITUDE_BARO_RELIABLE_MAX*baroAge/(30 * SECONDS)),
                     a->alt_reliable);
         } else {
             a->alt_reliable = 0;
@@ -1804,7 +1806,7 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
     // if we get the occasional altitude excursion that's acceptable and preferable to not capturing implausible altitude changes for example before a crash
     if (mm->crc == 0 && mm->source > SOURCE_JAERO) {
         // only trust implicitely if we are getting quick updates
-        if (trackDataAge(now, &a->baro_alt_valid) < 2 * SECONDS) {
+        if (baroAge < 2 * SECONDS) {
             good_crc = ALTITUDE_BARO_RELIABLE_MAX;
         } else {
             good_crc = ALTITUDE_BARO_RELIABLE_MAX/3;
@@ -1875,7 +1877,7 @@ accept_alt:
         score_add = good_crc + 1;
     }
     if (mm->source == SOURCE_MODE_S && a->position_valid.source == SOURCE_MLAT
-            && trackDataAge(now, &a->baro_alt_valid) > 5 * SECONDS && trackDataAge(now, &a->position_valid) < 15 * SECONDS && a->receiverCount > 1) {
+            && baroAge > 5 * SECONDS && trackDataAge(now, &a->position_valid) < 15 * SECONDS && a->receiverCount > 1) {
         // when running with certain mlat-server versions, set altitude to inreliable when we get them too infrequently
         score_add = -1;
     }
@@ -1886,7 +1888,7 @@ accept_alt:
             a->alt_reliable = 0;
         }
         // || wasReliable != altBaroReliable(a)
-        if (0 && trackDataAge(now, &a->baro_alt_valid) < 60 * SECONDS && (abs(delta) > 5000 || alt > 50000)) {
+        if (0 && baroAge < 60 * SECONDS && (abs(delta) > 5000 || alt > 50000)) {
             fprintf(stderr, "Alt check S: %06x: %2d -> %2d %6d ->%6d, %s->%s, min %5.1f kfpm, max %5.1f kfpm, actual %7.1f kfpm, reason %1d, reliable %1d\n",
                     a->addr, old_reliable, a->alt_reliable, a->baro_alt, alt,
                     source_string(a->baro_alt_valid.source),
