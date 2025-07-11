@@ -56,8 +56,10 @@ static char *append_flags(char *p, char *end, struct aircraft *a, datasource_t s
     char *start = p;
     if (a->callsign_valid.source == source)
         p = safe_snprintf(p, end, "\"callsign\",");
-    if (a->baro_alt_valid.source == source)
+    if (a->baro_alt_valid.source == source) {
         p = safe_snprintf(p, end, "\"altitude\",");
+        p = safe_snprintf(p, end, "\"alt_baro\",");
+    }
     if (a->geom_alt_valid.source == source)
         p = safe_snprintf(p, end, "\"alt_geom\",");
     if (a->gs_valid.source == source)
