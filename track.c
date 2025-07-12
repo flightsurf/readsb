@@ -1778,10 +1778,15 @@ static void updateAltitude(int64_t now, struct aircraft *a, struct modesMessage 
 
     int lowDelta = 300;
     int old_reliable = a->alt_reliable;
-    //int wasReliable = altBaroReliable(a);
+    int wasReliable = altBaroReliable(a);
     //
     int64_t baroAge = trackDataAge(now, &a->baro_alt_valid);
     datasource_t baroSource = a->baro_alt_valid.source;
+
+    int debug = 0;
+    if (0 && a->position_valid.source == SOURCE_ADSB && !wasReliable) {
+        debug = 1;
+    }
 
     if (abs(delta) >= lowDelta) {
         fpm = delta*60*10/(abs((int)baroAge/100)+10);
@@ -1889,7 +1894,10 @@ accept_alt:
             a->alt_reliable = 0;
         }
         // || wasReliable != altBaroReliable(a)
-        if (0 && baroAge < 60 * SECONDS && (abs(delta) > 5000 || alt > 50000)) {
+        if (
+                debug
+                || (0 && baroAge < 60 * SECONDS && (abs(delta) > 5000 || alt > 50000))
+           ) {
             fprintf(stderr, "Alt check S: %06x: %2d -> %2d %6d ->%6d, %s->%s, min %5.1f kfpm, max %5.1f kfpm, actual %7.1f kfpm, reason %1d, reliable %1d\n",
                     a->addr, old_reliable, a->alt_reliable, a->baro_alt, alt,
                     source_string(baroSource),
@@ -1905,9 +1913,12 @@ discard_alt:
         return;
     }
     a->alt_reliable = a->alt_reliable - (good_crc+1);
-    if (Modes.debug_bogus
-            && trackDataAge(now, &a->baro_rate_valid) < 20 * SECONDS
-            && trackDataAge(now, &a->baro_alt_valid) < 20 * SECONDS
+    if (
+            debug
+            || (Modes.debug_bogus
+                && trackDataAge(now, &a->baro_rate_valid) < 20 * SECONDS
+                && trackDataAge(now, &a->baro_alt_valid) < 20 * SECONDS
+               )
        ) {
         fprintf(stdout, "%6llx %5.1f Alt check F: %06x %2d %6d ->%6d, %s->%s, min %.1f kfpm, max %.1f kfpm, actual %.1f kfpm\n",
                 (long long) mm->timestamp % 0x1000000,
