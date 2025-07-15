@@ -1614,7 +1614,7 @@ static void parseGainOpt(char *arg) {
         if (token[2]) {
             Modes.noiseLowThreshold = atoi(token[2]);
         } else {
-            Modes.noiseLowThreshold = 25;
+            Modes.noiseLowThreshold = 27;
         }
         if (token[3]) {
             Modes.noiseHighThreshold = atoi(token[3]);
