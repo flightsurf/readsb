@@ -805,7 +805,7 @@ static void gainStatistics(struct mag_buf *buf) {
     static uint64_t totalSamples;
     static int slowRise;
     static int64_t nextRaiseAgc;
-    static int loudRebound;
+    static float loudRebound;
 
     loudEvents += buf->loudEvents;
     noiseLowSamples += buf->noiseLowSamples;
@@ -846,11 +846,12 @@ static void gainStatistics(struct mag_buf *buf) {
         if (
                 Modes.gainStartup
                 || slowRise >= riseTime / interval
-                || (loudRebound && slowRise >= reboundTime / interval)
+                || (loudRebound > 1 && slowRise >= reboundTime / interval)
            ) {
             slowRise = 0;
             Modes.increaseGain = 1;
             if (loudRebound > 0) {
+                loudRebound *= 0.95f;
                 loudRebound -= Modes.increaseGain;
             }
         } else {
