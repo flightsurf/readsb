@@ -51,6 +51,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "ais_charset.h"
 #include "readsb.h"
 
 #include <assert.h>
@@ -208,7 +209,6 @@ static struct net_service *serviceInit(struct net_service_group *group, const ch
     return service;
 }
 
-static char *ais_charset = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ !\"#$%&'()*+,-./0123456789:;<=>?";
 static uint8_t char_to_ais(int ch)
 {
     char *match;
