@@ -486,7 +486,7 @@ static char* maybe_send_air_velocity(struct uat_adsb_mdb *mdb, char *p, char *en
 }
 
 // yeah, this could be done with a lookup table, meh.
-static char *ais_charset = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ !\"#$%&'()*+,-./0123456789:;<=>?";
+static char ais_charset[65] = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ !\"#$%&'()*+,-./0123456789:;<=>?";
 static uint8_t char_to_ais(int ch)
 {
     char *match;
