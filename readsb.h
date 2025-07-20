@@ -377,6 +377,16 @@ typedef enum {
 
 #endif
 
+// __nonstring__ is available since GCC 8 and clang 21.
+// It is possible to use the __nonstring__ attribute to
+// suppress the -Wunterminated-string-initialization warning
+// on unterminated strings (default since GCC 15)
+#if __has_attribute(__nonstring__)
+#define __nonstring __attribute__((__nonstring__))
+#else
+#define __nonstring
+#endif
+
 void setExit(int arg);
 int priorityTasksPending();
 void priorityTasksRun();

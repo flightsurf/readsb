@@ -41,4 +41,10 @@
 #define UPLINK_FRAME_DATA_BYTES (UPLINK_FRAME_DATA_BITS/8)
 #define UPLINK_FRAME_BYTES (UPLINK_FRAME_BITS/8)
 
+#if __has_attribute(__nonstring__)
+#define __nonstring __attribute__((__nonstring__))
+#else
+#define __nonstring
+#endif
+
 #endif
