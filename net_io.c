@@ -3129,6 +3129,30 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
         mm->addr |= MODES_NON_ICAO_ADDRESS;
     }
 
+    // date t7: 2019/12/10
+    // time t8: 19:10:46.320
+    // separate milliseconds in the time field
+    int milli = 0;
+    char *msp = t[8]; // millisecond pointer
+    // discard strsep result it's just t[8]
+    // strsep is used to advance msp past the decimal separator
+    strsep(&msp, ".");
+    if (msp) {
+        milli = strtol(msp, NULL, 10);
+    }
+
+    // for easy parsing override the null byte between t7 and t8 with a space
+    *(t[8] - 1) = ' ';
+    struct tm tm;
+    memset(&tm, 0, sizeof(tm));
+    char *parseRes = strptime(t[7], "%Y/%m/%d %H:%M:%S", &tm);
+    if (parseRes) {
+        mm->sysTimestamp = mktime(&tm) * 1000LL + milli;
+    } else {
+        // record reception time as the time we read it.
+        mm->sysTimestamp = now;
+    }
+
     //fprintf(stderr, "%x type %s: ", mm->addr, t[2]);
     //fprintf(stderr, "%x: %d, %0.5f, %0.5f\n", mm->addr, mm->baro_alt, mm->decoded_lat, mm->decoded_lon);
     //field 11, callsign
@@ -3282,9 +3306,6 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
     mm->decoded_rc = RC_UNKNOWN;
 
     //fprintf(stderr, "\n");
-
-    // record reception time as the time we read it.
-    mm->sysTimestamp = now;
 
     netUseMessage(mm);
 
