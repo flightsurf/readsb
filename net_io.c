@@ -3148,6 +3148,10 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
     char *parseRes = strptime(t[7], "%Y/%m/%d %H:%M:%S", &tm);
     if (parseRes) {
         mm->sysTimestamp = mktime(&tm) * 1000LL + milli;
+        if (mm->sysTimestamp > now + 1 * SECONDS) {
+            // inhibit future timestamps
+            mm->sysTimestamp = now;
+        }
     } else {
         // record reception time as the time we read it.
         mm->sysTimestamp = now;
