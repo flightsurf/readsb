@@ -269,13 +269,6 @@ static void update_range_histogram(struct aircraft *a, int64_t now) {
         return;
     }
 
-    double lat = a->lat;
-    double lon = a->lon;
-
-    double range = a->receiver_distance;
-
-    int rangeDirDirection = ((int) nearbyint(a->receiver_direction)) % RANGEDIRS_BUCKETS;
-
     int rangeDirIval = (now * (RANGEDIRS_IVALS - 1) / Modes.range_outline_duration) % RANGEDIRS_IVALS;
     if (rangeDirIval != Modes.lastRangeDirHour) {
         //log_with_timestamp("rangeDirIval: %d", rangeDirIval);
@@ -283,6 +276,17 @@ static void update_range_histogram(struct aircraft *a, int64_t now) {
         memset(Modes.rangeDirs[rangeDirIval], 0, RANGEDIRS_BUCKETS * sizeof(struct distCoords));
         Modes.lastRangeDirHour = rangeDirIval;
     }
+
+    if (!a) {
+        return;
+    }
+
+    double lat = a->lat;
+    double lon = a->lon;
+
+    double range = a->receiver_distance;
+
+    int rangeDirDirection = ((int) nearbyint(a->receiver_direction)) % RANGEDIRS_BUCKETS;
 
     struct distCoords *current = &(Modes.rangeDirs[rangeDirIval][rangeDirDirection]);
 
@@ -3150,6 +3154,9 @@ void trackRemoveStale(int64_t now) {
 
     struct timespec watch;
     startWatch(&watch);
+
+    // update range histogram to progressively clear it if no positions are coming in
+    update_range_histogram(NULL, now);
 
     if (now > Modes.nextMessageRateCalc) {
         calculateMessageRateGlobal(now);
