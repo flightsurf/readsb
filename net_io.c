@@ -3147,9 +3147,9 @@ static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, 
     memset(&tm, 0, sizeof(tm));
     char *parseRes = strptime(t[7], "%Y/%m/%d %H:%M:%S", &tm);
     if (parseRes) {
-        mm->sysTimestamp = mktime(&tm) * 1000LL + milli;
-        if (mm->sysTimestamp > now + 1 * SECONDS) {
-            // inhibit future timestamps
+        mm->sysTimestamp = timegm(&tm) * 1000LL + milli;
+        if (mm->sysTimestamp > now + 1 * SECONDS || mm->sysTimestamp < now - 20 * MINUTES) {
+            // inhibit future and past timestamps and timegm errors (returns -1)
             mm->sysTimestamp = now;
         }
     } else {
