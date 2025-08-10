@@ -127,7 +127,7 @@ typedef struct
 // int16: -32768 to 32767
 #define _alt_factor (1/6.25f) // 200000 to 32000
 #define _rate_factor (1/8.0f) // 262136 to 32767
-#define _roll_factor (100.0f) // 180 to 18000
+#define _roll_factor (10.0f) // 180 to 1800
 
 /* Structure representing one point in the aircraft trace */
 struct state
