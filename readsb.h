@@ -108,6 +108,9 @@
 
 #include "compat/compat.h"
 
+#define SILENT 0
+#define VERBOSE 1
+
 // ============================= #defines ===============================
 
 #define MODES_DEFAULT_FREQ      1090000000

@@ -95,8 +95,36 @@ static void exitHandler(int sig) {
     log_with_timestamp("Caught %s, shutting down...", sigX);
 }
 
+static void adjustUserLocationAccuracy(int verbose) {
+    char *accString = "";
+    if (Modes.json_location_accuracy == 2) {
+        accString = "exact";
+    } else if (Modes.json_location_accuracy == 1) {
+        accString = "rounded to 2 decimals";
+        Modes.fUserLat = nearbyint(Modes.fUserLat * 1E2) / 1E2;
+        Modes.fUserLon = nearbyint(Modes.fUserLon * 1E2) / 1E2;
+    } else if (Modes.json_location_accuracy == 3) {
+        accString = "rounded to 1 decimal";
+        Modes.fUserLat = nearbyint(Modes.fUserLat * 1E1) / 1E1;
+        Modes.fUserLon = nearbyint(Modes.fUserLon * 1E1) / 1E1;
+    } else if (Modes.json_location_accuracy == 4) {
+        accString = "rounded to 0 decimals";
+        Modes.fUserLat = nearbyint(Modes.fUserLat * 1E0) / 1E0;
+        Modes.fUserLon = nearbyint(Modes.fUserLon * 1E0) / 1E0;
+    } else {
+        Modes.json_location_accuracy = 0;
+        accString = "rounded to 0 decimals, only used internally";
+        Modes.fUserLat = nearbyint(Modes.fUserLat * 1E0) / 1E0;
+        Modes.fUserLon = nearbyint(Modes.fUserLon * 1E0) / 1E0;
+    }
+    if (verbose >= VERBOSE) {
+        fprintf(stderr, "Using lat: %.6f, lon: %.6f (location accuracy: %s)\n", Modes.fUserLat, Modes.fUserLon, accString);
+    }
+}
+
 void receiverPositionChanged(float lat, float lon, float alt) {
     log_with_timestamp("Autodetected receiver location: %.5f, %.5f at %.0fm AMSL", lat, lon, alt);
+    adjustUserLocationAccuracy(SILENT);
 
     if (Modes.json_dir) {
         free(writeJsonToFile(Modes.json_dir, "receiver.json", generateReceiverJson()).buffer); // location changed
@@ -2576,9 +2604,10 @@ static void configAfterParse() {
     // Set the user LatLon valid flag only if either Lat or Lon are non zero. Note the Greenwich meridian
     if ((Modes.fUserLat != 0.0) || (Modes.fUserLon != 0.0)) {
         Modes.userLocationValid = 1;
-        fprintf(stderr, "Using lat: %s, lon: %s\n", Modes.latString, Modes.lonString);
+
+        adjustUserLocationAccuracy(VERBOSE);
     }
-    if (!Modes.userLocationValid || !Modes.json_dir) {
+    if (!Modes.userLocationValid || !Modes.json_dir || Modes.json_location_accuracy == 0) {
         Modes.outline_json = 0; // disable outline_json
     }
     if (Modes.json_reliable == -13) {

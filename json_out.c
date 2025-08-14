@@ -751,7 +751,7 @@ char *sprintAircraftObject(char *p, char *end, struct aircraft *a, int64_t now, 
                 p = safe_snprintf(p, end, "]");
             }
 #endif
-            if (Modes.userLocationValid) {
+            if (Modes.userLocationValid && Modes.json_location_accuracy != 0) {
                 p = safe_snprintf(p, end, ",\"r_dst\":%.3f,\"r_dir\":%.1f", a->receiver_distance / 1852.0, a->receiver_direction);
             }
         } else {
@@ -1042,14 +1042,9 @@ struct char_buffer generateAircraftBin(threadpool_buffer_t *pbuffer) {
 
     int32_t receiver_lat = 0;
     int32_t receiver_lon = 0;
-    if (Modes.userLocationValid) {
-        if (Modes.json_location_accuracy == 1) {
-            receiver_lat = (int32_t) (1E4 * nearbyint(Modes.fUserLat * 1E2));
-            receiver_lon = (int32_t) (1E4 * nearbyint(Modes.fUserLon * 1E2));
-        } else if (Modes.json_location_accuracy == 2) {
-            receiver_lat = (int32_t) nearbyint(Modes.fUserLat * 1E6);
-            receiver_lon = (int32_t) nearbyint(Modes.fUserLon * 1E6);
-        }
+    if (Modes.userLocationValid && Modes.json_location_accuracy != 0) {
+        receiver_lat = (int32_t) nearbyint(Modes.fUserLat * 1E6);
+        receiver_lon = (int32_t) nearbyint(Modes.fUserLon * 1E6);
     }
     memWrite(p, receiver_lat);
     memWrite(p, receiver_lon);
@@ -1894,18 +1889,11 @@ struct char_buffer generateReceiverJson() {
             1.0 * Modes.json_interval, Modes.json_aircraft_history_next + 1);
 
 
-    if (Modes.json_location_accuracy && Modes.userLocationValid) {
-        if (Modes.json_location_accuracy == 1) {
-            p = safe_snprintf(p, end, ", "
-                    "\"lat\": %.2f, "
-                    "\"lon\": %.2f",
-                    Modes.fUserLat, Modes.fUserLon); // round to 2dp - about 0.5-1km accuracy - for privacy reasons
-        } else {
-            p = safe_snprintf(p, end, ", "
-                    "\"lat\": %.6f, "
-                    "\"lon\": %.6f",
-                    Modes.fUserLat, Modes.fUserLon); // exact location
-        }
+    if (Modes.json_location_accuracy != 0 && Modes.userLocationValid) {
+        p = safe_snprintf(p, end, ", "
+                "\"lat\": %.6f, "
+                "\"lon\": %.6f",
+                Modes.fUserLat, Modes.fUserLon);
         if (Modes.fUserAlt > -1e6) {
             p = safe_snprintf(p, end,
                     ", \"alt_m_amsl\": %.0f",
