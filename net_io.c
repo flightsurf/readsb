@@ -5067,6 +5067,21 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             }
         } else if (ch == '5') {
             eom = p + MODES_LONG_MSG_BYTES + 8;
+        } else if (ch == 0xeb) {
+            // encapsulated UAT message, variable length but guaranteed not to have 0x1a because
+            // it's only readable ascii chars
+            eom = memchr(p, '\n', c->eod - p);
+            if (!eom) {
+                if (memchr(p, (char) 0x1A, c->eod - p)) {
+                    // malformed message, skip
+                    continue;
+                } else {
+                    // incomplete message, wait for rest to arrive
+                    break;
+                }
+            }
+            *eom = '\0';
+            decodeUatMessage(c, p, 1, now, mb);
         } else if (ch == 0xe4) {
             // read UUID and continue with next message
             p++;
