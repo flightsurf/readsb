@@ -119,6 +119,9 @@ static int compareDist(const void *p1, const void *p2) {
 
     int valid1 = trackDataValid(&a1->position_valid);
     int valid2 = trackDataValid(&a2->position_valid);
+    if (!valid1 && !valid2) {
+        return a1->addr - a2->addr;
+    }
     if (valid1 != valid2) {
         return valid2 - valid1;
     }
@@ -143,15 +146,17 @@ static int compareAlt(const void *p1, const void *p2) {
 
     if (!valid1 && !valid2) {
         return a1->addr - a2->addr;
-    } else if (valid1 && valid2) {
-        if (a1->baro_alt == a2->baro_alt) {
-            return a1->addr - a2->addr;
-        } else {
-            return a1->baro_alt - a2->baro_alt;
-        }
-    } else {
+    }
+
+    if (valid1 != valid2) {
         return valid2 - valid1;
     }
+
+    if (a1->baro_alt == a2->baro_alt) {
+        return a1->addr - a2->addr;
+    }
+
+    return a1->baro_alt - a2->baro_alt;
 }
 
 void interactiveShowData(void) {
