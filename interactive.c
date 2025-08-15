@@ -141,6 +141,9 @@ static int compareAlt(const void *p1, const void *p2) {
     int g2 = trackDataValid(&a2->airground_valid) && a2->airground == AG_GROUND;
 
     if (g1 || g2) {
+        if (g1 && g2) {
+            return a1->addr - a2->addr;
+        }
         return g2 - g1;
     }
 
