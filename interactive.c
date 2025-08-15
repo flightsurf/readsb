@@ -142,7 +142,7 @@ void interactiveShowData(void) {
         next_clear = now + 10 * SECONDS;
         clear();
         // print header
-        mvprintw(0, 0, " Hex    Mode  Sqwk  Flight   Alt    Spd  Hdg    Lat      Long   RSSI  Msgs  Ti");
+        mvprintw(0, 0, " Hex    Mode  Sqwk  Flight   Alt     Spd  Hdg    Lat      Long   RSSI  Msgs  Ti");
         mvhline(1, 0, ACS_HLINE, 80);
     }
 
@@ -179,14 +179,14 @@ void interactiveShowData(void) {
                     char strSquawk[5] = " ";
                     char strFl[7] = " ";
                     char strTt[5] = " ";
-                    char strGs[5] = " ";
+                    char strGs[6] = " ";
 
                     if (trackDataValid(&a->squawk_valid)) {
                         snprintf(strSquawk, 5, "%04x", a->squawk);
                     }
 
                     if (trackDataValid(&a->gs_valid)) {
-                        snprintf(strGs, 5, "%3d", convert_speed(a->gs));
+                        snprintf(strGs, 6, "%4d", convert_speed(a->gs));
                     }
 
                     if (trackDataValid(&a->track_valid)) {
@@ -225,7 +225,7 @@ void interactiveShowData(void) {
                         snprintf(strFl, 7, "%5d ", convert_altitude(a->baro_alt));
                     }
 
-                    mvprintw(row, 0, "%s%06X %-4s  %-4s  %-8s %6s %3s  %3s  %7s %8s %5.1f %5d %2.0f",
+                    mvprintw(row, 0, "%s%06X %-4s  %-4s  %-8s %6s %4s  %3s  %7s %8s %5.1f %5d %2.0f",
                             (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : " ", (a->addr & 0xffffff),
                             strMode, strSquawk, a->callsign, strFl, strGs, strTt,
                             strLat, strLon, 10 * log10(signalAverage), msgs, (now - a->seen) / 1000.0);
