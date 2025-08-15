@@ -5081,6 +5081,7 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
                 }
             }
             *eom = '\0';
+            p++;
             decodeUatMessage(c, p, 1, now, mb);
         } else if (ch == 0xe4) {
             p++;
