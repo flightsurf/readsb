@@ -156,11 +156,15 @@ void interactiveShowData(void) {
     struct craftArray *ca = &Modes.aircraftActive;
 
     // sort active list by altitude
-    pthread_mutex_lock(&ca->change_mutex);
-    pthread_mutex_lock(&ca->write_mutex);
-    qsort(ca->list, ca->len, sizeof(struct aircraft *), compareAlt);
-    pthread_mutex_unlock(&ca->write_mutex);
-    pthread_mutex_unlock(&ca->change_mutex);
+    static int64_t next_sort;
+    if (now > next_sort) {
+        next_sort = now + 3 * SECONDS;
+        pthread_mutex_lock(&ca->change_mutex);
+        pthread_mutex_lock(&ca->write_mutex);
+        qsort(ca->list, ca->len, sizeof(struct aircraft *), compareAlt);
+        pthread_mutex_unlock(&ca->write_mutex);
+        pthread_mutex_unlock(&ca->change_mutex);
+    }
 
     ca_lock_read(ca);
     for (int i = 0; i < ca->len; i++) {
