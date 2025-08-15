@@ -137,9 +137,9 @@ void interactiveShowData(void) {
 
     next_update = now + MODES_INTERACTIVE_REFRESH_TIME;
 
-    // clear potential errors every 2 seconds
+    // clear potential errors every 10 seconds
     if (now > next_clear) {
-        next_clear = now + 2 * SECONDS;
+        next_clear = now + 10 * SECONDS;
         clear();
         // print header
         mvprintw(0, 0, " Hex    Mode  Sqwk  Flight   Alt    Spd  Hdg    Lat      Long   RSSI  Msgs  Ti");
