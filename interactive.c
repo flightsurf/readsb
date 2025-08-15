@@ -66,6 +66,13 @@ void interactiveShowData(void) {}
 //
 //========================= Interactive mode ===============================
 
+static double convert_distance(int meter) {
+    if (Modes.metric)
+        return meter / 1000.0;
+    else
+        return meter / 1852.0;
+}
+
 static int convert_altitude(int ft) {
     if (Modes.metric)
         return (ft / 3.2828);
@@ -102,6 +109,21 @@ void interactiveCleanup(void) {
     }
 }
 
+static int compareDist(const void *p1, const void *p2) {
+    struct aircraft *a1 = *(struct aircraft**) p1;
+    struct aircraft *a2 = *(struct aircraft**) p2;
+    if (a1 == NULL)
+        return 1;
+    if (a2 == NULL)
+        return -1;
+
+    int valid1 = trackDataValid(&a1->position_valid);
+    int valid2 = trackDataValid(&a2->position_valid);
+    if (valid1 != valid2) {
+        return valid2 - valid1;
+    }
+    return a1->receiver_distance - a2->receiver_distance;
+}
 static int compareAlt(const void *p1, const void *p2) {
     struct aircraft *a1 = *(struct aircraft**) p1;
     struct aircraft *a2 = *(struct aircraft**) p2;
@@ -150,7 +172,11 @@ void interactiveShowData(void) {
         next_clear = now + 10 * SECONDS;
         clear();
         // print header
-        mvprintw(0, 0, " Hex    Mode  Sqwk  Flight   Alt     Spd  Hdg    Lat      Long   RSSI  Msgs  Ti");
+        if (Modes.userLocationValid) {
+            mvprintw(0, 0, " Hex    Mode  Sqwk  Flight     Alt   Spd  Hdg     Dist      Dir  RSSI  Msgs  Seen");
+        } else {
+            mvprintw(0, 0, " Hex    Mode  Sqwk  Flight     Alt   Spd  Hdg      Lat     Long  RSSI  Msgs  Seen");
+        }
         mvhline(1, 0, ACS_HLINE, 80);
     }
 
@@ -169,7 +195,11 @@ void interactiveShowData(void) {
         next_sort = now + 3 * SECONDS;
         pthread_mutex_lock(&ca->change_mutex);
         pthread_mutex_lock(&ca->write_mutex);
-        qsort(ca->list, ca->len, sizeof(struct aircraft *), compareAlt);
+        if (Modes.userLocationValid) {
+            qsort(ca->list, ca->len, sizeof(struct aircraft *), compareDist);
+        } else {
+            qsort(ca->list, ca->len, sizeof(struct aircraft *), compareAlt);
+        }
         pthread_mutex_unlock(&ca->write_mutex);
         pthread_mutex_unlock(&ca->change_mutex);
     }
@@ -221,12 +251,17 @@ void interactiveShowData(void) {
                     }
 
                     if (trackDataValid(&a->position_valid)) {
-                        snprintf(strLat, 8, "%7.03f", a->lat);
-                        snprintf(strLon, 9, "%8.03f", a->lon);
+                        if (Modes.userLocationValid) {
+                            snprintf(strLat, 8, "%7.01f", convert_distance(a->receiver_distance));
+                            snprintf(strLon, 9, "%8.00f", a->receiver_direction);
+                        } else {
+                            snprintf(strLat, 8, "%7.03f", a->lat);
+                            snprintf(strLon, 9, "%8.03f", a->lon);
+                        }
                     }
 
                     if (trackDataValid(&a->airground_valid) && a->airground == AG_GROUND) {
-                        snprintf(strFl, 7, " grnd");
+                        snprintf(strFl, 7, " grnd ");
                     } else if (Modes.use_gnss && trackDataValid(&a->geom_alt_valid)) {
                         snprintf(strFl, 7, "%5dH", convert_altitude(a->geom_alt));
                     } else if (trackDataValid(&a->baro_alt_valid)) {
