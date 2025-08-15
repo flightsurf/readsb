@@ -111,6 +111,14 @@ static int compareAlt(const void *p1, const void *p2) {
         return -1;
     int valid1 = trackDataValid(&a1->baro_alt_valid);
     int valid2 = trackDataValid(&a2->baro_alt_valid);
+
+    int g1 = trackDataValid(&a1->airground_valid) && a1->airground == AG_GROUND;
+    int g2 = trackDataValid(&a2->airground_valid) && a2->airground == AG_GROUND;
+
+    if (g1 || g2) {
+        return g2 - g1;
+    }
+
     if (!valid1 && !valid2) {
         return a1->addr - a2->addr;
     } else if (valid1 && valid2) {
