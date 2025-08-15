@@ -5083,8 +5083,17 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             *eom = '\0';
             decodeUatMessage(c, p, 1, now, mb);
         } else if (ch == 0xe4) {
-            // read UUID and continue with next message
             p++;
+            if (c->eod - p < 36) {
+                if (!memchr(p, (char) 0x1A, c->eod - p)) {
+                    // incomplete uuid
+                    break;
+                } else {
+                    // malformed uuid
+                    continue;
+                }
+            }
+            // read UUID and continue with next message
             c->som = read_uuid(c, p, c->eod);
             continue;
         } else if (ch == 'P') {
