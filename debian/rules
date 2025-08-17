@@ -25,6 +25,10 @@ ifneq ($(filter rtlsdr,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'RTLSDR=yes'
 endif
 
+ifneq ($(filter soapysdr,$(DEB_BUILD_PROFILES)),)
+	CONFIG_SWITCH += 'SOAPYSDR=yes'
+endif
+
 ifneq ($(filter history,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'HISTORY=yes'
 endif
@@ -42,13 +46,13 @@ ifneq ($(filter biastee,$(DEB_BUILD_PROFILES)),)
 endif
 
 override_dh_auto_build:
-	make -j2 $(CONFIG_SWITCH)
+	make $(CONFIG_SWITCH)
 
 override_dh_install:
 	dh_install
 	install -d debian/readsb/usr/bin
 	cp -a readsb debian/readsb/usr/bin/readsb
-	cp -a viewadsb debian/readsb/usr/bin/viewadsb
+	ln -s /usr/bin/readsb debian/readsb/usr/bin/viewadsb
 
 override_dh_installinit:
 	dh_installinit --noscripts
