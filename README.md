@@ -20,12 +20,12 @@ Or build the package yourself:
 sudo apt update
 sudo apt install --no-install-recommends --no-install-suggests -y \
     git build-essential debhelper libusb-1.0-0-dev \
-    librtlsdr-dev librtlsdr0 pkg-config fakeroot \
+    librtlsdr-dev libsoapysdr-dev pkg-config fakeroot \
     libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1
 git clone --depth 20 https://github.com/wiedehopf/readsb.git
 cd readsb
 export DEB_BUILD_OPTIONS=noddebs
-dpkg-buildpackage -b -Prtlsdr -ui -uc -us
+dpkg-buildpackage -b -Prtlsdr,soapysdr -ui -uc -us
 sudo dpkg -i ../readsb_*.deb
 ```
 
@@ -69,7 +69,7 @@ The aggregator enables --net-receiver-id and --net-ingest on their readsb server
 ### Debian package
 
 - Build package with no additional receiver library dependencies: `dpkg-buildpackage -b`.
-- Build with RTLSDR support: `dpkg-buildpackage -b --build-profiles=rtlsdr`
+- Build with RTLSDR and soapysdr support: `dpkg-buildpackage -b --build-profiles=rtlsdr,soapysdr`
 
 ## Building manually
 
