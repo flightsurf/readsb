@@ -23,6 +23,13 @@
 #include "argp.h"
 const char *argp_program_version = VERSION_STRING;
 const char *argp_program_bug_address = "Matthias Wirth <matthias.wirth@gmail.com>";
+const char *argp_program_credits = "\
+antirez (original dump1090) \n\
+Malcom Robb (work on his dump1090 fork)\n\
+mutability (forked to dump1090-mutability and further to dump1090-fa)\n\
+Mictronics (readsb as a fork of dump1090-fa)\n\
+wiedehopf (this fork of Mictronics readsb)\
+";
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 
 // preprocessor sillyness, yes both lines are necessary.

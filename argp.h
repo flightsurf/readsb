@@ -65,6 +65,7 @@ int argp_parse(struct argp *argp, int argc, char **argv, int flags, int tmp, voi
 
 
 extern const char *argp_program_version;
+extern const char *argp_program_credits;
 extern const char *argp_program_bug_address;
 
 

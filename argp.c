@@ -46,6 +46,7 @@ void argp_help(struct argp_state *state)
     printf("  --%-*s%s\n", state->maxlen+6, "help", "Give this help list");
     printf("  --%-*s%s\n", state->maxlen+6, "usage",
            "Give a short usage message");
+    printf("\nCredits:\n%s\n", argp_program_credits);
     printf("\nReport bugs to %s\n", argp_program_bug_address);
 }
 
