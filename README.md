@@ -70,8 +70,7 @@ The aggregator enables --net-receiver-id and --net-ingest on their readsb server
 sudo apt update
 sudo apt install --no-install-recommends --no-install-suggests -y \
     git build-essential debhelper libusb-1.0-0-dev pkg-config fakeroot \
-    libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1 \
-    librtlsdr-dev
+    libncurses-dev zlib1g-dev libzstd-dev librtlsdr-dev help2man
 git clone --depth 20 https://github.com/wiedehopf/readsb.git
 cd readsb
 export DEB_BUILD_OPTIONS=noddebs
@@ -86,8 +85,8 @@ sudo dpkg -i ../readsb_*.deb
 
 required build deps (omit last line if you're not building with the various SDR support)
 ```
-git build-essential debhelper libusb-1.0-0-dev pkg-config fakeroot \
-libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1 \
+git build-essential debhelper pkg-config fakeroot help2man \
+libncurses-dev zlib1g-dev libzstd-dev libusb-1.0-0-dev \
 librtlsdr-dev libsoapysdr-dev libhackrf-dev libbladerf-dev libad9361-dev libiio-dev
 ```
 
