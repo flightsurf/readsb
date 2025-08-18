@@ -20,12 +20,14 @@ Or build the package yourself:
 sudo apt update
 sudo apt install --no-install-recommends --no-install-suggests -y \
     git build-essential debhelper libusb-1.0-0-dev \
-    librtlsdr-dev libsoapysdr-dev pkg-config fakeroot \
-    libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1
+    pkg-config fakeroot \
+    libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1 \
+    librtlsdr-dev libsoapysdr-dev libhackrf-dev libbladerf-dev libad9361-dev libiio-dev
 git clone --depth 20 https://github.com/wiedehopf/readsb.git
 cd readsb
 export DEB_BUILD_OPTIONS=noddebs
-dpkg-buildpackage -b -Prtlsdr,soapysdr -ui -uc -us
+rm -f ../readsb_*.deb
+dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr,hackrf,bladerf,soapysdr,plutosdr
 sudo dpkg -i ../readsb_*.deb
 ```
 
@@ -68,8 +70,16 @@ The aggregator enables --net-receiver-id and --net-ingest on their readsb server
 
 ### Debian package
 
-- Build package with no additional receiver library dependencies: `dpkg-buildpackage -b`.
-- Build with RTLSDR and soapysdr support: `dpkg-buildpackage -b --build-profiles=rtlsdr,soapysdr`
+- Build package with no additional receiver library dependencies: `dpkg-buildpackage -b -ui -uc -us`.
+- Build with RTLSDR support: `dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr`
+- Build with all the support: `dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr,hackrf,bladerf,soapysdr,plutosdr`
+
+required build deps (omit last line if you're not building with the various SDR support)
+```
+git build-essential debhelper libusb-1.0-0-dev pkg-config fakeroot \
+libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1 \
+librtlsdr-dev libsoapysdr-dev libhackrf-dev libbladerf-dev libad9361-dev libiio-dev
+```
 
 ## Building manually
 

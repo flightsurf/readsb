@@ -29,16 +29,24 @@ ifneq ($(filter soapysdr,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'SOAPYSDR=yes'
 endif
 
+ifneq ($(filter hackrf,$(DEB_BUILD_PROFILES)),)
+	CONFIG_SWITCH += 'HACKRF=yes'
+endif
+
+ifneq ($(filter bladerf,$(DEB_BUILD_PROFILES)),)
+	CONFIG_SWITCH += 'BLADERF=yes'
+endif
+
+ifneq ($(filter plutosdr,$(DEB_BUILD_PROFILES)),)
+	CONFIG_SWITCH += 'PLUTOSDR=yes'
+endif
+
 ifneq ($(filter history,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'HISTORY=yes'
 endif
 
 ifneq ($(filter native,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'OPTIMIZE=-march=native'
-endif
-
-ifneq ($(filter plutosdr,$(DEB_BUILD_PROFILES)),)
-        CONFIG_SWITCH += 'PLUTOSDR=yes'
 endif
 
 ifneq ($(filter biastee,$(DEB_BUILD_PROFILES)),)
