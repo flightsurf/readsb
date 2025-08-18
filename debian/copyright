@@ -1,13 +1,14 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: readsb
-Upstream-Contact: Michael Wolf <michael@mictronics.de>
-Source: https://github.com/mictronics/readsb
+Upstream-Contact: Matthias Wirth <matthias.wirth@gmail.com>
+Source: https://github.com/wiedehopf/readsb
 
 Files: *
 Copyright: Copyright 2012 Salvatore Sanfilippo <antirez@gmail.com>
            Copyright 2013,2014 Malcolm Robb <Support@ATTAvionics.com>
            Copyright 2014,2015 Oliver Jowett <oliver@mutability.co.uk>
            Copyright 2019 Michael Wolf <michael@mictronics.de>
+           Copyright 2020 Matthias Wirth <matthias.wirth@gmail.com>
 License: BSD-3-Clause, GPL-2+ and GPL-3+
 
 Files: compat/clock_gettime/*
@@ -37,16 +38,6 @@ Source: http://www.jquery.com/
 Files: public_html/jquery/jquery.ui.touch-punch.js
 Copyright: 2011–2014 Dave Furfero
 License: MIT
-
-Files: public_html/filesaver.min.js
-Copyright: 2016 Eli Grey
-License: MIT
-Source: https://github.com/eligrey/FileSaver.js
-
-Files: public_html/jszip.min.js
-Copyright: 2009-2016 Stuart Knightley
-License: MIT and GPL-3+
-Source: http://stuartk.com/jszip
 
 Files: public_html/ol3/ol-3.17.1.css public_html/ol3/ol-3.17.1.js
 Copyright: 2005-2016 OpenLayers Contributors
