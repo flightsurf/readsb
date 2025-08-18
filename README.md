@@ -15,27 +15,13 @@ see the LICENSE file for details
 I'd recommend this script to automatically install it:
 - https://github.com/wiedehopf/adsb-scripts/wiki/Automatic-installation-for-readsb
 
-Or build the package yourself:
-```
-sudo apt update
-sudo apt install --no-install-recommends --no-install-suggests -y \
-    git build-essential debhelper libusb-1.0-0-dev \
-    pkg-config fakeroot \
-    libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1 \
-    librtlsdr-dev libsoapysdr-dev libhackrf-dev libbladerf-dev libad9361-dev libiio-dev
-git clone --depth 20 https://github.com/wiedehopf/readsb.git
-cd readsb
-export DEB_BUILD_OPTIONS=noddebs
-rm -f ../readsb_*.deb
-dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr,hackrf,bladerf,soapysdr,plutosdr
-sudo dpkg -i ../readsb_*.deb
-```
+See the [Debian Package](##debian-package) section if you want to build the package yourself.
 
-Or check here for more build instructions and other useful stuff:
+Or check here on how to further install a webinterface and other useful stuff:
 - https://github.com/wiedehopf/adsb-wiki/wiki/Building-readsb-from-source
 - https://github.com/wiedehopf/adsb-wiki/wiki/Raspbian-Lite:-ADS-B-receiver
 
-For macOS build and general info, check further down
+For macOS build and info, check the [macOS](##macos) section
 
 ## Credits / history
 
@@ -76,7 +62,23 @@ The uuid is optional, if none is given, the uuid from --uuid-file is used, if th
 The beast_reduce_out net-connector will never send an uuid.
 The aggregator enables --net-receiver-id and --net-ingest on their readsb server, it's made to work with beast_reduce_plus_out.
 
-### Debian package
+## Debian package
+
+- Build and install with rtlsdr support:
+
+```
+sudo apt update
+sudo apt install --no-install-recommends --no-install-suggests -y \
+    git build-essential debhelper libusb-1.0-0-dev pkg-config fakeroot \
+    libncurses-dev zlib1g-dev zlib1g libzstd-dev libzstd1 \
+    librtlsdr-dev
+git clone --depth 20 https://github.com/wiedehopf/readsb.git
+cd readsb
+export DEB_BUILD_OPTIONS=noddebs
+rm -f ../readsb_*.deb
+dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr
+sudo dpkg -i ../readsb_*.deb
+```
 
 - Build package with no additional receiver library dependencies: `dpkg-buildpackage -b -ui -uc -us`.
 - Build with RTLSDR support: `dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr`
@@ -100,16 +102,12 @@ librtlsdr.
 
 On Raspbian 32 bit, mostly rpi2 and older you might want to use this to compile if you're running into CPU issues:
 ```
-make AIRCRAFT_HASH_BITS=11 RTLSDR=yes OPTIMIZE="-Ofast -mcpu=arm1176jzf-s -mfpu=vfp"
+make RTLSDR=yes OPTIMIZE="-Ofast -mcpu=arm1176jzf-s -mfpu=vfp"
 ```
 
 In general if you want to save on CPU cycles, you can try building with these options:
 ```
 make AIRCRAFT_HASH_BITS=11 RTLSDR=yes OPTIMIZE="-O3 -march=native"
-```
-Or even more aggressive but could cause unexpected behaviour:
-```
-make AIRCRAFT_HASH_BITS=11 RTLSDR=yes OPTIMIZE="-Ofast -march=native"
 ```
 
 The difference of using -Ofast or -O3 over the default of -O2 is likely very minimal.
