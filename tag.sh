@@ -22,3 +22,12 @@ git tag "v$VERSION"
 git push
 git push --tag
 
+
+# notes for a release (done manually due to changelog)
+#
+# put version in version file
+# modify changelog in main directory
+# copy changelog from main directory to debian
+# git tag -a v3.16
+# git push
+# git push --tags
