@@ -37,6 +37,14 @@ Or check here for more build instructions and other useful stuff:
 
 For macOS build and general info, check further down
 
+## Credits / history
+
+antirez (original dump1090)
+Malcom Robb (work on his dump1090 fork)
+mutability (forked to dump1090-mutability and further to dump1090-fa)
+Mictronics (readsb as a fork of dump1090-fa)
+wiedehopf (this fork of Mictronics readsb)
+
 ### aircraft.json format:
 
 [json file Readme](README-json.md)
@@ -489,6 +497,4 @@ ifile-specific options, use with --device-type ifile:
 Help options:
   --help                                                         Give this help list
   --usage                                                        Give a short usage message
-
-Report bugs to Matthias Wirth <matthias.wirth@gmail.com>
 ```
