@@ -21,6 +21,14 @@ endif
 
 CONFIG_SWITCH =
 
+ifneq ($(filter with_sdrs,$(DEB_BUILD_PROFILES)),)
+	CONFIG_SWITCH += 'RTLSDR=yes'
+	CONFIG_SWITCH += 'SOAPYSDR=yes'
+	CONFIG_SWITCH += 'HACKRF=yes'
+	CONFIG_SWITCH += 'BLADERF=yes'
+	CONFIG_SWITCH += 'PLUTOSDR=yes'
+endif
+
 ifneq ($(filter rtlsdr,$(DEB_BUILD_PROFILES)),)
 	CONFIG_SWITCH += 'RTLSDR=yes'
 endif

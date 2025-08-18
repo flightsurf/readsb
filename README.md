@@ -82,7 +82,7 @@ sudo dpkg -i ../readsb_*.deb
 
 - Build package with no additional receiver library dependencies: `dpkg-buildpackage -b -ui -uc -us`.
 - Build with RTLSDR support: `dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr`
-- Build with all the support: `dpkg-buildpackage -b -ui -uc -us --build-profiles=rtlsdr,hackrf,bladerf,soapysdr,plutosdr`
+- Build with all the support: `dpkg-buildpackage -b -ui -uc -us --build-profiles=with_sdrs`
 
 required build deps (omit last line if you're not building with the various SDR support)
 ```

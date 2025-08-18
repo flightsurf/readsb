@@ -3,13 +3,13 @@ Section: net
 Priority: optional
 Maintainer: Matthias Wirth <matthias.wirth@gmail.com>
 Build-Depends: debhelper(>=9), libncurses-dev, zlib1g-dev, pkg-config, libzstd-dev, help2man,
-  libusb-1.0-0-dev <rtlsdr> <soapysdr> <hackrf> <bladerf> <plutosdr>,
-  librtlsdr-dev <rtlsdr>,
-  libsoapysdr-dev <soapysdr>,
-  libhackrf-dev <hackrf>,
-  libbladerf-dev <bladerf>,
-  libad9361-dev <plutosdr>,
-  libiio-dev <plutosdr>
+  libusb-1.0-0-dev <rtlsdr> <soapysdr> <hackrf> <bladerf> <plutosdr> <with_sdrs>,
+  librtlsdr-dev <rtlsdr> <with_sdrs>,
+  libsoapysdr-dev <soapysdr> <with_sdrs>,
+  libhackrf-dev <hackrf> <with_sdrs>,
+  libbladerf-dev <bladerf> <with_sdrs>,
+  libad9361-dev <plutosdr> <with_sdrs>,
+  libiio-dev <plutosdr> <with_sdrs>
 Standards-Version: 4.4.0.1
 Homepage: https://github.com/wiedehopf/readsb
 Vcs-Git: https://github.com/wiedehopf/readsb.git
