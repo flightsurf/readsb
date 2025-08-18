@@ -54,7 +54,7 @@ ifneq ($(filter biastee,$(DEB_BUILD_PROFILES)),)
 endif
 
 override_dh_auto_build:
-	make $(CONFIG_SWITCH)
+	make -j$(shell nproc) $(CONFIG_SWITCH)
 
 override_dh_install:
 	dh_install
