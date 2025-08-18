@@ -9,13 +9,9 @@ After=network.target
 [Service]
 EnvironmentFile=/etc/default/readsb
 User=readsb
-AmbientCapabilities=CAP_SYS_NICE
 RuntimeDirectory=readsb
 RuntimeDirectoryMode=0755
-ExecStart=/usr/bin/readsb \
- $RECEIVER_OPTIONS $DECODER_OPTIONS $NET_OPTIONS $JSON_OPTIONS \
- --write-json /run/readsb --quiet
-Type=simple
+ExecStart=/usr/bin/readsb --write-json /run/readsb --quiet $RECEIVER_OPTIONS $DECODER_OPTIONS $NET_OPTIONS $JSON_OPTIONS
 Type=simple
 Restart=always
 RestartSec=15
