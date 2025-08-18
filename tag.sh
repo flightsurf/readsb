@@ -14,6 +14,7 @@ readsb ($VERSION) UNRELEASED; urgency=medium
   * In development
 
  -- Matthias Wirth <matthias.wirth@gmail.com>  $(date -R)
+
 EOF
 
 git add debian/changelog
