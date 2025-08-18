@@ -3,7 +3,7 @@
 set -e
 trap 'echo "[ERROR] Error in line $LINENO when executing: $BASH_COMMAND"' ERR
 
-VERSION="3.15.$(( $(cat version | cut -d'.' -f3) + 1 ))"
+VERSION="$(cat version | cut -d'.' -f1).$(cat version | cut -d'.' -f2).$(( $(cat version | cut -d'.' -f3) + 1 ))"
 echo "$VERSION" > version
 git add version
 
