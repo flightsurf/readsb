@@ -7,7 +7,8 @@ VERSION="$(cat version | cut -d'.' -f1).$(cat version | cut -d'.' -f2).$(( $(cat
 echo "$VERSION" > version
 git add version
 
-cat > debian/changelog <<EOF
+# use this and the actual changelog from the main directory
+cat - changelog > debian/changelog <<EOF
 readsb ($VERSION) UNRELEASED; urgency=medium
 
   * In development
