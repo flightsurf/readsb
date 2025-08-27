@@ -1,3 +1,9 @@
+readsb (3.16.1) UNRELEASED; urgency=medium
+
+  * In development
+
+ -- Matthias Wirth <matthias.wirth@gmail.com>  Wed, 27 Aug 2025 15:11:01 +0000
+
 readsb (3.16) stable; urgency=medium
 
   * debian: cleanup package build / service file
