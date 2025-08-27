@@ -309,6 +309,7 @@ static void modesInit(void) {
     pthread_mutex_init(&Modes.hungTimerMutex, NULL);
     pthread_mutex_init(&Modes.sdrControlMutex, NULL);
     pthread_mutex_init(&Modes.aircraftBackMutex, NULL);
+    pthread_mutex_init(&Modes.aircraftLoadMutex, NULL);
     pthread_mutex_init(&Modes.aircraftCreateMutex, NULL);
 
 
@@ -3338,6 +3339,7 @@ int main(int argc, char **argv) {
     pthread_mutex_destroy(&Modes.hungTimerMutex);
     pthread_mutex_destroy(&Modes.sdrControlMutex);
     pthread_mutex_destroy(&Modes.aircraftBackMutex);
+    pthread_mutex_destroy(&Modes.aircraftLoadMutex);
     pthread_mutex_destroy(&Modes.aircraftCreateMutex);
 
     if (Modes.debug_bogus) {

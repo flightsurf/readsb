@@ -907,11 +907,12 @@ static int roundUp8(int value) {
 
 static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *passbuffer, int strideStart, int strideEnd) {
     static int size_changed;
+    int locked = 0;
 
     ssize_t newSize = sizeof(struct aircraft);
 
     if (end - *p < (int) sizeof(uint64_t)) {
-        return -1;
+        goto err;
     }
 
     uint64_t tmp_u64;
@@ -919,22 +920,27 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
     ssize_t oldSize = tmp_u64;
 
     if (end - *p < oldSize) {
-        return -1;
+        goto err;
     }
+
 
     struct aircraft *source = (struct aircraft *) *p;
 
     int hash = (int) aircraftHash(source->addr);
     if (hash < strideStart || hash > strideEnd) {
-        fprintf(stderr, "<3>hex: %06x, aicraftCreate(): returning already existing aircraft\n", source->addr);
-        return -1;
+        // in this case we need to use locking with the other loading threads as to avoid issues if
+        // there is corrupted state files that have the same hex in multiple blobs
+        // fprintf(stderr, "<3>hex: %06x, load_aircraft(): hex addr outside blob\n", source->addr);
+        locked = 1;
+        pthread_mutex_lock(&Modes.aircraftLoadMutex);
     }
 
     struct aircraft *a = aircraftGet(source->addr);
     if (a) {
+
         if (0 && oldSize != newSize) {
             fprintf(stderr, "%06x size mismatch when replacing aircraft data, aborting!\n", source->addr);
-            return -1;
+            goto err;
         }
         //fprintf(stderr, "%06x aircraft already exists, overwriting old data\n", source->addr);
         //freeAircraft(a);
@@ -1033,11 +1039,11 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
         if (oldFourStateSize != sizeof(fourState)) {
             fprintf(stderr, "%06x sizeof(fourState) / SFOUR definition has changed, aborting state loading!\n", a->addr);
             traceCleanupNoUnlink(a);
-            return -1;
+            goto err;
         }
 
         int checkNo = 0;
-#define checkSize(size) if (++checkNo && ((end - *p < (ssize_t) size) || size < 0)) { fprintf(stderr, "loadAircraft: checkSize failed for hex %06x checkNo %d size %lld\n", a->addr, checkNo, (long long) size); traceCleanupNoUnlink(a); return -1; }
+#define checkSize(size) if (++checkNo && ((end - *p < (ssize_t) size) || size < 0)) { fprintf(stderr, "loadAircraft: checkSize failed for hex %06x checkNo %d size %lld\n", a->addr, checkNo, (long long) size); traceCleanupNoUnlink(a); goto err; }
 
         if (a->trace_chunk_len > 0) {
             a->trace_chunks = cmalloc(a->trace_chunk_len * sizeof(stateChunk));
@@ -1084,7 +1090,7 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
 
         if (!Modes.keep_traces) {
             traceCleanupNoUnlink(a);
-            return 0;
+            goto out;
         }
 
         traceMaintenance(a, now, passbuffer);
@@ -1109,7 +1115,15 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
         traceCleanupNoUnlink(a);
     }
 
-    return 0;
+
+    int res = 0;
+err:
+    res = -1;
+out:
+    if (locked) {
+        pthread_mutex_unlock(&Modes.aircraftLoadMutex);
+    }
+    return res;
 }
 
 static void utc_string_from_ms(int64_t ts, char *target) {

@@ -632,6 +632,7 @@ struct _Modes
     struct aircraftBack *aircraftBack;
     struct aircraft *aircraftBackFree;
     pthread_mutex_t aircraftBackMutex;
+    pthread_mutex_t aircraftLoadMutex;
     pthread_mutex_t aircraftCreateMutex;
     atomic_int aircraftBackSpinlock;
 
