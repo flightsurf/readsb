@@ -2713,7 +2713,7 @@ static void loadReplaceState() {
     threadpool_buffer_t buffers[4];
     memset(buffers, 0x0, sizeof(buffers));
     threadpool_threadbuffers_t group = { .buffer_count = 4, .buffers = buffers };
-    load_blob(Modes.replace_state_blob, &group);
+    load_blob(Modes.replace_state_blob_number, Modes.replace_state_blob, &group);
 
     char blob[1024];
     snprintf(blob, 1024, "%s.zstl", Modes.replace_state_blob);
@@ -2724,6 +2724,7 @@ static void loadReplaceState() {
     }
     free(Modes.replace_state_blob);
     Modes.replace_state_blob = NULL;
+    Modes.replace_state_blob_number = -1;
 }
 static int checkWriteStateDir(char *baseDir) {
     if (!baseDir) {
@@ -2786,6 +2787,7 @@ static void checkReplaceStateDir(char *baseDir) {
             snprintf(blob, 1024, "%s/blob_%02x.zstl", filename, j);
             if (access(blob, R_OK) == 0) {
                 snprintf(blob, 1024, "%s/blob_%02x", filename, j);
+                Modes.replace_state_blob_number = j;
                 Modes.replace_state_blob = strdup(blob);
                 int64_t mono = mono_milli_seconds();
                 Modes.replace_state_inhibit_traces_until = mono + 10 * SECONDS;

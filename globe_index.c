@@ -905,7 +905,7 @@ static int roundUp8(int value) {
     return ((value + 7) / 8) * 8;
 }
 
-static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *passbuffer) {
+static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *passbuffer, int strideStart, int strideEnd) {
     static int size_changed;
 
     ssize_t newSize = sizeof(struct aircraft);
@@ -923,6 +923,12 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
     }
 
     struct aircraft *source = (struct aircraft *) *p;
+
+    int hash = (int) aircraftHash(source->addr);
+    if (hash < strideStart || hash > strideEnd) {
+        fprintf(stderr, "<3>hex: %06x, aicraftCreate(): returning already existing aircraft\n", source->addr);
+        return -1;
+    }
 
     struct aircraft *a = aircraftGet(source->addr);
     if (a) {
@@ -3013,6 +3019,14 @@ int traceAdd(struct aircraft *a, struct modesMessage *mm, int64_t now, int stale
     return res;
 }
 
+static void stride_from_blob(int blob, int *stride, int *start, int *end) {
+    if (blob < 0) {
+        fprintf(stderr, "stride_from_blob: invalid argument: %02x", blob);
+    }
+    *stride = Modes.acBuckets / STATE_BLOBS;
+    *start = *stride * blob;
+    *end = *start + *stride;
+}
 
 void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbuffer2, char *stateDir) {
     if (!stateDir)
@@ -3042,9 +3056,10 @@ void save_blob(int blob, threadpool_buffer_t *pbuffer1, threadpool_buffer_t *pbu
         return;
     }
 
-    int stride = Modes.acBuckets / STATE_BLOBS;
-    int start = stride * blob;
-    int end = start + stride;
+    int stride = -1;
+    int start = -1;
+    int end = -1;
+    stride_from_blob(blob, &stride, &start, &end);
 
     int alloc = Modes.state_chunk_size;
 
@@ -3228,7 +3243,7 @@ out:
     ;
 }
 
-static int load_aircrafts(char *p, char *end, char *filename, int64_t now, threadpool_buffer_t *passbuffer) {
+static int load_aircrafts(char *p, char *end, char *filename, int64_t now, threadpool_buffer_t *passbuffer, int strideStart, int strideEnd) {
     int count = 0;
     while (end - p > 0) {
         uint64_t value = 0;
@@ -3243,13 +3258,13 @@ static int load_aircrafts(char *p, char *end, char *filename, int64_t now, threa
             }
             break;
         }
-        load_aircraft(&p, end, now, passbuffer);
+        load_aircraft(&p, end, now, passbuffer, strideStart, strideEnd);
         count++;
     }
     return count;
 }
 
-void load_blob(char *blob, threadpool_threadbuffers_t * buffer_group) {
+void load_blob(int blobNumber, char *blob, threadpool_threadbuffers_t * buffer_group) {
     int64_t now = mstime();
     int fd = -1;
     struct char_buffer cb;
@@ -3286,6 +3301,11 @@ void load_blob(char *blob, threadpool_threadbuffers_t * buffer_group) {
     threadpool_buffer_t *pb1 = &buffer_group->buffers[0];
     threadpool_buffer_t *pb2 = &buffer_group->buffers[1];
 
+    int stride = -1;
+    int strideStart = -1;
+    int strideEnd = -1;
+    stride_from_blob(blobNumber, &stride, &strideStart, &strideEnd);
+
     if (zst) {
         while (end - p > 0) {
             if (end - p < 2 * (ssize_t) sizeof(uint32_t)) {
@@ -3316,13 +3336,13 @@ void load_blob(char *blob, threadpool_threadbuffers_t * buffer_group) {
                 goto out;
             }
 
-            if (load_aircrafts(uncompressed, uncompressed + uncompressed_len, filename, now, pb2) < 0) {
+            if (load_aircrafts(uncompressed, uncompressed + uncompressed_len, filename, now, pb2, strideStart, strideEnd) < 0) {
                 goto out;
             }
             p += compressed_len;
         }
     } else {
-        load_aircrafts(p, end, filename, now, pb2);
+        load_aircrafts(p, end, filename, now, pb2, strideStart, strideEnd);
     }
 
 out:
@@ -3335,7 +3355,7 @@ static void load_blobs(void *arg, threadpool_threadbuffers_t * buffer_group) {
     for (int j = info->from; j < info->to; j++) {
         char blob[1024];
         snprintf(blob, 1024, "%s/blob_%02x", Modes.state_dir, j);
-        load_blob(blob, buffer_group);
+        load_blob(j, blob, buffer_group);
     }
 }
 

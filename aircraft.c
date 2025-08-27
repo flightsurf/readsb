@@ -94,7 +94,7 @@ static inline uint32_t dbHash(uint32_t addr) {
     return addrHash(addr, DB_HASH_BITS);
 }
 
-static inline uint32_t aircraftHash(uint32_t addr) {
+uint32_t aircraftHash(uint32_t addr) {
     return addrHash(addr, Modes.acHashBits);
 }
 
@@ -252,6 +252,7 @@ void aircraftZeroTail(struct aircraft *a) {
 struct aircraft *aircraftCreate(uint32_t addr) {
     struct aircraft *a = aircraftGet(addr);
     if (a) {
+        fprintf(stderr, "<3>hex: %06x, aicraftCreate(): returning already existing aircraft\n", addr);
         return a;
     }
     a = allocAircraft();
