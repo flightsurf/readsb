@@ -1050,10 +1050,18 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
         } else {
             a->trace_chunk_len = 0;
         }
-        for (int k = 0; k < a->trace_chunk_len; k++) {
+        // presumed trace_chunk_len, in case we error and call traceCleanup we just pretend there
+        // are no chunks, this leaks some memory and prevents segfaults for badly corrupted state
+        // loading
+        int trace_chunk_len = a->trace_chunk_len;
+        a->trace_chunk_len = 0;
+        for (int k = 0; k < trace_chunk_len; k++) {
             stateChunk *chunk = &a->trace_chunks[k];
             checkSize(sizeof(stateChunk));
             *p += memcpySize(chunk, *p, sizeof(stateChunk));
+
+            chunk->compressed = NULL;
+            a->trace_chunk_len++;
 
             checkSize(chunk->compressed_size);
             chunk->compressed = cmalloc(chunk->compressed_size);
@@ -1066,6 +1074,7 @@ static int load_aircraft(char **p, char *end, int64_t now, threadpool_buffer_t *
             if (chunk->numStates % SFOUR != 0) {
                 fprintf(stderr, "<3> %06x load_aircraft: (chunk->numStates %% SFOUR != 0) ..... this would cause issues, throwing away trace data!\n", a->addr);
                 discard_trace = 1;
+                break;
             }
         }
         resizeTraceCurrent(a, now, 0, 0);
