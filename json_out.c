@@ -644,9 +644,9 @@ char *sprintAircraftObject(char *p, char *end, struct aircraft *a, int64_t now, 
                 if (a->typeLong[0])
                     p = safe_snprintf(p, end, ",\"desc\":\"%.*s\"", (int) sizeof(a->typeLong), a->typeLong);
                 if (a->ownOp[0])
-                    p = safe_snprintf(p, end, ",\n\"ownOp\":\"%.*s\"", (int) sizeof(a->ownOp), a->ownOp);
+                    p = safe_snprintf(p, end, ",\"ownOp\":\"%.*s\"", (int) sizeof(a->ownOp), a->ownOp);
                 if (a->year[0])
-                    p = safe_snprintf(p, end, ",\n\"year\":\"%.*s\"", (int) sizeof(a->year), a->year);
+                    p = safe_snprintf(p, end, ",\"year\":\"%.*s\"", (int) sizeof(a->year), a->year);
             }
         }
 
