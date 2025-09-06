@@ -5066,6 +5066,7 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             c->som = p; // set start of next message
             if (*p != 0x1A) {
                 //fprintf(stderr, "..\n");
+                c->som++;
                 continue;
             }
             p++; // skip 0x1a
@@ -5155,6 +5156,7 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             if (!eom) {
                 if (memchr(p, (char) 0x1A, c->eod - p)) {
                     // malformed message, skip
+                    c->som++;
                     continue;
                 } else {
                     // incomplete message, wait for rest to arrive
@@ -5164,6 +5166,8 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             *eom = '\0';
             p++;
             decodeUatMessage(c, p, 1, now, mb);
+            c->som = eom;
+            continue;
         } else if (ch == 0xec) {
             // 0x1a | 0xec | s/l/u byte (short / long / uplink) | 6 byte MLAT timestamp | rssi byte |  payload
             p++;
