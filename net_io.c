@@ -76,6 +76,7 @@ static int handleBeastCommand(struct client *c, char *p, int remote, int64_t now
 static int decodeBinMessage(struct client *c, char *p, int remote, int64_t now, struct messageBuffer *mb);
 static int processHexMessage(struct client *c, char *hex, int remote, int64_t now, struct messageBuffer *mb);
 static int decodeUatMessage(struct client *c, char *msg, int remote, int64_t now, struct messageBuffer *mb);
+static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_t now, struct messageBuffer *mb);
 static int decodeSbsLine(struct client *c, char *line, int remote, int64_t now, struct messageBuffer *mb);
 static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t now, struct messageBuffer *mb);
 static int decodeSbsLineMlat(struct client *c, char *line, int remote, int64_t now, struct messageBuffer *mb) {
@@ -4486,6 +4487,86 @@ static void replayUatMsg(char *msg, int msgLen) {
     return;
 }
 
+static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_t now, struct messageBuffer *mb) {
+    MODES_NOTUSED(remote);
+    // 0x1a | 0xec | s/l/u byte (short / long / uplink) | 6 byte MLAT timestamp | rssi byte |  payload
+
+    char buf[2048];
+    char *out = buf;
+    char *end = buf + sizeof(buf);
+    char *p = msg;
+
+    int bytes = 0;
+    if (*p == 'u') {
+        bytes = 552;
+        out = safe_snprintf(out, end, "+");
+    } else if (*p == 's') {
+        bytes = 30;
+        out = safe_snprintf(out, end, "-");
+    } else if (*p == 'l') {
+        bytes = 48;
+        out = safe_snprintf(out, end, "-");
+    } else {
+        return 2;
+    }
+    p++;
+
+    if (c->eod - p  < 1 + 6 + 1 + bytes) {
+        // message is guaranteed to be incomplete
+        return 0;
+    }
+
+    int64_t timestamp = 0;
+    // Grab the timestamp (big endian format)
+    for (int j = 0; j < 6; j++) {
+        if (*p == 0x1a) {
+            p++;
+            if (*p != 0x1a) {
+                // invalid message
+                return -1;
+            }
+        }
+        timestamp = timestamp << 8 | (((unsigned char) *p) & 255);
+    }
+
+    double signalLevel = ((unsigned char) *p / 255.0);
+    signalLevel = signalLevel * signalLevel;
+    p++;
+
+    int processedBytes = 0;
+
+    for (int j = 0; j < bytes; j++) {
+        if (p >= c->eod) {
+            // incomplete message
+            return 0;
+        }
+        if (*p == 0x1a) {
+            p++;
+            if (p >= c->eod) {
+                // incomplete message
+                return 0;
+            }
+            if (*p != 0x1a) {
+                // invalid message
+                return -1;
+            }
+        }
+        printHexDigit(out, *p);
+        out += 2;
+        p++;
+        processedBytes++;
+    }
+
+    out = safe_snprintf(out, end, ";");
+
+    if (signalLevel > 1.125e-5) {
+        out = safe_snprintf(out, end, "rssi=%.1f;", 10.0f * log10f(signalLevel));
+    }
+
+    decodeUatMessage(c, buf, 1, now, mb);
+
+    return (p - msg);
+}
 
 static int decodeUatMessage(struct client *c, char *msg, int remote, int64_t now, struct messageBuffer *mb) {
     MODES_NOTUSED(remote);
@@ -5083,6 +5164,27 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             *eom = '\0';
             p++;
             decodeUatMessage(c, p, 1, now, mb);
+        } else if (ch == 0xec) {
+            // 0x1a | 0xec | s/l/u byte (short / long / uplink) | 6 byte MLAT timestamp | rssi byte |  payload
+            p++;
+            if (*p == 's' || *p == 'l' || *p == 'u') {
+                int res = decodeEncapsulatedUAT(c, p, 1, now, mb);
+                if (res == 0) {
+                    // return of 0 means the message was incomplete, wait for rest to arrive
+                    break;
+                } else if (res == -1) {
+                    // message was malformed
+                    c->som++;
+                    continue;
+                } else {
+                    c->som = p + res;
+                    continue;
+                }
+            } else {
+                // malformed message, skip
+                c->som++;
+                continue;
+            }
         } else if (ch == 0xe4) {
             p++;
             if (c->eod - p < 36) {
