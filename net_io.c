@@ -4492,7 +4492,7 @@ static int decodeUatMessage(struct client *c, char *msg, int remote, int64_t now
 
     int msgLen = strlen(msg);
     char *end = msg + msgLen;
-    char output[512];
+    char output[8192];
 
     replayUatMsg(msg, msgLen);
 
