@@ -639,19 +639,21 @@ double greatcircle(double lat0, double lon0, double lat1, double lon1, int appro
         // float ec = 40075016; // equatorial circumerence
         // float mc = 4 * 10001965; // meridial circumference
 
+        float er = 6378.1370e3f; // equatorial radius
+        float mr = 6356.7523e3f; // polar / meridial radius
 
-        // to have consistency to other calculations, use a circular earth
         /*
-        float ec = 2 * M_PI * 6371e3; // equatorial circumference
-        float mc = 2 * M_PI * 6371e3; // meridial circumference
+        float ec = 2 * M_PI * er; // equatorial circumference
+        float mc = 2 * M_PI * mr; // meridial circumference
         float dmer = (float) dlat / (2 * M_PI) * mc;
         float dequ = (float) dlon / (2 * M_PI) * ec * cosf(avglat);
         */
         // eliminate 2 * M_PI
 
+
         float avglat = (float) lat0 + ((float) lat1 - (float) lat0) * 0.5f;
-        float dmer = (float) dlat * 6371e3f;
-        float dequ = (float) dlon * 6371e3f * cosf(avglat);
+        float dmer = (float) dlat * er;
+        float dequ = (float) dlon * mr * cosf(avglat);
         float pyth = sqrtf(dmer * dmer + dequ * dequ);
 
         if (!approx && CHECK_APPROXIMATIONS) {
