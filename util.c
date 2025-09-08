@@ -711,8 +711,8 @@ double bearing(double lat0, double lon0, double lat1, double lon1) {
         double res2 = (atan2(y, x) * (180 / M_PI) + 360);
         double diff = fabs(res2 - res);
         double dist = greatcircle(toDeg(lat0), toDeg(lon0), toDeg(lat1), toDeg(lon1), 1);
-        if ((diff > 0.2 && dist > 150) || diff > 2) {
-            fprintf(stderr, "errorDeg: %.2f %.2f %.2f dist: %.2f km\n",
+        if ((diff > 0.3 && dist > 150) || (diff > 2 && dist > 10)) {
+            fprintf(stderr, "errorDeg: %.2f %.2f %.2f dist: %.3f km\n",
                     diff, res, res2, dist / 1000.0);
         }
     }
