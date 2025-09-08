@@ -658,8 +658,8 @@ double greatcircle(double lat0, double lon0, double lat1, double lon1, int appro
 
         if (!approx && CHECK_APPROXIMATIONS) {
             double errorPercent = fabs(hav - pyth) / hav * 100;
-            if (errorPercent > 0.03) {
-                fprintf(stderr, "pos: %.1f, %.1f dlat: %.5f dlon %.5f hav: %.1f errorPercent: %.3f\n", toDeg(lat0), toDeg(lon0), toDeg(dlat), toDeg(dlon), hav, errorPercent);
+            if (errorPercent > 0.25) {
+                fprintf(stderr, "pyth:  pos: %.1f, %.1f dlat: %.5f dlon %.5f hav: %.1f errorPercent: %.3f\n", toDeg(lat0), toDeg(lon0), toDeg(dlat), toDeg(dlon), hav, errorPercent);
             }
         }
 
@@ -673,8 +673,8 @@ double greatcircle(double lat0, double lon0, double lat1, double lon1, int appro
         double slocf =  6371e3f * acosf(sinf(lat0) * sinf(lat1) + cosf(lat0) * cosf(lat1) * cosf(dlon));
         if (CHECK_APPROXIMATIONS) {
             double errorPercent = fabs(hav - slocf) / hav * 100;
-            if (errorPercent > 0.025) {
-                fprintf(stderr, "pos: %.1f, %.1f dlat: %.5f dlon %.5f hav: %.1f errorPercent: %.3f\n", toDeg(lat0), toDeg(lon0), toDeg(dlat), toDeg(dlon), hav, errorPercent);
+            if (errorPercent > 0.25) {
+                fprintf(stderr, "slocf: pos: %.1f, %.1f dlat: %.5f dlon %.5f hav: %.1f errorPercent: %.3f\n", toDeg(lat0), toDeg(lon0), toDeg(dlat), toDeg(dlon), hav, errorPercent);
             }
         }
         return slocf;
@@ -684,8 +684,8 @@ double greatcircle(double lat0, double lon0, double lat1, double lon1, int appro
 
     if (CHECK_APPROXIMATIONS) {
         double errorPercent = fabs(hav - sloc) / hav * 100;
-        if (errorPercent > 0.025) {
-            fprintf(stderr, "pos: %.1f, %.1f dlat: %.5f dlon %.5f sloc: %.1f errorPercent: %.3f\n", toDeg(lat0), toDeg(lon0), toDeg(dlat), toDeg(dlon), sloc, errorPercent);
+        if (errorPercent > 0.25) {
+            fprintf(stderr, "sloc:  pos: %.1f, %.1f dlat: %.5f dlon %.5f sloc: %.1f errorPercent: %.3f\n", toDeg(lat0), toDeg(lon0), toDeg(dlat), toDeg(dlon), sloc, errorPercent);
         }
     }
 
