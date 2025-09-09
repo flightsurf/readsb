@@ -489,7 +489,7 @@ static void writeRecent(struct aircraft *a, traceBuffer tb, threadpool_buffer_t 
     atomic_fetch_add(&Modes.recentTraceWrites, 1);
 
     // prepare the data for the trace_recent file in /run
-    recent = generateTraceJson(a, tb, -2, -2, generate_buffer, 0, -1);
+    recent = generateTraceJson(a, tb, WRECENT, -2, -2, generate_buffer, 0, -1);
 
     //if (Modes.debug_traceCount && ++count2 % 1000 == 0)
     //    fprintf(stderr, "recent trace write: %u\n", count2);
@@ -535,7 +535,7 @@ static int writeFull(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *ge
     // statistics
     atomic_fetch_add(&Modes.fullTraceWrites, 1);
 
-    full = generateTraceJson(a, tb, startFull, -1, generate_buffer, 0, -1);
+    full = generateTraceJson(a, tb, WMEM, startFull, -1, generate_buffer, 0, -1);
 
     if (full.len > 0) {
         char filename[TRACE_PMAX];
@@ -611,6 +611,12 @@ static int writePerm(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *ge
     struct state *endState = getState(tb.trace, end);
     endStamp = endState->timestamp;
 
+    if (0) {
+        fprintf(stderr, "%06x ", a->addr);
+        fprintTime(stderr, startState->timestamp);
+        fprintTime(stderr, endState->timestamp);
+    }
+
     // only write permanent trace if we haven't already written up to the last timestamp
     if (a->trace_perm_last_timestamp == endStamp) {
         goto perm_done;
@@ -646,7 +652,7 @@ static int writePerm(struct aircraft *a, traceBuffer tb, threadpool_buffer_t *ge
     // statistics
     atomic_fetch_add(&Modes.permTraceWrites, 1);
 
-    hist = generateTraceJson(a, tb, start, end, generate_buffer, start_of_day, end_of_day);
+    hist = generateTraceJson(a, tb, WPERM, start, end, generate_buffer, start_of_day, end_of_day);
     if (hist.len > 0) {
         permWritten = 1;
         char tstring[100];

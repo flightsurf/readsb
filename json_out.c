@@ -1725,14 +1725,17 @@ static void checkTraceCache(struct aircraft *a, traceBuffer tb, int64_t now) {
     }
 }
 
-struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int start, int last, threadpool_buffer_t *buffer, int64_t referenceTs, int64_t endStamp) {
+struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int type, int start, int last, threadpool_buffer_t *buffer, int64_t referenceTs, int64_t endStamp) {
     struct char_buffer cb = { 0 };
     if (!Modes.writeTraces) {
         fprintf(stderr, "generateTraceJson called when Modes.writeTraces not set, this is a bug, please report with configuration!\n");
     }
     int64_t now = mstime();
 
-    int recent = (last == -2) ? 1 : 0;
+    int recent = (type == WRECENT);
+    //int full = (type == WMEM);
+    int perm = (type == WPERM);
+
     if (last < 0) {
         last = tb.len - 1;
     }
@@ -1749,30 +1752,30 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
 
     char *buf = check_grow_threadpool_buffer_t(buffer, alloc);
     char *p = buf;
-    char *end = buf + alloc;
+    char *bufEnd = buf + alloc;
 
-    p = safe_snprintf(p, end, "{\"icao\":\"%s%06x\"", (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
+    p = safe_snprintf(p, bufEnd, "{\"icao\":\"%s%06x\"", (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : "", a->addr & 0xFFFFFF);
 
     if (Modes.db) {
         char *regInfo = p;
         if (a->registration[0]) {
-            p = safe_snprintf(p, end, ",\n\"r\":\"%.*s\"", (int) sizeof(a->registration), a->registration);
+            p = safe_snprintf(p, bufEnd, ",\n\"r\":\"%.*s\"", (int) sizeof(a->registration), a->registration);
         }
         if (a->typeCode[0]) {
-            p = safe_snprintf(p, end, ",\n\"t\":\"%.*s\"", (int) sizeof(a->typeCode), a->typeCode);
+            p = safe_snprintf(p, bufEnd, ",\n\"t\":\"%.*s\"", (int) sizeof(a->typeCode), a->typeCode);
         }
         if (a->typeCode[0] || a->registration[0] || a->dbFlags) {
-            p = safe_snprintf(p, end, ",\n\"dbFlags\":%u", a->dbFlags);
+            p = safe_snprintf(p, bufEnd, ",\n\"dbFlags\":%u", a->dbFlags);
         }
 
         if (a->typeLong[0])
-            p = safe_snprintf(p, end, ",\"desc\":\"%.*s\"", (int) sizeof(a->typeLong), a->typeLong);
+            p = safe_snprintf(p, bufEnd, ",\"desc\":\"%.*s\"", (int) sizeof(a->typeLong), a->typeLong);
         if (a->ownOp[0])
-            p = safe_snprintf(p, end, ",\n\"ownOp\":\"%.*s\"", (int) sizeof(a->ownOp), a->ownOp);
+            p = safe_snprintf(p, bufEnd, ",\n\"ownOp\":\"%.*s\"", (int) sizeof(a->ownOp), a->ownOp);
         if (a->year[0])
-            p = safe_snprintf(p, end, ",\n\"year\":\"%.*s\"", (int) sizeof(a->year), a->year);
+            p = safe_snprintf(p, bufEnd, ",\n\"year\":\"%.*s\"", (int) sizeof(a->year), a->year);
         if (p == regInfo)
-            p = safe_snprintf(p, end, ",\n\"noRegData\":true");
+            p = safe_snprintf(p, bufEnd, ",\n\"noRegData\":true");
     }
 
     int64_t firstStamp = 0;
@@ -1781,7 +1784,10 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
         if (!referenceTs || firstStamp < referenceTs) {
             referenceTs = firstStamp;
         }
+    } else if (tb.len > 0) {
+        referenceTs = getState(tb.trace, 0)->timestamp;
     } else {
+        // this shouldn't happen
         referenceTs = now;
     }
 
@@ -1799,11 +1805,11 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
         }
     }
 
-    p = safe_snprintf(p, end, ",\n\"version\": \"readsb "READSB_SHORT_VERSION" "READSB_SHORT_COMMIT"\"");
+    p = safe_snprintf(p, bufEnd, ",\n\"version\": \"readsb "READSB_SHORT_VERSION" "READSB_SHORT_COMMIT"\"");
 
-    p = safe_snprintf(p, end, ",\n\"timestamp\": %.3f", referenceTs / 1000.0);
+    p = safe_snprintf(p, bufEnd, ",\n\"timestamp\": %.3f", referenceTs / 1000.0);
 
-    p = safe_snprintf(p, end, ",\n\"trace\":[ ");
+    p = safe_snprintf(p, bufEnd, ",\n\"trace\":[ ");
 
     if (start >= 0) {
         if (tCache) {
@@ -1838,20 +1844,26 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
                 if (useLast && state->timestamp >= traceLastStart) {
                     break;
                 }
-                p = sprintTracePoint(p, end, state, state_all, referenceTs, now, a);
+                if (perm && state->timestamp < referenceTs) {
+                    fprintf(stderr, "%06x somehow included data from previous day in persistent trace\n", a->addr);
+                }
+                p = sprintTracePoint(p, bufEnd, state, state_all, referenceTs, now, a);
             }
             if (useLast) {
-                int i = a->traceLastNext;
                 for (int k = 0; k < Modes.traceLastMax; k++) {
+                    int i = (a->traceLastNext + k) % Modes.traceLastMax;
                     struct state *state = getState(a->traceLast, i);
+                    // don't print data for previous day
+                    if (perm && state->timestamp < referenceTs) {
+                        continue;
+                    }
                     // don't go past end of timeframe if specified
                     if (endStamp > 0 && state->timestamp > endStamp) {
                         //fprintf(stderr, "%06x traceLast limiting to %d points due to last / timeframe\n", a->addr, k);
                         break;
                     }
                     struct state_all *state_all = getStateAll(a->traceLast, i);
-                    p = sprintTracePoint(p, end, state, state_all, referenceTs, now, a);
-                    i = (i + 1) % Modes.traceLastMax;
+                    p = sprintTracePoint(p, bufEnd, state, state_all, referenceTs, now, a);
                 }
             }
         }
@@ -1861,14 +1873,14 @@ struct char_buffer generateTraceJson(struct aircraft *a, traceBuffer tb, int sta
         }
     }
 
-    p = safe_snprintf(p, end, " ]\n");
+    p = safe_snprintf(p, bufEnd, " ]\n");
 
-    p = safe_snprintf(p, end, " }\n");
+    p = safe_snprintf(p, bufEnd, " }\n");
 
     cb.len = p - buf;
     cb.buffer = buf;
 
-    if (p >= end) {
+    if (p >= bufEnd) {
         fprintf(stderr, "buffer overrun trace json %zu %zu\n", cb.len, alloc);
     }
 
