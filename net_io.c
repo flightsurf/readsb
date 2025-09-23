@@ -4529,7 +4529,9 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
         timestamp = timestamp << 8 | (((unsigned char) *p) & 255);
     }
 
+
     double signalLevel = ((unsigned char) *p / 255.0);
+    //fprintf(stderr, "level: %d %f\n", (unsigned char) *p, signalLevel);
     signalLevel = signalLevel * signalLevel;
     p++;
 
@@ -4563,6 +4565,7 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
         out = safe_snprintf(out, end, "rssi=%.1f;", 10.0f * log10f(signalLevel));
     }
 
+    //fprintf(stderr, "passing to decodeUatMessage: %s\n", buf);
     decodeUatMessage(c, buf, 1, now, mb);
 
     return (p - msg);
@@ -4583,11 +4586,14 @@ static int decodeUatMessage(struct client *c, char *msg, int remote, int64_t now
     char *eod = som + strlen(som);
     char *p;
 
+    //fprintf(stderr, "START:\n%sEND\n", som);
+
     while (((p = memchr(som, '\n', eod - som)) != NULL)) {
         *p = '\0';
 
         struct modesMessage *mm = netGetMM(mb);
 
+        //fprintf(stderr, "AVR:%s\n", som);
         int success = decodeHexMessage(c, som, now, mm);
 
         if (success) {
@@ -4602,6 +4608,7 @@ static int decodeUatMessage(struct client *c, char *msg, int remote, int64_t now
                 return 0;
             }
             netUseMessage(mm);
+            //displayModesMessage(mm);
         }
         som = p + 1;
     }
@@ -5172,6 +5179,22 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
             // 0x1a | 0xec | s/l/u byte (short / long / uplink) | 6 byte MLAT timestamp | rssi byte |  payload
             p++;
             if (*p == 's' || *p == 'l' || *p == 'u') {
+
+                if (0 && *p != 'u') {
+                    char sample[512];
+                    int len = (*p == 's') ? 30 : 48;
+                    len += 3 + 6 + 1 + 2;
+
+                    if (len > c->eod - c->som) {
+                        len = c->eod - c->som;
+                    }
+                    fprintf(stderr, "len: %d\n", len);
+
+                    hexDumpString(c->som, len, sample, sizeof(sample));
+                    sample[sizeof(sample) - 1] = '\0';
+                    fprintf(stderr, "Binary message: %s\n", sample);
+                }
+
                 int res = decodeEncapsulatedUAT(c, p, 1, now, mb);
                 if (res == 0) {
                     // return of 0 means the message was incomplete, wait for rest to arrive
@@ -5181,6 +5204,7 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
                     c->som++;
                     continue;
                 } else {
+                    // message good, advance by message length as returned by function
                     c->som = p + res;
                     continue;
                 }
