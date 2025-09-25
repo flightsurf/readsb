@@ -4527,6 +4527,7 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
             }
         }
         timestamp = timestamp << 8 | (((unsigned char) *p) & 255);
+        p++;
     }
 
 
