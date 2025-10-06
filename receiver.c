@@ -144,6 +144,7 @@ void receiverCleanup() {
 }
 int receiverPositionReceived(struct aircraft *a, struct modesMessage *mm, double lat, double lon, int64_t now) {
     uint64_t id = mm->receiverId;
+    //fprintf(stderr, "position received receiverId: %lu\n", id);
     if (id == 0 || lat > 85.0 || lat < -85.0 || lon < -179.9 || lon > 179.9) {
         return RECEIVER_RANGE_UNCLEAR;
     }
@@ -156,6 +157,7 @@ int receiverPositionReceived(struct aircraft *a, struct modesMessage *mm, double
     int noModifyReceiver = (mm->source != SOURCE_ADSB || mm->cpr_type == CPR_SURFACE
             || a->pos_reliable_odd < reliabilityRequired || a->pos_reliable_even < reliabilityRequired);
 
+    //noModifyReceiver = 0;
     struct receiver *r = receiverGet(id);
 
     if (!r || r->positionCounter == 0) {
@@ -182,6 +184,15 @@ int receiverPositionReceived(struct aircraft *a, struct modesMessage *mm, double
 
     double distance = greatcircle(rlat, rlon, lat, lon, 1);
 
+    if (fabs(rlon - lon) > 240) {
+        // assume this is crossing the date line
+        if (lon > 0) {
+            lon -= 360;
+        } else {
+            lon += 360;
+        }
+    }
+
     if (!noModifyReceiver) {
         if (distance < RECEIVER_MAX_RANGE) {
             r->lonMin = fmin(r->lonMin, lon);
@@ -195,7 +206,7 @@ int receiverPositionReceived(struct aircraft *a, struct modesMessage *mm, double
                     || before.lonMin != r->lonMin
                     || before.lonMax != r->lonMax
                ) {
-                //receiverDebugPrint(r, "growingExtent");
+                receiverDebugPrint(r, "growingExtent");
             }
             r->goodCounter++;
             r->badCounter = fmax(0, r->badCounter - 0.5);
