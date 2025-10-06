@@ -341,6 +341,14 @@ typedef enum {
 
 #define GARBAGE_THRESHOLD (512)
 
+#ifdef PRINT_UUIDS
+#define WITH_UUIDS
+#endif
+
+#ifndef RECENT_RECEIVER_IDS
+#define RECENT_RECEIVER_IDS (32)
+#endif
+
 /* A timestamp that indicates the data is synthetic, created from a
  * multilateration result
  */

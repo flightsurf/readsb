@@ -1073,7 +1073,7 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
         mm->client->positionCounter++;
     }
 
-#if defined(PRINT_UUIDS)
+#if defined(WITH_UUIDS)
     {
         int64_t oldestTime = now;
         int64_t overwriteOlder = now - 60 * SECONDS;

@@ -83,10 +83,6 @@ int nogps(int64_t now, struct aircraft *a);
 
 #define RECEIVERIDBUFFER (12)
 
-#ifndef RECENT_RECEIVER_IDS
-#define RECENT_RECEIVER_IDS (32)
-#endif
-
 typedef struct
 {
     uint64_t id;
@@ -594,7 +590,7 @@ struct aircraft
   uint16_t messageRateAcc[MESSAGE_RATE_CALC_POINTS];
   int64_t nextMessageRateCalc;
 
-#if defined(PRINT_UUIDS)
+#if defined(WITH_UUIDS)
   int recentReceiverIdsNext;
   idTime recentReceiverIds[RECENT_RECEIVER_IDS];
 #endif

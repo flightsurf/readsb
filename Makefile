@@ -8,7 +8,17 @@ PLUTOSDR ?= no
 SOAPYSDR ?= no
 AGGRESSIVE ?= no
 HAVE_BIASTEE ?= no
+# TRACKS_UUID saves the uuid for each position to historic / current traces (often multiple uuids will send the
+# same position, in this case the first uuid to contribute the position will be noted as only one
+# uuid is saved)
+# this will invalidate your persistent state so changing this option will mean you lose up to 24h of historic
+# traces
 TRACKS_UUID ?= no
+# WITH_UUIDS saves the last up to RECENT_RECEICER_IDS (default 32) with each aircraft
+# this increase memory usage a bit but allows filtering the API by uuid (&filter_uuid)
+WITH_UUIDS ?= no
+# PRINT_UUIDS implies WITH_UUIDS and also prints all uuids an aircraft is heard from into
+# aircraft.json and other json output
 PRINT_UUIDS ?= no
 
 DIALECT = -std=c11
@@ -95,6 +105,14 @@ endif
 
 ifeq ($(TRACKS_UUID), yes)
     CFLAGS += -DTRACKS_UUID
+endif
+
+ifeq ($(WITH_UUIDS), yes)
+    CFLAGS += -DWITH_UUIDS
+endif
+
+ifneq ($(RECENT_RECEIVER_IDS),)
+    CFLAGS += -DRECENT_RECEIVER_IDS=$(RECENT_RECEIVER_IDS)
 endif
 
 ifeq ($(PRINT_UUIDS), yes)
