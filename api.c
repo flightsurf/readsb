@@ -111,6 +111,28 @@ static struct range findLonRange(int32_t ref_from, int32_t ref_to, struct apiEnt
     return res;
 }
 
+
+#if defined(WITH_UUIDS)
+static int filter_uuid(struct apiEntry *haystack, int haylen, struct apiEntry *matches, size_t *alloc, struct apiOptions *options) {
+    int count = 0;
+    for (int i = 0; i < haylen; i++) {
+        struct apiEntry *e = &haystack[i];
+
+        uint64_t filter_uuid = options->filter_uuid;
+        int match = 0;
+        for (int i = 0; i < RECENT_RECEIVER_IDS; i++) {
+            match += (e->recentReceiverIds[i] == filter_uuid);
+        }
+
+        if (match) {
+            matches[count++] = *e;
+            *alloc += e->jsonOffset.len;
+        }
+    }
+    return count;
+}
+#endif
+
 static int filter_alt_baro(struct apiEntry *haystack, int haylen, struct apiEntry *matches, size_t *alloc, struct apiOptions *options) {
     int count = 0;
     float reverse_alt_factor = 1.0f / BINCRAFT_ALT_FACTOR;
@@ -575,6 +597,16 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
 
         if (doFree) { sfree(matches); }; doFree = 1; matches = filtered;
     }
+#if defined(WITH_UUIDS)
+    if (options->filter_uuid) {
+        struct apiEntry *filtered = apiAlloc(count); if (!filtered) { return cb; }
+
+        size_t alloc = alloc_base;
+        count = filter_uuid(matches, count, filtered, &alloc, options);
+
+        if (doFree) { sfree(matches); }; doFree = 1; matches = filtered;
+    }
+#endif
     if (options->filter_alt_baro) {
         struct apiEntry *filtered = apiAlloc(count); if (!filtered) { return cb; }
 
@@ -801,6 +833,12 @@ static inline int apiAdd(struct apiBuffer *buffer, struct aircraft *a, int64_t n
     memset(entry, 0, sizeof(struct apiEntry));
 
     toBinCraft(a, &entry->bin, now);
+
+#if defined(WITH_UUIDS)
+    for (int i = 0; i < RECENT_RECEIVER_IDS; i++) {
+        entry->recentReceiverIds[i] = a->recentReceiverIds[i].id;
+    }
+#endif
 
     if (trackDataValid(&a->pos_reliable_valid)) {
         // position valid
@@ -1108,6 +1146,36 @@ static void send500(int fd, int keepalive) {
     sendStatus(fd, keepalive, "500 Internal Server Error");
 }
 
+static uint64_t parseHalfUUID(char *in) {
+    uint64_t receiverId = 0;
+    int j = 0;
+    char *p = in;
+    while(j < 16) {
+        unsigned char ch = *p;
+        if (ch) {
+            p++;
+        }
+
+        unsigned char x = 0xff;
+
+        if (ch <= 'f' && ch >= 'a') {
+            x = ch - 'a' + 10;
+        } else if (ch <= '9' && ch >= '0') {
+            x = ch - '0';
+        } else if (ch <= 'F' && ch >= 'A') {
+            x = ch - 'A' + 10;
+        } else if (ch == 0) {
+            // zero fill
+            x = 0;
+        } else {
+            continue;
+        }
+
+        receiverId = receiverId << 4 | x; // set 4 bits and shift them up
+        j++;
+    }
+    return receiverId;
+}
 
 static int parseDoubles(char *start, char *end, double *results, int max) {
     int count = 0;
@@ -1325,6 +1393,13 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                 memset(options->callsign_prefix, 0x0, sizeof(options->callsign_prefix));
                 strncpy(options->callsign_prefix, value, memberSize(struct binCraft, callsign));
 
+            } else if (byteMatchStrict(option, "filter_uuid")) {
+                options->filter_uuid = parseHalfUUID(value);
+                /*
+                char uuid[32];
+                sprint_uuid1(options->filter_uuid, uuid);
+                fprintf(stderr, "requested uuid filter with value %s parsed to %lx %s\n", value, options->filter_uuid, uuid);
+                */
             } else if (byteMatchStrict(option, "above_alt_baro")) {
                 options->filter_alt_baro = 1;
                 options->above_alt_baro = strtol(value, NULL, 10);

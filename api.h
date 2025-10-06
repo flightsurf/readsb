@@ -59,6 +59,7 @@ struct apiOptions {
     int filter_ladd;
     int filter_with_pos;
     int filter_callsign_exact;
+    uint64_t filter_uuid;
     char callsign_exact[9];
     int filter_callsign_prefix;
     char callsign_prefix[9];
@@ -92,6 +93,10 @@ struct apiEntry {
     float distance;
     float direction;
     int32_t globe_index;
+
+#if defined(WITH_UUIDS)
+    uint64_t recentReceiverIds[RECENT_RECEIVER_IDS];
+#endif
 };
 
 struct range {

@@ -187,6 +187,11 @@ The keys are:
   these three filter options can be combined in any combination and will be connected by an OR
   in contrast, when combining other filters they restrict an already filtered result
 
+  Filter by receiver uuid (only first half of UUID is used / required; requires compile option make WITH_UUIDS=yes)
+  ```
+  &filter_uuid=<uuid>
+  ```
+
 
   ```
   &jv2
