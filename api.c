@@ -835,8 +835,10 @@ static inline int apiAdd(struct apiBuffer *buffer, struct aircraft *a, int64_t n
     toBinCraft(a, &entry->bin, now);
 
 #if defined(WITH_UUIDS)
+    // only include receivers if they have received the plane within the update interval
+    int64_t printNewer = now - Modes.json_interval;
     for (int i = 0; i < RECENT_RECEIVER_IDS; i++) {
-        entry->recentReceiverIds[i] = a->recentReceiverIds[i].id;
+        entry->recentReceiverIds[i] = (a->recentReceiverIds[i].time > printNewer) ? a->recentReceiverIds[i].id : 0;
     }
 #endif
 
