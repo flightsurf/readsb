@@ -1638,6 +1638,7 @@ static void flushWrites(struct net_writer *writer) {
                 }
             }
             if (c->dropHalfUntil > now) {
+                // we toggle the dropping each packet, so half the packets are dropped
                 c->dropHalfDrop = !c->dropHalfDrop;
             }
             // Try flushing...
