@@ -402,12 +402,13 @@ General options:
   --heatmap=<interval in seconds>                                Make Heatmap, each aircraft at most every interval seconds (creates historydir/heatmap.bin and exit after that)
   --dump-beast=<dir>,<interval>,<compressionLevel>               Dump compressed beast files to this directory, start a new file evey interval seconds
   --write-json-every=<sec>                                       Write json output and update API json every sec seconds (default 1)
-  --json-location-accuracy=<n>                                   Accuracy of receiver location in json metadata: 0=no location, 1=approximate, 2=exact
+  --json-location-accuracy=<n>                                   Accuracy of receiver location: 0: no location / internal use only, 1: 2 decimals, 2: exact (default), 3: 1 decimals, 4: 0 decimals
   --ac-hash-bits=<n>                                             Main hash map size: 2^n entries (default: AIRCRAFT_HASH_BITS)
   --write-json-globe-index                                       Write specially indexed globe_xxxx.json files (for tar1090)
   --write-receiver-id-json                                       Write receivers.json
   --json-trace-interval=<seconds>                                Interval after which a new position will guaranteed to be written to the trace and the json position output (default: 30)
   --json-trace-hist-only=1,2,3,8                                 Don't write recent(1), full(2), either(3) traces to /run, only archive via write-globe-history (8: irregularly write limited traces to run, subject to change)
+  --full-trace-dir=<dir>                                         when using globe-index, write full traces to this directory instead of --write-json dir (typically /run/readsb), this can be used to reduce memory usage at the cost of roughly 100 IOPS for global traffic
   --write-json-gzip                                              Write aircraft.json also as aircraft.json.gz
   --write-json-binCraft-only=<n>                                 Use only binary binCraft format for globe files (1), for aircraft.json as well (2)
   --write-binCraft-old                                           write old gzipped binCraft files
@@ -419,32 +420,32 @@ General options:
   --db-file-lt                                                   aircraft.json: add long type as field desc, add field ownOp for the owner, add field year
 
 Network options:
-  --net-connector=<ip,port,protocol>                             Establish connection, can be specified multiple times (e.g. 127.0.0.1,23004,beast_out) Protocols: beast_out, beast_in, raw_out, raw_in, sbs_in, sbs_in_jaero, sbs_out, sbs_out_jaero, vrs_out, json_out, gpsd_in, uat_in, uat_replay_out, planefinder_in, asterix_in, asterix_out (one failover ip/address,port can be specified: primary-address,primary-port,protocol,failover-address,failover-port) (any position in the comma separated list can also be either silent_fail or uuid=<uuid>)
+  --net-connector=<IP,PORT,PROTOCOL>                             connect as TCP client to listen port / TCP server at IP and PORT, can be specified multiple times (e.g. 127.0.0.1,23004,beast_out) Protocols: beast_out, beast_in, raw_out, raw_in, sbs_in, sbs_in_jaero, sbs_out, sbs_out_jaero, vrs_out, json_out, gpsd_in, uat_in, uat_replay_out, planefinder_in, asterix_in, asterix_out (one failover ip/address,port can be specified: primary-address,primary-port,protocol,failover-address,failover-port) (any position in the comma separated list can also be either silent_fail or uuid=<uuid>)
   --net                                                          Enable networking
   --net-only                                                     Legacy Option, Enable networking, use --net instead
   --net-bind-address=<ip>                                        IP address to bind to (default: Any; Use 127.0.0.1 for private)
-  --net-bo-port=<ports>                                          TCP Beast output listen ports (default: 0)
-  --net-bi-port=<ports>                                          TCP Beast input listen ports  (default: 0)
-  --net-ro-port=<ports>                                          TCP raw output listen ports (default: 0)
-  --net-ri-port=<ports>                                          TCP raw input listen ports  (default: 0)
-  --net-uat-replay-port=<ports>                                  UAT replay output listen ports (default: 0)
-  --net-uat-in-port=<ports>                                      UAT input listen ports (default: 0)
-  --net-sbs-port=<ports>                                         TCP BaseStation output listen ports (default: 0)
-  --net-sbs-in-port=<ports>                                      TCP BaseStation input listen ports (default: 0)
-  --net-sbs-jaero-port=<ports>                                   TCP SBS Jaero output listen ports (default: 0)
-  --net-sbs-jaero-in-port=<ports>                                TCP SBS Jaero input listen ports (default: 0)
-  --net-asterix-out-port=<ports>                                 TCP Asterix output listen ports (default: 0)
-  --net-asterix-in-port=<ports>                                  TCP Asterix input listen ports (default: 0)
+  --net-bo-port=<ports>                                          TCP Beast output listen ports / TCP server(default: 0)
+  --net-bi-port=<ports>                                          TCP Beast input listen port / TCP server (default: 0)
+  --net-ro-port=<ports>                                          TCP raw output listen port / TCP server (default: 0)
+  --net-ri-port=<ports>                                          TCP raw input listen port / TCP server  (default: 0)
+  --net-uat-replay-port=<ports>                                  UAT replay output listen port / TCP server (default: 0)
+  --net-uat-in-port=<ports>                                      UAT input listen port / TCP server (default: 0)
+  --net-sbs-port=<ports>                                         TCP BaseStation output listen port / TCP server (default: 0)
+  --net-sbs-in-port=<ports>                                      TCP BaseStation input listen port / TCP server (default: 0)
+  --net-sbs-jaero-port=<ports>                                   TCP SBS Jaero output listen port / TCP server (default: 0)
+  --net-sbs-jaero-in-port=<ports>                                TCP SBS Jaero input listen port / TCP server (default: 0)
+  --net-asterix-out-port=<ports>                                 TCP Asterix output listen port / TCP server (default: 0)
+  --net-asterix-in-port=<ports>                                  TCP Asterix input listen port / TCP server (default: 0)
   --net-asterix-reduce                                           Apply beast reduce logic and interval to ASTERIX outputs
-  --net-vrs-port=<ports>                                         TCP VRS json output listen ports (default: 0)
+  --net-vrs-port=<ports>                                         TCP VRS json output listen port / TCP server (default: 0)
   --net-vrs-interval=<seconds>                                   TCP VRS json output interval (default: 5.0)
-  --net-json-port=<ports>                                        TCP json position output listen ports, sends one line with a json object containing aircraft details for every position received (default: 0) (consider raising --net-ro-size to 8192 for less fragmentation if this is a concern)
+  --net-json-port=<ports>                                        TCP json position output listen port / TCP server, sends one line with a json object containing aircraft details for every position received (default: 0) (consider raising --net-ro-size to 8192 for less fragmentation if this is a concern)
   --net-json-port-interval=<seconds>                             Set minimum interval between outputs per aircraft for TCP json output, default: 0.0 (every position)
   --net-json-port-include-noposition                             TCP json position output: include aircraft without position (state is sent for aircraft for every DF11 with CRC if the aircraft hasn't sent a position in the last 10 seconds and interval allowing)
-  --net-api-port=<port>                                          TCP API listen port (in contrast to other listeners, only a single port is allowed) (update frequency controlled by write-json-every parameter) (default: 0)
+  --net-api-port=<port>                                          http API listen port (in contrast to other listeners, only a single port is allowed) (update frequency controlled by write-json-every parameter) (default: 0)
   --api-shutdown-delay=<seconds>                                 Shutdown delay to server remaining API queries, new queries get a 503 response (default: 0)
   --tar1090-use-api                                              when running with globe-index, signal tar1090 use the readsb API to get data, requires webserver mapping of /tar1090/re-api to proxy_pass the requests to the --net-api-port, see nginx-readsb-api.conf in the tar1090 repository for details
-  --net-beast-reduce-out-port=<ports>                            TCP BeastReduce output listen ports (default: 0)
+  --net-beast-reduce-out-port=<ports>                            TCP BeastReduce output listen port / TCP server (default: 0)
   --net-beast-reduce-interval=<seconds>                          BeastReduce data update interval, longer means less data (default: 0.250, valid range: 0.000 - 14.999)
   --net-beast-reduce-optimize-for-mlat                           BeastReduce output: keep all messages relevant to mlat-client
   --net-beast-reduce-filter-dist=<distance in nmi>               beast-reduce: remove aircraft which are further than distance from the receiver
@@ -479,7 +480,7 @@ Modes-S Beast options, use with --device-type modesbeast:
   --beast-df045-on                                               Turn ON DF0/4/5 filter
   --beast-fec-off                                                Turn OFF forward error correction
   --beast-modeac                                                 Turn ON mode A/C
-  --beast-baudrate=<baud>                                        Override Baudrate (default rate 3000000 baud)
+  --beast-baudrate=<baud>                                        Override Baudrate (default rate 3000000 baud, try 1000000 / 921600 as alternatives)
 
 GNS HULC options, use with --device-type gnshulc:
 
@@ -494,4 +495,13 @@ ifile-specific options, use with --device-type ifile:
 Help options:
   --help                                                         Give this help list
   --usage                                                        Give a short usage message
+
+Credits:
+antirez (original dump1090) 
+Malcom Robb (work on his dump1090 fork)
+mutability (forked to dump1090-mutability and further to dump1090-fa)
+Mictronics (readsb as a fork of dump1090-fa)
+wiedehopf (this fork of Mictronics readsb)
+
+Report bugs to Matthias Wirth <matthias.wirth@gmail.com>
 ```
