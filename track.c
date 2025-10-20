@@ -1979,6 +1979,17 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
     struct aircraft *res = NULL;
     int64_t now = mm->sysTimestamp;
 
+    if (mm->msgtype == DFTYPE_MODEAC) {
+        // Mode A/C, just count it (we ignore SPI)
+        modeAC_count[modeAToIndex(mm->squawkHex)]++;
+        res = NULL;
+        goto exit;
+    }
+    if (mm->decodeResult < 0) {
+        res = NULL;
+        goto exit;
+    }
+
     ++Modes.stats_current.messages_total;
 
     Modes.messageRateAcc[0]++;
@@ -2016,16 +2027,6 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         }
     }
 
-    if (mm->msgtype == DFTYPE_MODEAC) {
-        // Mode A/C, just count it (we ignore SPI)
-        modeAC_count[modeAToIndex(mm->squawkHex)]++;
-        res = NULL;
-        goto exit;
-    }
-    if (mm->decodeResult < 0) {
-        res = NULL;
-        goto exit;
-    }
 
     struct aircraft *a;
     unsigned int cpr_new = 0;
