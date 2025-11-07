@@ -15,7 +15,7 @@ see the LICENSE file for details
 I'd recommend this script to automatically install it:
 - https://github.com/wiedehopf/adsb-scripts/wiki/Automatic-installation-for-readsb
 
-See the [Debian Package](##debian-package) section if you want to build the package yourself.
+See the [Debian Package](#debian-package) section if you want to build the package yourself.
 
 Or check here on how to further install a webinterface and other useful stuff:
 - https://github.com/wiedehopf/adsb-wiki/wiki/Building-readsb-from-source
