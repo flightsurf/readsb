@@ -128,7 +128,8 @@ bool ifileOpen(void) {
         return false;
     }
 
-    if (strcmp(ifile.filename, "-") != 0) {
+    // data usually fed faster than real time, base clock on input samples
+    if (!Modes.ifile_no_synthetic) {
         Modes.synthetic_now = mstime();
     }
 

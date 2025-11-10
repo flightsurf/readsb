@@ -437,7 +437,7 @@ void priorityTasksRun() {
         gmtime_r(&nowTime, &local);
         char timebuf[512];
         strftime(timebuf, 128, "%T", &local);
-        printf("priorityTasksRun: utcTime: %s.%03lld epoch: %.3f\n", timebuf, (long long) now % 1000, now / 1000.0);
+        fprintf(stderr, "priorityTasksRun: utcTime: %s.%03lld epoch: %.3f\n", timebuf, (long long) now % 1000, now / 1000.0);
     }
     pthread_mutex_lock(&Modes.hungTimerMutex);
     startWatch(&Modes.hungTimer1);
@@ -1001,14 +1001,13 @@ static void *decodeEntryPoint(void *arg) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     int64_t now = mstime();
-    int64_t mono = mono_milli_seconds();
     if (Modes.net_only) {
         while (!Modes.exit) {
             struct timespec start_time;
 
-            // in case we're not waiting in backgroundTasks and priorityTasks doesn't have a chance to schedule
-            mono = mono_milli_seconds();
-            if (mono > Modes.next_remove_stale + 5 * SECONDS) {
+            // give priorityTasks a chance to get the decode lock if necessary
+            if (priorityTasksPending()) {
+                pthread_cond_signal(&Threads.upkeep.cond);
                 threadTimedWait(&Threads.decode, &ts, 1);
             }
             start_cpu_timing(&start_time);
@@ -1088,15 +1087,16 @@ static void *decodeEntryPoint(void *arg) {
                  */
                 threadTimedWait(&Threads.decode, &ts, 80);
             }
-            mono = mono_milli_seconds();
-            if (mono > Modes.next_remove_stale + REMOVE_STALE_INTERVAL) {
-                //fprintf(stderr, "%.3f >? %3.f\n", mono / 1000.0, (Modes.next_remove_stale + REMOVE_STALE_INTERVAL)/ 1000.0);
-                // don't force as this can cause issues (code left in for possible re-enabling if absolutely necessary)
-                // if memory serves right the main point of this was for SDR_IFILE / faster than real time
+            if (priorityTasksPending()) {
                 if (Modes.synthetic_now) {
+                    // run priorityTasks directly when using synthetic_now
                     pthread_mutex_unlock(&Threads.decode.mutex);
                     priorityTasksRun();
                     pthread_mutex_lock(&Threads.decode.mutex);
+                } else {
+                    // give priorityTasks a chance to get the decode lock if necessary
+                    pthread_cond_signal(&Threads.upkeep.cond);
+                    threadTimedWait(&Threads.decode, &ts, 1);
                 }
             }
         }
@@ -2162,6 +2162,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     Modes.beast_set_noforward_timestamp = 1;
                 }
 
+                if (strcasecmp(token[0], "ifile_no_synthetic") == 0) {
+                    Modes.ifile_no_synthetic = 1;
+                }
                 if (strcasecmp(token[0], "accept_synthetic") == 0) {
                     Modes.dump_accept_synthetic_now = 1;
                 }
