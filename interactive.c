@@ -175,22 +175,25 @@ void interactiveShowData(void) {
 
     next_update = now + MODES_INTERACTIVE_REFRESH_TIME;
 
+    if (!next_clear) {
+        next_clear = now + 1500;
+    }
     // clear potential errors every 10 seconds
     if (now > next_clear) {
         next_clear = now + 10 * SECONDS;
         clear();
         // print header
         if (Modes.userLocationValid) {
-            mvprintw(0, 0, " Hex    Mode  Sqwk  Flight     Alt   Spd  Hdg     Dist      Dir  RSSI  Msgs  Seen");
+            mvprintw(0, 0, " Hex    Mode  Sqwk  Flight     Alt   Spd  Hdg     Dist      Dir  RSSI  Msgs Seen");
         } else {
-            mvprintw(0, 0, " Hex    Mode  Sqwk  Flight     Alt   Spd  Hdg      Lat     Long  RSSI  Msgs  Seen");
+            mvprintw(0, 0, " Hex    Mode  Sqwk  Flight     Alt   Spd  Hdg      Lat     Long  RSSI  Msgs Seen");
         }
         mvhline(1, 0, ACS_HLINE, 80);
     }
 
 
     progress = spinner[(now / 1000) % 4];
-    mvaddch(0, 79, progress);
+    mvaddch(0, 0, progress);
 
     int rows = getmaxy(stdscr);
     int row = 2;
@@ -276,7 +279,7 @@ void interactiveShowData(void) {
                         snprintf(strFl, 7, "%5d ", convert_altitude(a->baro_alt));
                     }
 
-                    mvprintw(row, 0, "%s%06X %-4s  %-4s  %-8s %6s %4s  %3s  %7s %8s %5.1f %5d %2.0f",
+                    mvprintw(row, 0, "%s%06X %-4s  %-4s  %-8s %6s %4s  %3s  %7s %8s %5.1f %5d   %2.0f",
                             (a->addr & MODES_NON_ICAO_ADDRESS) ? "~" : " ", (a->addr & 0xffffff),
                             strMode, strSquawk, a->callsign, strFl, strGs, strTt,
                             strLat, strLon, 10 * log10(signalAverage), msgs, (now - a->seen) / 1000.0);
