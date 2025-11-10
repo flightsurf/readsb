@@ -265,7 +265,7 @@ void ifileRun() {
         threadTimedWait(&Threads.reader, &ts, 50);
     }
 
-    Modes.exit = 1;
+    setExit(1);
     unlockReader();
 }
 
