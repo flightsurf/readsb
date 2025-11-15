@@ -493,8 +493,12 @@ void soapyRun()
         slen = (uint32_t) samples_read;
 
         if (slen != Modes.sdr_buf_samples) {
-            fprintf(stderr, "weirdness: soapysdr gave us a block with an unusual size (got %u samples, expected %u samples)\n",
-                    (unsigned) slen, (unsigned) Modes.sdr_buf_samples);
+            static int64_t antiSpam;
+            if (mstime() > antiSpam) {
+                antiSpam = mstime() + 10 * SECONDS;
+                fprintf(stderr, "weirdness: soapysdr gave us a block with an unusual size (got %u samples, expected %u samples), suppressing this message for 10 seconds\n",
+                        (unsigned) slen, (unsigned) Modes.sdr_buf_samples);
+            }
             if (slen > Modes.sdr_buf_samples) {
                 // wat?! Discard the start.
                 unsigned discard = slen - Modes.sdr_buf_samples;

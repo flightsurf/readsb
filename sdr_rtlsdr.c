@@ -389,8 +389,12 @@ void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
     unlockReader();
 
     if (len != Modes.sdr_buf_size) {
-        fprintf(stderr, "weirdness: rtlsdr gave us a block with an unusual size (got %u bytes, expected %u bytes)\n",
-                (unsigned) len, (unsigned) Modes.sdr_buf_size);
+        static int64_t antiSpam;
+        if (mstime() > antiSpam) {
+            antiSpam = mstime() + 10 * SECONDS;
+            fprintf(stderr, "weirdness: rtlsdr gave us a block with an unusual size (got %u bytes, expected %u bytes), suppressing this message for 10 seconds\n",
+                    (unsigned) len, (unsigned) Modes.sdr_buf_size);
+        }
         if (len > Modes.sdr_buf_size) {
             // wat?! Discard the start.
             unsigned discard = (len - Modes.sdr_buf_size + 1) / 2;

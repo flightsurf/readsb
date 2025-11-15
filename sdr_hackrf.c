@@ -187,8 +187,12 @@ static int hackrfCallback(hackrf_transfer *transfer) {
     free_bufs = (Modes.first_filled_buffer - next_free_buffer + MODES_MAG_BUFFERS) % MODES_MAG_BUFFERS;
 
     if (len != Modes.sdr_buf_size) {
-        fprintf(stderr, "weirdness: hackRF gave us a block with an unusual size (got %u bytes, expected %u bytes)\n",
-                (unsigned) len, (unsigned) Modes.sdr_buf_size);
+        static int64_t antiSpam;
+        if (mstime() > antiSpam) {
+            antiSpam = mstime() + 10 * SECONDS;
+            fprintf(stderr, "weirdness: hackRF gave us a block with an unusual size (got %u bytes, expected %u bytes), suppressing this message for 10 seconds\n",
+                    (unsigned) len, (unsigned) Modes.sdr_buf_size);
+        }
         if (len > Modes.sdr_buf_size) {
             unsigned discard = (len - Modes.sdr_buf_size + 1) / 2;
             outbuf->dropped += discard;
