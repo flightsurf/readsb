@@ -170,7 +170,7 @@ static struct argp_option optionsReadsb[] = {
     {"net-heartbeat", OptNetHeartbeat, "<rate>", 0, "TCP heartbeat rate in seconds (default: 60 sec; 0 to disable)", 2},
     {"net-buffer", OptNetBuffer, "<n>", 0, "control some buffer sizes: 8KB * (2^n) (default: n=1, 16KB)", 2},
     {"net-verbatim", OptNetVerbatim, 0, 0, "Forward messages unchanged", 2},
-    {"sdr-buffer-size", OptSdrBufSize, "<KiB>", 0, "SDR buffer / USB transfer size in kibibytes (default: 256 which is equivalent to around 54 ms using rtl-sdr, option might be ignored in future versions)", 2},
+    {"sdr-buffer-size", OptSdrBufSize, "<KiB>", 0, "SDR buffer / USB transfer size in kibibytes (default: 128 which is equivalent to around 28 ms using rtl-sdr, option might be ignored in future versions)", 2},
 #ifdef ENABLE_RTLSDR
     {0,0,0,0, "RTL-SDR options:", 3},
     {0,0,0, OPTION_DOC, "use with --device-type rtlsdr", 3},

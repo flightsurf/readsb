@@ -265,7 +265,7 @@ static void configSetDefaults(void) {
     Modes.max_fds -= 32; // reserve some fds for things we don't account for later like json writing.
                          // this is an high estimate ... if ppl run out of fds for other stuff they should up rlimit
 
-    Modes.sdr_buf_size = 16 * 16 * 1024;
+    Modes.sdr_buf_size = 128 * 1024; // 128 kibibytes
 
     // in seconds, default to 1 hour
     Modes.dump_interval = 60 * 60;
