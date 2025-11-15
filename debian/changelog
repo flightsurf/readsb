@@ -1,8 +1,8 @@
-readsb (3.16.5) UNRELEASED; urgency=medium
+readsb (3.16.6) UNRELEASED; urgency=medium
 
   * In development
 
- -- Matthias Wirth <matthias.wirth@gmail.com>  Mon, 20 Oct 2025 05:56:13 +0000
+ -- Matthias Wirth <matthias.wirth@gmail.com>  Sat, 15 Nov 2025 13:46:55 +0000
 
 readsb (3.16) stable; urgency=medium
 
