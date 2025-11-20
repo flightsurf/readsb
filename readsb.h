@@ -797,6 +797,7 @@ struct _Modes
     int8_t beast_reduce_optimize_mlat; // keep all messages relevant to mlat-client (best-effort)
     // use mmap for certain allocations to try and take advantage of transparent hugepages
     int8_t thp;
+    int8_t json_separate_ground;
 
     int ingestLimitRate;
     int position_persistence; // Maximum number of consecutive implausible positions from global CPR to invalidate a known position
@@ -1282,6 +1283,7 @@ enum {
     OptJsonOnlyBin,
     OptEnableBinGz,
     OptJsonReliable,
+    OptJsonSeparateGround,
     OptPositionPersistence,
     OptJaeroTimeout,
     OptDbFile,
