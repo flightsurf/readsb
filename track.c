@@ -2849,11 +2849,23 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         if ((mm->duplicate || mm->garbage || mm->pos_bad) && Modes.garbage_ports) {
             mm->reduce_forward = 0;
         }
-        if (Modes.beast_reduce_filter_distance != -1
-                && now < a->seenPosReliable + 1 * MINUTES
-                && Modes.userLocationValid
-                && greatcircle(Modes.fUserLat, Modes.fUserLon, a->latReliable, a->lonReliable, 0) > Modes.beast_reduce_filter_distance) {
-            mm->reduce_forward = 0;
+        if (Modes.beast_reduce_filter_distance && Modes.userLocationValid) {
+            if (Modes.beast_reduce_filter_distance < 0) {
+                if (!posReliable(a)
+                        || greatcircle(Modes.fUserLat, Modes.fUserLon, a->latReliable, a->lonReliable, 0) > -1 * Modes.beast_reduce_filter_distance) {
+                    mm->reduce_forward = 0;
+                } else if (0) {
+                    fprintf(stderr, "%06x %.0f %0.f\n",
+                            a->addr,
+                            greatcircle(Modes.fUserLat, Modes.fUserLon, a->latReliable, a->lonReliable, 0) / 1852.0,
+                            -1 * Modes.beast_reduce_filter_distance / 1852.0);
+                }
+            } else {
+                if (now < a->seenPosReliable + 1 * MINUTES
+                        && greatcircle(Modes.fUserLat, Modes.fUserLon, a->latReliable, a->lonReliable, 0) > Modes.beast_reduce_filter_distance) {
+                    mm->reduce_forward = 0;
+                }
+            }
             //fprintf(stderr, "%.0f %0.f\n", greatcircle(Modes.fUserLat, Modes.fUserLon, a->latReliable, a->lonReliable, 0) / 1852.0, Modes.beast_reduce_filter_distance / 1852.0);
         }
         if (Modes.beast_reduce_filter_altitude != -1

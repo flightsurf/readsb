@@ -166,7 +166,6 @@ static void configSetDefaults(void) {
     Modes.net_output_beast_ports = strdup("0");
     Modes.net_output_beast_reduce_ports = strdup("0");
     Modes.net_output_beast_reduce_interval = 250;
-    Modes.beast_reduce_filter_distance = -1;
     Modes.beast_reduce_filter_altitude = -1;
     Modes.net_output_vrs_ports = strdup("0");
     Modes.net_output_vrs_interval = 5 * SECONDS;
@@ -1998,8 +1997,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 Modes.beast_reduce_filter_altitude = (float) atof(arg);
             break;
         case OptNetBeastReduceFilterDist:
-            if (atof(arg) > 0)
-                Modes.beast_reduce_filter_distance = (float) atof(arg) * 1852.0f; // convert to meters
+            Modes.beast_reduce_filter_distance = (float) atof(arg) * 1852.0f; // convert to meters
             break;
         case OptNetBeastReduceOptimizeMlat:
             Modes.beast_reduce_optimize_mlat = 1;
