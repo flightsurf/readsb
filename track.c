@@ -1080,13 +1080,11 @@ static void setPosition(struct aircraft *a, struct modesMessage *mm, int64_t now
         idTime *overwrite = &a->recentReceiverIds[0];
         for (int i = 0; i < RECENT_RECEIVER_IDS; i++) {
             idTime *entry = &a->recentReceiverIds[i];
-            if (entry->id == mm->receiverId) {
+            if (entry->id == mm->receiverId || entry->time < overwriteOlder) {
                 overwrite = entry;
                 break;
             }
-            // if we already found an entry to overwrite (older than 60 seconds)
-            // then look no further for an entry to overwrite
-            if (oldestTime > overwriteOlder && entry->time < oldestTime) {
+            if (entry->time < oldestTime) {
                 oldestTime = entry->time;
                 overwrite = entry;
             }
