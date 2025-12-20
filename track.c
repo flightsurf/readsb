@@ -3281,7 +3281,7 @@ void trackRemoveStale(int64_t now) {
 
     int64_t elapsed3 = lapWatch(&watch);
 
-    if (elapsed1 + elapsed2 + elapsed3 > 25) {
+    if (elapsed1 + elapsed2 + elapsed3 > 51) {
         fprintf(stderr, "trackRemoveStale elapsed: %4ld %4ld %4ld\n", (long) elapsed1, (long) elapsed2, (long) elapsed3);
     }
 }
