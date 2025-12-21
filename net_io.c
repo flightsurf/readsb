@@ -4909,8 +4909,16 @@ static int readAscii(struct client *c, int64_t now, struct messageBuffer *mb) {
 static int readAsterix(struct client *c, int64_t now, struct messageBuffer *mb) {
 
     while (c->som < c->eod) {
+        if (c->eod - c->som < 3) {
+            // incomplete header, wait for more data
+            break;
+        }
         char *p = c->som;
         uint16_t msgLen = (*(p + 1) << 8) + *(p + 2);
+        if (msgLen < 3 || c->som + msgLen > c->eod) {
+            // invalid or incomplete messages
+            break;
+        }
         char *end = c->som + msgLen;
         c->som = end;
         if (c->service->read_handler(c, p, c->remote, now, mb)) {
