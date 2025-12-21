@@ -5374,9 +5374,16 @@ static int readProxy(struct client *c) {
         // expected string example: "PROXY TCP4 172.12.2.132 172.191.123.45 40223 30005"
 
         char *space = proxy;
-        space = memchr(space + 1, ' ', eop - space - 1);
-        space = memchr(space + 1, ' ', eop - space - 1);
-        space = memchr(space + 1, ' ', eop - space - 1);
+        for (int i = 0; i < 3; i++) {
+            if (!space) {
+                break; // check to avoid null deref
+            }
+            space = memchr(space + 1, ' ', eop - space - 1);
+        }
+        if (!space) {
+            // incomplete proxy string
+            return -2;
+        }
         // hash up to 3rd space
         if (eop - proxy > 10) {
             //fprintf(stderr, "%ld %ld %s\n", eop - proxy, space - proxy, space);
