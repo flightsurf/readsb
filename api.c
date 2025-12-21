@@ -1644,7 +1644,7 @@ static void apiReadRequest(struct apiCon *con, struct apiThread *thread) {
 
     int req_len = request->len;
     char *req_start = request->buffer;
-    char *newline = memchr(req_start + oldlen, '\n', req_len);
+    char *newline = memchr(req_start + oldlen, '\n', req_len - oldlen);
     if (!newline || !strstr(req_start + imax(0, oldlen - 4), "\r\n\r\n")) {
         // request not complete
         return;
