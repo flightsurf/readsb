@@ -1947,18 +1947,21 @@ static void modesSendRawOutput(struct modesMessage *mm) {
 //
 // Read Asterix FSPEC
 //
-static uint8_t * readFspec(char **p){
-    uint8_t* fspec = malloc(24*sizeof(uint8_t*));
-    for (int i = 1; i < 24; i++) {
-    	fspec[i] = 0;
+#define FSPEC_MAX 24
+static void readFspec(uint8_t *fspec, char **p, char *end){
+    memset(fspec, 0x0, FSPEC_MAX);
+
+    if (*p >= end) {
+        return;
     }
+
     fspec[0] = **p;
     (*p)++;
-    for (int i = 1; *(*p - 1) & 0x1; i++){
-    	fspec[i] = *(*p);
-	(*p)++;
+
+    for (int i = 1; i < FSPEC_MAX && *p < end && *(*p - 1) & 0x1; i++){
+        fspec[i] = *(*p);
+        (*p)++;
     }
-    return fspec;
 }
 
 //
@@ -2018,7 +2021,10 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
     mm->signalLevel = 0;
     category = *p; // Get the category
     p += 3;
-    uint8_t *fspec = readFspec(&p);
+
+    uint8_t fspec[FSPEC_MAX];
+    readFspec(fspec, &p, c->eod);
+
     mm->receiverId = c->receiverId;
     if (unlikely(Modes.incrementId)) {
         mm->receiverId += now / (10 * MINUTES);
@@ -2027,7 +2033,6 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
     switch(category){
         case 21: // ADS-B Message
             if(!(fspec[1] & 0x10)){ // no address. this is useless to us
-                free(fspec);
                 return -1;
             }
             if (fspec[0] & 0x80){ // ID021/010 Data Source Identification
@@ -2035,7 +2040,8 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
             }
             uint8_t addrtype = 3;
             if (fspec[0] & 0x40){ // ID021/040 Target Report Descriptor
-                uint8_t *trd = readFspec(&p);
+                uint8_t trd[FSPEC_MAX];
+                readFspec(trd, &p, c->eod);
                 addrtype = (trd[0] & 0xE0) >> 5;
                 if (!(trd[0] & 0x18)){
                     mm->alt_q_bit = 1;
@@ -2046,7 +2052,6 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
                 else {
                     mm->airground = AG_AIRBORNE;
                 }
-                free(trd);
             }
             if (fspec[0] & 0x20){ // I021/161 Track Number
                 p += 2;
@@ -2179,7 +2184,7 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
                 }
                 p += 2;
             }
-            uint8_t *qi;
+            uint8_t qi[FSPEC_MAX];
             //uint8_t nucp_or_nic;
             uint8_t nucr_or_nacv;
             uint8_t nicbaro = 0;
@@ -2190,7 +2195,7 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
             uint8_t gva = 0;
             //uint8_t pic;
             if (fspec[2] & 0x20){ // I021/090 Quality Indicators
-                qi = readFspec(&p);
+                readFspec(qi, &p, c->eod);
                 //nucp_or_nic = (qi[0] & 0x1e) >> 1;
                 nucr_or_nacv = (qi[0] & 0xe0) >> 5;
                 mm->accuracy.nac_v_valid = true;
@@ -2216,7 +2221,6 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
                         mm->accuracy.sil_type = SIL_UNKNOWN;
                     }
                 }
-                free(qi);
             }
             if (fspec[2] & 0x10){ // I021/210 MOPS Version
                 mm->opstatus.valid = true;
@@ -2456,8 +2460,8 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
             }
 
             if (fspec[4] & 0x20) { // I021/220 Met Information
-                uint8_t *met = readFspec(&p);
-                free(met);
+                uint8_t met[FSPEC_MAX];
+                readFspec(met, &p, c->eod);
             }
 
             if (fspec[4] & 0x10) { // I021/146 Selected Altitude
@@ -2480,7 +2484,6 @@ static int decodeAsterixMessage(struct client *c, char *p, int remote, int64_t n
             netUseMessage(mm);
             break;
     }
-    free(fspec);
     if (mm->sysTimestamp == -1){
         mm->sysTimestamp = mstime();
     }
