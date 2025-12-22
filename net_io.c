@@ -4122,13 +4122,6 @@ static int decodeBinMessage(struct client *c, char *p, int remote, int64_t now, 
 }
 
 
-// Planefinder uses bit stuffing, so if we see a DLE byte, we need the next byte
-static inline unsigned char getNextPfUnstuffedByte(char **p) {
-    if (**p == DLE) {
-        (*p)++;
-    }
-    return *(*p)++;
-}
 //
 //
 //=========================================================================
@@ -4156,6 +4149,14 @@ static inline unsigned char getNextPfUnstuffedByte(char **p) {
 static int decodePfMessage(struct client *c, char *p, int remote, int64_t now, struct messageBuffer *mb) {
     MODES_NOTUSED(remote);
 
+// Planefinder uses bit stuffing, so if we see a DLE byte, we need the next byte
+#define nextByte do { \
+    if (p >= c->eod) { return 0; } \
+    if (*p == DLE) { p++; } \
+    if (p >= c->eod) { return 0; } \
+    ch = *p++; \
+} while (0)
+
     int msgLen = 0;
     int j;
     unsigned char ch;
@@ -4169,17 +4170,18 @@ static int decodePfMessage(struct client *c, char *p, int remote, int64_t now, s
     p++;
 
     // Packet ID / type
-    ch = getNextPfUnstuffedByte(&p); /// Get the message type
+    nextByte; /// Get the message type
     // This shouldn't happen because we check it in the readPlanefinder() function
     if (ch != 0xc1) {
         return 0;
     }
 
     // Padding
-    getNextPfUnstuffedByte(&p);
+    nextByte;
+
 
     // Packet type
-    ch = getNextPfUnstuffedByte(&p);
+    nextByte;
     if (ch & 0x10) {
         // CRC: ignore field
     }
@@ -4200,20 +4202,20 @@ static int decodePfMessage(struct client *c, char *p, int remote, int64_t now, s
     }
 
     // Signal strength
-    ch = getNextPfUnstuffedByte(&p);
+    nextByte;
     mm->signalLevel = ((unsigned char) ch / 255.0);
     mm->signalLevel = mm->signalLevel * mm->signalLevel; // square it to get power
 
     mm->timestamp = 0;
     int64_t seconds = 0;
     for (j = 0; j < 4; j++) {
-        ch = getNextPfUnstuffedByte(&p);
+        nextByte;
         seconds = seconds << 8 | (ch & 255);
     }
 
     int64_t nanoseconds = 0;
     for (j = 0; j < 4; j++) {
-        ch = getNextPfUnstuffedByte(&p);
+        nextByte;
         nanoseconds = nanoseconds << 8 | (ch & 255);
     }
 
@@ -4226,7 +4228,8 @@ static int decodePfMessage(struct client *c, char *p, int remote, int64_t now, s
     mm->sysTimestamp = now;
 
     for (j = 0; j < msgLen; j++) { // and the data
-        msg[j] = getNextPfUnstuffedByte(&p);
+        nextByte;
+        msg[j] = ch;
     }
 
     int result = -10;
@@ -4259,6 +4262,8 @@ static int decodePfMessage(struct client *c, char *p, int remote, int64_t now, s
 
     netUseMessage(mm);
     return 0;
+
+#undef nextByte
 }
 
 // exception decoding subroutine, return 1 for success, 0 for failure
@@ -5000,7 +5005,7 @@ static int readPlanefinder(struct client *c, int64_t now, struct messageBuffer *
         }
 
         // Pass message to handler.
-        if (c->service->read_handler(c, start, c->remote, now, mb)) {
+        if (decodePfMessage(c, start, c->remote, now, mb)) {
             modesCloseClient(c);
             return -1;
         }
