@@ -4500,6 +4500,8 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
     MODES_NOTUSED(remote);
     // 0x1a | 0xec | s/l/u byte (short / long / uplink) | 6 byte MLAT timestamp | rssi byte |  payload
 
+    int debugIncomplete = 0;
+
     char buf[2048];
     char *out = buf;
     char *end = buf + sizeof(buf);
@@ -4509,6 +4511,10 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
     if (*p == 'u') {
         bytes = 552;
         out = safe_snprintf(out, end, "+");
+        if (debugIncomplete) {
+            fprintTimePrecise(stderr, mstime());
+            fprintf(stderr, "uat uplink bytes in buffer: %d\n", (int) (c->eod - p));
+        }
     } else if (*p == 's') {
         bytes = 30;
         out = safe_snprintf(out, end, "-");
@@ -4522,6 +4528,9 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
 
     if (c->eod - p  < 1 + 6 + 1 + bytes) {
         // message is guaranteed to be incomplete
+        if (debugIncomplete) {
+            fprintf(stderr, "uat_incomplete %d < %d\n", (int) (c->eod - p), 1 + 6 + 1 + bytes);
+        }
         return 0;
     }
 
@@ -4550,12 +4559,18 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
     for (int j = 0; j < bytes; j++) {
         if (p >= c->eod) {
             // incomplete message
+            if (debugIncomplete) {
+                fprintf(stderr, "uat_incomplete %d\n", __LINE__);
+            }
             return 0;
         }
         if (*p == 0x1a) {
             p++;
             if (p >= c->eod) {
                 // incomplete message
+                if (debugIncomplete) {
+                    fprintf(stderr, "uat_incomplete %d\n", __LINE__);
+                }
                 return 0;
             }
             if (*p != 0x1a) {
@@ -4578,6 +4593,9 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
     //fprintf(stderr, "passing to decodeUatMessage: %s\n", buf);
     decodeUatMessage(c, buf, 1, now, mb);
 
+    if (p - msg == 0 && debugIncomplete) {
+        fprintf(stderr, "uat_incomplete %d\n", __LINE__);
+    }
     return (p - msg);
 }
 
@@ -5372,7 +5390,10 @@ beastWhileContinue:
         ;
     }
 
-    if (c->eod - c->som > 256) {
+    if (0 && c->eod - c->som > 256) {
+        fprintf(stderr, "beastWhile >256 remaining: %d\n", (int) (c->eod - c->som));
+    }
+    if (c->eod - c->som > 600) {
         //fprintf(stderr, "beastWhile too much data remaining, garbage?!\n");
         garbageIncrement(c, c->eod - c->som, __LINE__);
         Modes.stats_current.remote_malformed_beast += c->eod - c->som;
