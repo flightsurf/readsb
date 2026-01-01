@@ -4526,7 +4526,7 @@ static int decodeEncapsulatedUAT(struct client *c, char *msg, int remote, int64_
     }
     p++;
 
-    if (c->eod - p  < 1 + 6 + 1 + bytes) {
+    if (c->eod - p < 6 + 1 + bytes) {
         // message is guaranteed to be incomplete
         if (debugIncomplete) {
             fprintf(stderr, "uat_incomplete %d < %d\n", (int) (c->eod - p), 1 + 6 + 1 + bytes);
