@@ -5047,6 +5047,11 @@ static int readBeast(struct client *c, int64_t now, struct messageBuffer *mb) {
 
     //fprintf(stderr, "readBeast\n");
 
+    if (0 && c->orphaned_bytes && now - c->orphaned_bytes_ts > 500) {
+        fprintTimePrecise(stderr, now);
+        fprintf(stderr, " orphaned bytes: %5d orphaned for: %8.3f\n", c->orphaned_bytes, (now - c->orphaned_bytes_ts) / 1000.0);
+    }
+
     while (c->som < c->eod && ((p = memchr(c->som, (char) 0x1a, c->eod - c->som)) != NULL)) { // The first byte of buffer 'should' be 0x1a
 
         if (p > c->som) {
@@ -5399,6 +5404,12 @@ beastWhileContinue:
         Modes.stats_current.remote_malformed_beast += c->eod - c->som;
         c->som = c->eod;
     }
+
+    if (c->eod - c->som > 0) {
+        //fprintf(stderr, " bytes still in buffer: %d\n", (int) (c->eod - c->som));
+    }
+    c->orphaned_bytes_ts = now;
+    c->orphaned_bytes = c->eod - c->som;
 
     return 0;
 }

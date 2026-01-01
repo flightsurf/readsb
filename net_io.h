@@ -130,6 +130,8 @@ struct client
     int64_t last_send;
     int64_t last_read;  // This is used on write-only clients to help check for dead connections
     int64_t last_read_flush;
+    int64_t orphaned_bytes_ts;
+    int orphaned_bytes;
     int64_t connectedSince;
     uint64_t messageCounter; // counter for incoming data
     uint64_t positionCounter; // counter for incoming data
