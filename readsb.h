@@ -936,6 +936,7 @@ struct _Modes
     int8_t userLocationValid;
     int8_t userLocationRef;
     int8_t biastee;
+    int8_t bad_tuner;
     int8_t triggerPermWriteDay;
     int8_t acasDay;
     int8_t traceDay;

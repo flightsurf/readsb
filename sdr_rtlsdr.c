@@ -290,6 +290,12 @@ bool rtlsdrOpen(void) {
         return false;
     }
 
+    enum rtlsdr_tuner tuner = rtlsdr_get_tuner_type(RTLSDR.dev);
+    if (tuner == RTLSDR_TUNER_FC2580 || tuner == RTLSDR_TUNER_FC0012 || tuner == RTLSDR_TUNER_FC0013) {
+        Modes.bad_tuner = 1;
+        fprintf(stderr, "\n\nrtlsdr: BAD TUNER, 1090 reception will be TERRIBLE, use another SDR\n\n\n");
+    }
+
     // allocate numgains + 1 for the AGC being added as a pseudo gain level (hacky)
     RTLSDR.gains = cmalloc((RTLSDR.numgains + 1) * sizeof (int));
     if (rtlsdr_get_tuner_gains(RTLSDR.dev, RTLSDR.gains) != RTLSDR.numgains) {

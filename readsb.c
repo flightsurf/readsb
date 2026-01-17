@@ -580,6 +580,10 @@ static void *readerEntryPoint(void *arg) {
         return NULL;
     }
 
+    if (Modes.bad_tuner && Modes.json_dir) {
+        free(writeJsonToFile(Modes.json_dir, "receiver.json", generateReceiverJson()).buffer);
+    }
+
     setPriorityPthread();
 
     if (sdrHasRun()) {

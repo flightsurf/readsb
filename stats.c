@@ -711,6 +711,10 @@ struct char_buffer generateStatsJson(int64_t now) {
         p = safe_snprintf(p, end, ", \"estimated_ppm\" : %.1f", Modes.estimated_ppm);
     }
 
+    if (Modes.bad_tuner) {
+        p = safe_snprintf(p, end, ", \"bad_tuner\" : true");
+    }
+
     p = appendTypeCounts(p, end);
 
     p = appendStatsJson(p, end, &Modes.stats_1min, "last1min");

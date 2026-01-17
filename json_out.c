@@ -1917,6 +1917,9 @@ struct char_buffer generateReceiverJson() {
                     Modes.fUserAlt);
         }
     }
+    if (Modes.bad_tuner) {
+        p = safe_snprintf(p, end, ", \"bad_tuner\" : true");
+    }
 
     p = safe_snprintf(p, end, ", \"jaeroTimeout\": %.1f", ((double) Modes.trackExpireJaero) / (60 * SECONDS));
     p = safe_snprintf(p, end, ", \"readsb\": true"); // for tar1090 so it can tell it's not dump1090-fa
