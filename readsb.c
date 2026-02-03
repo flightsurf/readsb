@@ -912,8 +912,8 @@ static void gainStatistics(struct mag_buf *buf) {
         }
         sdrSetGain(reason);
         if (Modes.gain == MODES_RTL_AGC) {
-            // switching to AGC is only done every 5 minutes to avoid oscillations due to the large step
-            nextRaiseAgc = buf->sysTimestamp + 5 * MINUTES;
+            // switching to AGC is only done every 30 seconds to avoid oscillations due to the large step
+            nextRaiseAgc = buf->sysTimestamp + 30 * SECONDS;
         }
         if (0) {
             fprintf(stderr, "%s noiseLow: %5.2f %%  noiseHigh: %5.2f %%  loudEvents: %4lld\n", reason, noiseLowPercent, noiseHighPercent, (long long) loudEvents);
@@ -1647,12 +1647,12 @@ static void parseGainOpt(char *arg) {
         if (token[2]) {
             Modes.noiseLowThreshold = atoi(token[2]);
         } else {
-            Modes.noiseLowThreshold = 27;
+            Modes.noiseLowThreshold = 34;
         }
         if (token[3]) {
             Modes.noiseHighThreshold = atoi(token[3]);
         } else {
-            Modes.noiseHighThreshold = 31;
+            Modes.noiseHighThreshold = 36;
         }
         if (token[4]) {
             Modes.loudThreshold = atoi(token[4]);
