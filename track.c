@@ -3405,6 +3405,7 @@ static void calc_temp(struct aircraft *a, int64_t now) {
     a->oat = oat;
     a->tat = tat;
     a->oat_updated = now;
+    a->tat_updated = now;
 }
 
 static inline int declination(struct aircraft *a, double *dec, int64_t now) {
@@ -3556,6 +3557,7 @@ void to_state_all(struct aircraft *a, struct state_all *new, int64_t now) {
         new->wind_speed = (int) nearbyint(a->wind_speed);
         new->wind_valid = 1;
     }
+    // this is a bit hacky: require both oat and tat to set temp_valid
     if (now < a->oat_updated + TRACK_EXPIRE) {
         new->oat = (int) nearbyint(a->oat);
         if (now < a->tat_updated + TRACK_EXPIRE) {
@@ -3666,6 +3668,7 @@ void from_state_all(struct state_all *in, struct state *in2, struct aircraft *a 
         a->oat = in->oat;
         a->tat = in->tat;
         a->oat_updated = ts - 5000;
+        a->tat_updated = ts - 5000;
     }
 
     if (in->adsb_version == 15)

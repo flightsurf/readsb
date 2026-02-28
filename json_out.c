@@ -683,6 +683,8 @@ char *sprintAircraftObject(char *p, char *end, struct aircraft *a, int64_t now, 
     }
     if (now < a->oat_updated + TRACK_EXPIRE) {
         p = safe_snprintf(p, end, ",\"oat\":%.0f", a->oat);
+    }
+    if (now < a->tat_updated + TRACK_EXPIRE) {
         p = safe_snprintf(p, end, ",\"tat\":%.0f", a->tat);
     }
 
