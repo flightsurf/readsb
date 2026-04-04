@@ -670,7 +670,7 @@ static int speed_check(struct aircraft *a, datasource_t source, double lat, doub
         }
     }
 
-    if (!Modes.userLocationRef && !override && mm->source == SOURCE_ADSB) {
+    if (!Modes.userLocationRef && !override && (mm->source == SOURCE_ADSB || mm->source == SOURCE_NT)) {
         if (!receiverRangeExceeded && !inrange
                 && (distance - range > 800 || backInTimeSeconds > 3) && track_diff > 45
                 && a->pos_reliable_odd >= Modes.position_persistence * 3 / 4
@@ -3811,6 +3811,8 @@ static const char *source_string(datasource_t source) {
             return "TISB    ";
         case SOURCE_ADSR:
             return "ADSR    ";
+        case SOURCE_NT:
+            return "ADSB NT ";
         case SOURCE_ADSB:
             return "ADSB    ";
         case SOURCE_PRIO:

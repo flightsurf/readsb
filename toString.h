@@ -86,6 +86,7 @@ static inline const char *source_enum_string(datasource_t src) {
         case SOURCE_MODE_S_CHECKED: return "MODE_S_CHECKED";
         case SOURCE_TISB: return "TISB";
         case SOURCE_ADSR: return "ADSR";
+        case SOURCE_NT: return "ADSB NT";
         case SOURCE_ADSB: return "ADSB";
         case SOURCE_PRIO: return "PRIO";
         default: return "WTF";

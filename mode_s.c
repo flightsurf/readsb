@@ -1461,6 +1461,7 @@ static void decodeExtendedSquitter(struct modesMessage *mm) {
         switch (mm->CF) {
             case 0: // ADS-B Message from a non-transponder device, AA field holds 24-bit ICAO aircraft address
                 mm->addrtype = ADDR_ADSB_ICAO_NT;
+                mm->source = SOURCE_NT;
                 break;
 
             case 1: // Reserved for ADS-B Message in which the AA field holds anonymous address or ground vehicle address or fixed obstruction address
