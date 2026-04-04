@@ -335,6 +335,7 @@ static int cpr_duplicate_check(int64_t now, struct aircraft *a, struct modesMess
 
     struct cpr_cache *cpr;
     uint32_t inCache = 0;
+    uint32_t fastId = 0;
     uint32_t cpr_lat = mm->cpr_lat;
     uint32_t cpr_lon = mm->cpr_lon;
     uint64_t receiverId = mm->receiverId;
@@ -350,6 +351,21 @@ static int cpr_duplicate_check(int64_t now, struct aircraft *a, struct modesMess
            ) {
             inCache += 1;
         }
+        if (
+                cpr->receiverId == receiverId
+                && now - cpr->ts < 200
+           ) {
+            fastId += 1;
+        }
+    }
+    if (fastId && Modes.netIngest && mm->client) {
+        struct client *c = mm->client;
+        inCache = 1;
+        char uuid[64]; // needs 36 chars and null byte
+        sprint_uuid(c->receiverId, c->receiverId2, uuid);
+        fprintf(stderr, "GARBAGE due to fast CPR repitition hex: %06x uuid: %s proxy_string: %s\n", a->addr, uuid, c->proxy_string);
+        c->unreasonableRateReset = now + 5 * SECONDS;
+        c->unreasonable_messagerate = 1;
     }
     if (inCache > 0) {
         mm->duplicate = 1;
@@ -1999,6 +2015,20 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         calculateMessageRateGlobal(now);
     }
 
+    if (mm->client) {
+        if (!mm->garbage) {
+            mm->client->messageCounter++;
+        }
+        mm->client->recentMessages++;
+        if (mm->cpr_valid) {
+            mm->client->recentPositions++;
+        }
+        if (mm->client->unreasonable_messagerate) {
+            res = NULL;
+            goto exit;
+        }
+    }
+
     if (0) {
         static int64_t lastPrint;
         static int msgAcc;
@@ -2133,13 +2163,6 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
         a->messages = UINT16_MAX;
 
     a->messages++;
-
-    if (mm->client) {
-        if (!mm->garbage) {
-            mm->client->messageCounter++;
-        }
-        mm->client->recentMessages++;
-    }
 
     // update addrtype
     float newType = mm->addrtype == ADDR_MODE_S ? 4.5 : mm->addrtype;
