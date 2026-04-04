@@ -12,6 +12,9 @@ RUN --mount=type=bind,source=.,target=/app/git \
     mv viewadsb /usr/local/bin && \
     chmod +x /usr/local/bin/viewadsb /usr/local/bin/readsb && \
     make clean && \
+    make -j$(nproc) WITH_UUIDS=yes OPTIMIZE="-O2 $MARCH" && \
+    mv readsb /usr/local/bin/readsb-with-uuids && \
+    make clean && \
     make -j$(nproc) PRINT_UUIDS=yes TRACKS_UUID=yes OPTIMIZE="-O2 $MARCH" && \
     mv readsb /usr/local/bin/readsb-uuid && \
     mv viewadsb /usr/local/bin/viewadsb-uuid && \
