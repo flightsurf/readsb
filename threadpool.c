@@ -58,7 +58,7 @@ struct threadpool_t
     uint32_t thread_count;
     uint32_t terminate;
     atomic_intptr_t tasks;
-    atomic_int task_count;
+    atomic_int remaining_tasks;
     atomic_int pending_count;
 };
 
@@ -91,7 +91,7 @@ threadpool_t *threadpool_create(uint32_t thread_count, uint32_t buffer_count)
     threadpool_t *pool = (threadpool_t *) malloc(sizeof(threadpool_t));
 
     pool->terminate = 0;
-    atomic_store(&pool->task_count, 0);
+    atomic_store(&pool->remaining_tasks, 0);
     atomic_store(&pool->pending_count, 0);
     atomic_store(&pool->tasks, (intptr_t) NULL);
     pool->thread_count = thread_count;
@@ -137,7 +137,7 @@ void threadpool_destroy(threadpool_t *pool)
     pool->terminate = 1;
 
     pthread_mutex_lock(&pool->worker_lock);
-    atomic_store(&pool->task_count, 0);
+    atomic_store(&pool->remaining_tasks, 0);
     pthread_cond_broadcast(&pool->notify_worker);
     pthread_mutex_unlock(&pool->worker_lock);
 
@@ -176,12 +176,12 @@ void threadpool_run(threadpool_t *pool, threadpool_task_t* tasks, uint32_t count
 
     atomic_store(&pool->pending_count, count);
     atomic_store(&pool->tasks, (intptr_t) tasks);
-    // incrementing task count means a thread could start doing work already
+    // setting remaining_tasks means a thread could start doing work already
     // pending_count / tasks need to be in place, so this order is important
-    atomic_store(&pool->task_count, count);
+    atomic_store(&pool->remaining_tasks, count);
 
     pthread_mutex_lock(&pool->worker_lock);
-    pthread_cond_broadcast(&pool->notify_worker); // wake up sleeping worker threads after task_count has been set
+    pthread_cond_broadcast(&pool->notify_worker); // wake up sleeping worker threads after remaining_tasks has been set
     pthread_mutex_unlock(&pool->worker_lock);
 
     pthread_mutex_lock(&pool->master_lock);
@@ -208,14 +208,15 @@ static void *threadpool_threadproc(void *arg)
 
     thread_t *thread = (thread_t *) arg;
     threadpool_t *pool = thread->pool;
-    int task_count;
+    int remaining_tasks;
+    int task_index;
     int busy_loops = 0;
 
     while (1)
     {
-        task_count = atomic_load(&pool->task_count);
+        remaining_tasks = atomic_load(&pool->remaining_tasks);
 
-        if (task_count == 0)
+        if (remaining_tasks == 0)
         {
             pthread_mutex_lock(&pool->worker_lock);
 
@@ -224,17 +225,17 @@ static void *threadpool_threadproc(void *arg)
                 pthread_mutex_unlock(&pool->worker_lock);
                 return NULL;
             }
-            // re-check task_count inside worker_lock before sleeping
+            // re-check remaining_tasks inside worker_lock before sleeping
             // this makes lost wakeup impossible
-            // (task count is incremented BEFORE taking worker_lock to wake the workers)
-            task_count = atomic_load(&pool->task_count);
-            if (task_count == 0)
+            // (remaining_tasks is incremented BEFORE taking worker_lock to wake the workers)
+            remaining_tasks = atomic_load(&pool->remaining_tasks);
+            if (remaining_tasks == 0)
             {
                 // update thread_time
                 clock_gettime(CLOCK_THREAD_CPUTIME_ID, &thread->thread_time);
 
                 #ifdef DEBUG
-                fprintf(stderr, "%p thread %d waiting (task_count %4d)\n", pool, thread->index, task_count);
+                fprintf(stderr, "%p thread %d waiting (remaining_tasks %4d)\n", pool, thread->index, remaining_tasks);
                 #endif
 
                 // wait until we have more work
@@ -243,7 +244,7 @@ static void *threadpool_threadproc(void *arg)
             else
             {
                 #ifdef DEBUG
-                fprintf(stderr, "%p thread %d not waiting (task_count %4d)\n", pool, thread->index, task_count);
+                fprintf(stderr, "%p thread %d not waiting (remaining_tasks %4d)\n", pool, thread->index, remaining_tasks);
                 #endif
             }
 
@@ -252,21 +253,22 @@ static void *threadpool_threadproc(void *arg)
             continue;
         }
 
-        int expected = task_count;
-        task_count--;
-        if (!atomic_compare_exchange_weak(&pool->task_count, &expected, task_count))
+        task_index = remaining_tasks - 1;
+
+        // atomically decrement remaining_tasks by 1
+        if (!atomic_compare_exchange_weak(&pool->remaining_tasks, &remaining_tasks, remaining_tasks - 1))
         {
             busy_loops++;
             continue;
         }
 
         #ifdef DEBUG
-        fprintf(stderr, "%p thread %d got task: %4d busy_loops: %4d\n", pool, thread->index, task_count, busy_loops);
+        fprintf(stderr, "%p thread %d got task: %4d busy_loops: %4d\n", pool, thread->index, task_index, busy_loops);
         #endif
 
         busy_loops = 0;
 
-        threadpool_task_t* task = (threadpool_task_t*) atomic_load(&pool->tasks) + task_count;
+        threadpool_task_t* task = (threadpool_task_t*) atomic_load(&pool->tasks) + task_index;
 
         task->function(task->argument, &thread->user_buffers);
 
