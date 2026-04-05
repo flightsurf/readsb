@@ -25,11 +25,15 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #include "threadpool.h"
 #include <pthread.h>
 #include <stdatomic.h>
-//#include <stdio.h>
 //#include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 
+#undef DEBUG
+
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
 #define ATOMIC_WORKER_LOCK (-1)
 
@@ -166,6 +170,9 @@ void threadpool_destroy(threadpool_t *pool)
 
 void threadpool_run(threadpool_t *pool, threadpool_task_t* tasks, uint32_t count)
 {
+    #ifdef DEBUG
+    fprintf(stderr, "%p threadpool_run, threads: %4d tasks: %4d\n", pool, pool->thread_count, count);
+    #endif
 
     atomic_store(&pool->pending_count, count);
     atomic_store(&pool->tasks, (intptr_t) tasks);
@@ -183,6 +190,10 @@ void threadpool_run(threadpool_t *pool, threadpool_task_t* tasks, uint32_t count
         pthread_cond_wait(&pool->notify_master, &pool->master_lock);
     }
     pthread_mutex_unlock(&pool->master_lock);
+
+    #ifdef DEBUG
+    fprintf(stderr, "%p threadpool_run, threads: %4d tasks: %4d ... done\n", pool, pool->thread_count, count);
+    #endif
 }
 
 static unsigned get_seed() {
@@ -203,8 +214,6 @@ static void *threadpool_threadproc(void *arg)
     {
         task_count = atomic_load(&pool->task_count);
 
-        //fprintf(stderr, "%d %4d\n", thread->index, task_count);
-
         if (task_count == 0)
         {
             pthread_mutex_lock(&pool->worker_lock);
@@ -217,13 +226,24 @@ static void *threadpool_threadproc(void *arg)
             // re-check task_count inside worker_lock before sleeping
             // this makes lost wakeup impossible
             // (task count is incremented BEFORE taking worker_lock to wake the workers)
-            if (atomic_load(&pool->task_count) == 0)
+            task_count = atomic_load(&pool->task_count);
+            if (task_count == 0)
             {
                 // update thread_time
                 clock_gettime(CLOCK_THREAD_CPUTIME_ID, &thread->thread_time);
 
+                #ifdef DEBUG
+                fprintf(stderr, "%p thread %d waiting (task_count %4d)\n", pool, thread->index, task_count);
+                #endif
+
                 // wait until we have more work
                 pthread_cond_wait(&pool->notify_worker, &pool->worker_lock);
+            }
+            else
+            {
+                #ifdef DEBUG
+                fprintf(stderr, "%p thread %d not waiting (task_count %4d)\n", pool, thread->index, task_count);
+                #endif
             }
 
             pthread_mutex_unlock(&pool->worker_lock);
@@ -237,6 +257,10 @@ static void *threadpool_threadproc(void *arg)
         {
             continue;
         }
+
+        #ifdef DEBUG
+        fprintf(stderr, "%p thread %d got task: %4d\n", pool, thread->index, task_count);
+        #endif
 
         threadpool_task_t* task = (threadpool_task_t*) atomic_load(&pool->tasks) + task_count;
 
