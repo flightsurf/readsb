@@ -209,6 +209,7 @@ static void *threadpool_threadproc(void *arg)
     thread_t *thread = (thread_t *) arg;
     threadpool_t *pool = thread->pool;
     int task_count;
+    int busy_loops = 0;
 
     while (1)
     {
@@ -255,12 +256,15 @@ static void *threadpool_threadproc(void *arg)
         task_count--;
         if (!atomic_compare_exchange_weak(&pool->task_count, &expected, task_count))
         {
+            busy_loops++;
             continue;
         }
 
         #ifdef DEBUG
-        fprintf(stderr, "%p thread %d got task: %4d\n", pool, thread->index, task_count);
+        fprintf(stderr, "%p thread %d got task: %4d busy_loops: %4d\n", pool, thread->index, task_count, busy_loops);
         #endif
+
+        busy_loops = 0;
 
         threadpool_task_t* task = (threadpool_task_t*) atomic_load(&pool->tasks) + task_count;
 
