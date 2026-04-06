@@ -35,8 +35,6 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #include <stdio.h>
 #endif
 
-#define ATOMIC_WORKER_LOCK (-1)
-
 typedef struct {
     int index;
     threadpool_t* pool;
@@ -210,13 +208,12 @@ static void *threadpool_threadproc(void *arg)
     threadpool_t *pool = thread->pool;
     int remaining_tasks;
     int task_index;
-    int busy_loops = 0;
 
     while (1)
     {
         remaining_tasks = atomic_load(&pool->remaining_tasks);
 
-        if (remaining_tasks == 0)
+        if (remaining_tasks <= 0)
         {
             pthread_mutex_lock(&pool->worker_lock);
 
@@ -229,7 +226,7 @@ static void *threadpool_threadproc(void *arg)
             // this makes lost wakeup impossible
             // (remaining_tasks is incremented BEFORE taking worker_lock to wake the workers)
             remaining_tasks = atomic_load(&pool->remaining_tasks);
-            if (remaining_tasks == 0)
+            if (remaining_tasks <= 0)
             {
                 // update thread_time
                 clock_gettime(CLOCK_THREAD_CPUTIME_ID, &thread->thread_time);
@@ -253,20 +250,15 @@ static void *threadpool_threadproc(void *arg)
             continue;
         }
 
-        task_index = remaining_tasks - 1;
+        task_index = atomic_fetch_sub(&pool->remaining_tasks, 1) - 1;
 
-        // atomically decrement remaining_tasks by 1
-        if (!atomic_compare_exchange_weak(&pool->remaining_tasks, &remaining_tasks, remaining_tasks - 1))
-        {
-            busy_loops++;
+        if (task_index < 0) {
             continue;
         }
 
         #ifdef DEBUG
-        fprintf(stderr, "%p thread %d got task: %4d busy_loops: %4d\n", pool, thread->index, task_index, busy_loops);
+        fprintf(stderr, "%p thread %d got task: %4d\n", pool, thread->index, task_index);
         #endif
-
-        busy_loops = 0;
 
         threadpool_task_t* task = (threadpool_task_t*) atomic_load(&pool->tasks) + task_index;
 
