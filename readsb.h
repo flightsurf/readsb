@@ -534,8 +534,6 @@ struct _Threads {
 };
 extern struct _Threads Threads;
 
-struct modeMessage;
-
 struct messageBuffer {
     struct modesMessage *msg;
     int len;
