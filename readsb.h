@@ -442,6 +442,9 @@ static inline void *mmap_or_exit(size_t size, const char *file, int line) {
         #endif
         buf = NULL;
     }
+    if (buf) {
+        madvise(buf, size, MADV_HUGEPAGE);
+    }
     return buf;
 }
 static inline void munmap_or_exit(void *ptr, size_t size, const char *file, int line) {
