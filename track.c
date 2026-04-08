@@ -2483,8 +2483,8 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
     }
 
     if (mm->wind_valid) {
-        a->wind_speed = a->wind_speed;
-        a->wind_direction = a->wind_direction;
+        a->wind_speed = mm->wind_speed;
+        a->wind_direction = mm->wind_direction;
         a->wind_updated = now;
         a->wind_altitude = a->baro_alt;
     }
@@ -2561,10 +2561,6 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
             // getbit checks for ARA/RAT/MTE, at least one must be set
             logACASInfoShort(mm->addr, bytes, a, mm, mm->sysTimestamp);
         }
-    }
-
-    if (mm->accuracy.sda_valid && accept_data(&a->sda_valid, mm->source, mm, a, REDUCE_RARE)) {
-        a->sda = mm->accuracy.sda;
     }
 
     if (mm->accuracy.nic_a_valid && accept_data(&a->nic_a_valid, mm->source, mm, a, REDUCE_RARE)) {
