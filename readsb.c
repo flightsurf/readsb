@@ -299,7 +299,12 @@ static void modesInit(void) {
     }
 
     if (Modes.thp) {
-        Modes.aircraft = cmMmap(Modes.acBuckets * sizeof(struct aircraft *));
+        size_t size = 0;
+        while (size < Modes.acBuckets * sizeof(struct aircraft *)) {
+            size += 2 * 1024 * 1024;
+        }
+        // allocate multiple of 2 MB so transparent hugepages work
+        Modes.aircraft = cmMmap(size, HUGE);
         memset(Modes.aircraft, 0x0, Modes.acBuckets * sizeof(struct aircraft *));
     } else {
         Modes.aircraft = cmCalloc(Modes.acBuckets * sizeof(struct aircraft *));

@@ -431,7 +431,10 @@ static inline void *calloc_or_exit(size_t alignment, size_t size, const char *fi
     return buf;
 }
 
-static inline void *mmap_or_exit(size_t size, const char *file, int line) {
+#define HUGE 1
+#define NOHUGE 0
+
+static inline void *mmap_or_exit(size_t size, int huge, const char *file, int line) {
     void *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (buf == MAP_FAILED) {
         fprintf(stderr, "FATAL: cmMmap() of size %lld failed: %s:%d (%s)\n", (long long) size, file, line, strerror(errno));
@@ -442,9 +445,11 @@ static inline void *mmap_or_exit(size_t size, const char *file, int line) {
         #endif
         buf = NULL;
     }
-    if (buf) {
+#ifdef MADV_HUGEPAGE
+    if (buf && huge) {
         madvise(buf, size, MADV_HUGEPAGE);
     }
+#endif
     return buf;
 }
 static inline void munmap_or_exit(void *ptr, size_t size, const char *file, int line) {
@@ -456,7 +461,7 @@ static inline void munmap_or_exit(void *ptr, size_t size, const char *file, int 
     return;
 }
 
-#define cmMmap(size) mmap_or_exit(size, __FILE__, __LINE__)
+#define cmMmap(size, huge) mmap_or_exit(size, huge, __FILE__, __LINE__)
 #define cmMunmap(ptr, size) munmap_or_exit(ptr, size, __FILE__, __LINE__)
 
 // disable this ... maybe it test in the future if it makes a diff if i'm bored
