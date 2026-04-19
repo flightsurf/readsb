@@ -368,6 +368,24 @@ static int findHexList(struct apiBuffer *buffer, uint32_t *hexList, int hexCount
     }
     return count;
 }
+static int findSquawkList(struct apiEntry *haystack, int haylen, unsigned *squawkList, int squawkCount,
+                          struct apiEntry *matches, size_t *alloc) {
+    int count = 0;
+    for (int j = 0; j < haylen; j++) {
+        struct apiEntry *e = &haystack[j];
+        if (!e->bin.squawk_valid) {
+            continue;
+        }
+        for (int k = 0; k < squawkCount; k++) {
+            if (e->bin.squawk == squawkList[k]) {
+                matches[count++] = *e;
+                *alloc += e->jsonOffset.len;
+                break;
+            }
+        }
+    }
+    return count;
+}
 static int findInCircle(struct apiEntry *haystack, int haylen, struct apiOptions *options, struct apiEntry *matches, size_t *alloc) {
     struct apiCircle *circle = &options->circle;
     struct range r[2];
@@ -547,6 +565,10 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
         doFree = 1; matches = apiAlloc(haylen); if (!matches) { return cb; };
 
         count = filterTypeList(haystack, haylen, options->typeList, options->typeCount, matches, &alloc);
+    } else if (options->is_squawkList) {
+        doFree = 1; matches = apiAlloc(haylen); if (!matches) { return cb; };
+
+        count = findSquawkList(haystack, haylen, options->squawkList, options->squawkCount, matches, &alloc);
     } else if (options->all || options->all_with_pos) {
         struct range range;
         if (options->all) {
@@ -1356,6 +1378,23 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                     return invalid;
 
                 options->regCount = regCount;
+            } else if (byteMatchStrict(option, "find_squawk")) {
+                options->is_squawkList = 1;
+
+                int squawkCount = 0;
+                int maxCount = API_REQ_LIST_MAX;
+                unsigned *squawkList = options->squawkList;
+
+                char *saveptr = NULL;
+                char *tok = strtok_r(value, ",", &saveptr);
+                while (tok && squawkCount < maxCount) {
+                    squawkList[squawkCount++] = strtol(tok, NULL, 16);
+                    tok = strtok_r(NULL, ",", &saveptr);
+                }
+                if (squawkCount == 0)
+                    return invalid;
+
+                options->squawkCount = squawkCount;
             } else if (byteMatchStrict(option, "find_type") || byteMatchStrict(option, "filter_type")) {
                 if (byteMatchStrict(option, "find_type")) {
                     options->is_typeList = 1;
@@ -1460,6 +1499,7 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
         + options->is_callsignList
         + options->is_regList
         + options->is_typeList
+        + options->is_squawkList
         + options->all
         + options->all_with_pos;
 

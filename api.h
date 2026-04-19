@@ -41,6 +41,7 @@ struct apiOptions {
     int is_callsignList;
     int is_regList;
     int is_typeList;
+    int is_squawkList;
     int include_no_position;
     int filter_typeList;
     int closest;
@@ -74,6 +75,8 @@ struct apiOptions {
     char regList[API_REQ_LIST_MAX * memberSize(struct binCraft, registration) + 1];
     int typeCount;
     char typeList[API_REQ_LIST_MAX * memberSize(struct binCraft, typeCode) + 1];
+    int squawkCount;
+    unsigned squawkList[API_REQ_LIST_MAX];
 };
 
 struct offset {
