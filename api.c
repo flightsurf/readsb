@@ -181,19 +181,6 @@ static int filterWithPos(struct apiEntry *haystack, int haylen, struct apiEntry 
     }
     return count;
 }
-static int filterSquawk(struct apiEntry *haystack, int haylen, struct apiEntry *matches, size_t *alloc, unsigned squawk)  {
-    int count = 0;
-
-    for (int i = 0; i < haylen; i++) {
-        struct apiEntry *e = &haystack[i];
-        //fprintf(stderr, "%04x %04x\n", options->squawk, e->bin.squawk);
-        if (e->bin.squawk == squawk && e->bin.squawk_valid) {
-            matches[count++] = *e;
-            *alloc += e->jsonOffset.len;
-        }
-    }
-    return count;
-}
 
 static int filterCallsignPrefix(struct apiEntry *haystack, int haylen, struct apiEntry *matches, size_t *alloc, char *callsign_prefix) {
     int count = 0;
@@ -368,7 +355,7 @@ static int findHexList(struct apiBuffer *buffer, uint32_t *hexList, int hexCount
     }
     return count;
 }
-static int findSquawkList(struct apiEntry *haystack, int haylen, unsigned *squawkList, int squawkCount,
+static int filterSquawkList(struct apiEntry *haystack, int haylen, unsigned *squawkList, int squawkCount,
                           struct apiEntry *matches, size_t *alloc) {
     int count = 0;
     for (int j = 0; j < haylen; j++) {
@@ -568,7 +555,7 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
     } else if (options->is_squawkList) {
         doFree = 1; matches = apiAlloc(haylen); if (!matches) { return cb; };
 
-        count = findSquawkList(haystack, haylen, options->squawkList, options->squawkCount, matches, &alloc);
+        count = filterSquawkList(haystack, haylen, options->squawkList, options->squawkCount, matches, &alloc);
     } else if (options->all || options->all_with_pos) {
         struct range range;
         if (options->all) {
@@ -594,14 +581,6 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
         }
     }
 
-    if (options->filter_squawk) {
-        struct apiEntry *filtered = apiAlloc(count); if (!filtered) { return cb; }
-
-        size_t alloc = alloc_base;
-        count = filterSquawk(matches, count, filtered, &alloc, options->squawk);
-
-        if (doFree) { sfree(matches); }; doFree = 1; matches = filtered;
-    }
     // filter all_with_pos as pos_range unreliable due do gpsOkBefore f***ery
     if (options->filter_with_pos || options->all_with_pos) {
         struct apiEntry *filtered = apiAlloc(count); if (!filtered) { return cb; }
@@ -650,6 +629,14 @@ static struct char_buffer apiReq(struct apiThread *thread, struct apiOptions *op
 
         size_t alloc = alloc_base;
         count = filterCallsignExact(matches, count, filtered, &alloc, options->callsign_exact);
+
+        if (doFree) { sfree(matches); }; doFree = 1; matches = filtered;
+    }
+    if (options->filter_squawkList) {
+        struct apiEntry *filtered = apiAlloc(count); if (!filtered) { return cb; }
+
+        size_t alloc = alloc_base;
+        count = filterSquawkList(matches, count, options->squawkList, options->squawkCount, filtered, &alloc);
 
         if (doFree) { sfree(matches); }; doFree = 1; matches = filtered;
     }
@@ -1378,8 +1365,12 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
                     return invalid;
 
                 options->regCount = regCount;
-            } else if (byteMatchStrict(option, "find_squawk")) {
-                options->is_squawkList = 1;
+            } else if (byteMatchStrict(option, "find_squawk") || byteMatchStrict(option, "filter_squawk")) {
+                if (byteMatchStrict(option, "find_squawk")) {
+                    options->is_squawkList = 1;
+                } else {
+                    options->filter_squawkList = 1;
+                }
 
                 int squawkCount = 0;
                 int maxCount = API_REQ_LIST_MAX;
@@ -1447,14 +1438,6 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
             } else if (byteMatchStrict(option, "below_alt_baro")) {
                 options->filter_alt_baro = 1;
                 options->below_alt_baro = strtol(value, NULL, 10);
-            } else if (byteMatchStrict(option, "filter_squawk")) {
-                options->filter_squawk = 1;
-                //int dec = strtol(value, NULL, 10);
-                //options->squawk = (dec / 1000) * 16*16*16 + (dec / 100 % 10) * 16*16 + (dec / 10 % 10) * 16 + (dec % 10);
-                int hex = strtol(value, NULL, 16);
-                //fprintf(stderr, "%04d %04x\n", dec, hex);
-
-                options->squawk = hex;
             } else {
                 return invalid;
             }
@@ -1509,6 +1492,10 @@ static struct char_buffer parseFetch(struct apiCon *con, struct char_buffer *req
         } else {
             return invalid;
         }
+    }
+
+    if (options->is_squawkList && options->filter_squawkList) {
+        return invalid;
     }
 
     if (options->is_typeList && options->filter_typeList) {

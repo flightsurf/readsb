@@ -162,7 +162,7 @@ The keys are:
   ```
   &filter_callsign_exact=<callsign>
   &filter_callsign_prefix=<prefix>
-  &filter_squawk=<squawk>
+  &filter_squawk=<squawk1>,<squawk2>,.....
   &filter_with_pos
   &filter_type=<type1>,<type2>,.....
   &below_alt_baro=<altitude in feet>
@@ -171,7 +171,7 @@ The keys are:
   filter any of the base queries for:
   * an exact callsign match (multiple exact matches possible)
   * all callsigns that start with <prefix>
-  * a specific squawk code
+  * a list of squawk codes
   * only return aircraft that have a valid position
   * only return aircraft that match one of the icao type codes
   * only above and / or below a certain altitude in ft (uncorrected barometric altitude, ground treated as 0 ft for simplicity / versatility)

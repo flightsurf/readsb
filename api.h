@@ -44,15 +44,14 @@ struct apiOptions {
     int is_squawkList;
     int include_no_position;
     int filter_typeList;
+    int filter_squawkList;
     int closest;
     int all;
     int all_with_pos;
     int jamesv2;
-    int filter_squawk;
     int binCraft;
     int zstd;
     int zstd_encode;
-    unsigned squawk;
     int filter_dbFlag;
     int filter_mil;
     int filter_interesting;
