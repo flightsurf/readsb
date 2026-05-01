@@ -1935,6 +1935,9 @@ struct char_buffer generateReceiverJson() {
         p = safe_snprintf(p, end, ", \"haveTraces\": true");
         p = safe_snprintf(p, end, ", \"json_trace_interval\": %.1f", ((double) Modes.json_trace_interval) / (1 * SECONDS));
     }
+    if (Modes.heatmap) {
+        p = safe_snprintf(p, end, ", \"haveReplay\": true");
+    }
 
     if (Modes.json_globe_index && !Modes.tar1090_no_globe) {
         p = safe_snprintf(p, end, ", \"globeIndexGrid\": %d", GLOBE_INDEX_GRID);
