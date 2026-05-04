@@ -358,7 +358,7 @@ static int cpr_duplicate_check(int64_t now, struct aircraft *a, struct modesMess
             fastId += 1;
         }
     }
-    if (fastId && Modes.netIngest && mm->client && mm->source != SOURCE_ADSR) {
+    if (fastId && Modes.netIngest && mm->client && mm->addrtype == ADDR_ADSB_ICAO_NT && mm->timestamp != MAGIC_UAT_TIMESTAMP) {
         struct client *c = mm->client;
         inCache = 1;
         char uuid[64]; // needs 36 chars and null byte
