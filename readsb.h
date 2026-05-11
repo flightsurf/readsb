@@ -881,7 +881,6 @@ struct _Modes
     char *net_output_vrs_ports; // List of VRS output TCP ports
     int64_t net_output_vrs_interval;
     int64_t net_output_json_interval;
-    int net_output_json_include_nopos;
     struct net_connector *net_connectors; // client connectors
     int net_connectors_count;
     int net_connectors_size;
@@ -901,6 +900,8 @@ struct _Modes
     int32_t dump_beast_index;
     uint64_t dump_lastReceiverId;
     int8_t dump_compressionLevel;
+    int8_t net_output_json_include_nopos;
+    int8_t net_output_json_wind_triggered;
     int8_t writeTraces;
     int8_t dump_reduce; // only dump beast that would be sent out according to reduce_interval
     int8_t state_only_on_exit;
@@ -1341,6 +1342,7 @@ enum {
     OptNetJsonPorts,
     OptNetJsonPortInterval,
     OptNetJsonPortNoPos,
+    OptNetJsonPortWindTriggered,
     OptNetApiPorts,
     OptApiShutdownDelay,
     OptTar1090UseApi,

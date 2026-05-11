@@ -62,7 +62,7 @@ uint32_t modeAC_age[4096];
 
 static void showPositionDebug(struct aircraft *a, struct modesMessage *mm, int64_t now, double bad_lat, double bad_lon);
 static void position_bad(struct modesMessage *mm, struct aircraft *a);
-static void calc_wind(struct aircraft *a, int64_t now);
+static void calc_wind(struct aircraft *a, struct modesMessage *mm, int64_t now);
 static void calc_temp(struct aircraft *a, int64_t now);
 static inline int declination(struct aircraft *a, double *dec, int64_t now);
 static const char *source_string(datasource_t source);
@@ -2357,7 +2357,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
                         && !err && accept_data(&a->true_heading_valid, SOURCE_INDIRECT, mm, a, REDUCE_OFTEN)
                    ) {
                     a->true_heading = norm_angle(mm->heading + dec, 180);
-                    calc_wind(a, now);
+                    calc_wind(a, mm, now);
                 }
             }
         } else if (htype == HEADING_TRUE && accept_data(&a->true_heading_valid, mm->source, mm, a, REDUCE_OFTEN)) {
@@ -2389,7 +2389,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
             && accept_data(&a->tas_valid, mm->source, mm, a, REDUCE_OFTEN)) {
         a->tas = mm->tas;
         calc_temp(a, now);
-        calc_wind(a, now);
+        calc_wind(a, mm, now);
     }
 
     if (mm->mach_valid && accept_data(&a->mach_valid, mm->source, mm, a, REDUCE_OFTEN)) {
@@ -2839,6 +2839,15 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
             a->next_reduce_forward_DF11 = now + 4 * currentReduceInterval(now);
             mm->reduce_forward = 1;
             PPforward;
+        }
+    }
+
+    if (Modes.net_output_json_wind_triggered) {
+        // bit hacky, needs to be after all the other stuff that sets jsonPositionOutputEmit
+        if (mm->wind_valid) {
+            mm->jsonPositionOutputEmit = 1;
+        } else {
+            mm->jsonPositionOutputEmit = 0;
         }
     }
 
@@ -3346,7 +3355,7 @@ static void adjustExpire(struct aircraft *a, int64_t timeout) {
 }
 */
 
-static void calc_wind(struct aircraft *a, int64_t now) {
+static void calc_wind(struct aircraft *a, struct modesMessage *mm, int64_t now) {
     uint32_t focus = 0xc0ffeeba;
 
     if (a->addr == focus)
@@ -3403,10 +3412,10 @@ static void calc_wind(struct aircraft *a, int64_t now) {
         // Filter out wildly unrealistic wind speeds
         return;
     }
-    a->wind_speed = ws;
-    a->wind_direction = wd;
-    a->wind_updated = now;
-    a->wind_altitude = a->baro_alt;
+
+    mm->wind_speed = ws;
+    mm->wind_direction = wd;
+    mm->wind_valid = 1;
 }
 static void calc_temp(struct aircraft *a, int64_t now) {
     if (a->airground == AG_GROUND)
