@@ -2844,7 +2844,7 @@ struct aircraft *trackUpdateFromMessage(struct modesMessage *mm) {
 
     if (Modes.net_output_json_wind_triggered) {
         // bit hacky, needs to be after all the other stuff that sets jsonPositionOutputEmit
-        if (mm->wind_valid) {
+        if (mm->wind_valid && trackDataAge(now, &a->position_valid) < TRACK_WT_TIMEOUT) {
             mm->jsonPositionOutputEmit = 1;
         } else {
             mm->jsonPositionOutputEmit = 0;
